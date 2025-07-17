@@ -3,7 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  syncfusion_pdfviewer_windows
+  connectivity_plus
+  firebase_core
+  firebase_storage
+  geolocator_windows
+  pdfx
   url_launcher_windows
 )
 

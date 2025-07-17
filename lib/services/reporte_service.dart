@@ -12,8 +12,9 @@ class ReportesService {
     return jsonList.map((e) {
       return ReportePdf(
         nombre: e['nombre'],
-        rutaLocal: e['ruta'],
         fecha: DateTime.parse(e['fecha']),
+        rutaLocal: e['ruta'], // sigue siendo asset path
+        rutaRemota: '', // vacío porque es local
       );
     }).toList();
   }

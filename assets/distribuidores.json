@@ -1,0 +1,714 @@
+[
+    {
+        "nombre": "Mazda Metepec",
+        "grupo": "ACASA",
+        "activo": true,
+        "direccion": "Avenida Licenciado Benito Juárez No. 1409, Colonia San Francisco Coaxusco, Metepec, Estado de México, C.P. 52158",
+        "latitud": 19.269349,
+        "longitud": -99.628867
+    },
+    {
+        "nombre": "Mazda Santa Fe",
+        "grupo": "ACASA",
+        "activo": true,
+        "direccion": "Mario Pani 400, Santa Fe, Alcaldía Cuajimalpa de Morelos, CDMX, C.P. 05348",
+        "latitud": 19.359459,
+        "longitud": -99.277282
+    },
+    {
+        "nombre": "Mazda Acapulco",
+        "grupo": "ALDEN",
+        "activo": true,
+        "direccion": "Boulevard de las Naciones No. 979, Colonia Granjas del Marqués, Acapulco, Guerrero, C.P. 39890",
+        "latitud": 16.79063,
+        "longitud": -99.802579
+    },
+    {
+        "nombre": "Mazda Churubusco",
+        "grupo": "ALDEN",
+        "activo": true,
+        "direccion": "Calle Centeno 727 (esq. Río Churubusco), Colonia Granjas México, Alcaldía Iztacalco, CDMX, C.P. 08400",
+        "latitud": 19.399802,
+        "longitud": -99.099022
+    },
+    {
+        "nombre": "Mazda Oaxaca",
+        "grupo": "ALDEN",
+        "activo": true,
+        "direccion": "Avenida Eduardo Mata S\/N esq. Emiliano Zapata, Colonia Barrio Trinidad de las Huertas, Oaxaca, Oaxaca, C.P. 68120",
+        "latitud": 17.053528,
+        "longitud": -96.716347
+    },
+    {
+        "nombre": "Mazda Puebla",
+        "grupo": "ALDEN",
+        "activo": true,
+        "direccion": "Vía Atlixcayotl No. 5508-A, Colonia Unidad Territorial Atlixcayotl, Puebla, Puebla, C.P. 72160",
+        "latitud": 19.023419,
+        "longitud": -98.240422
+    },
+    {
+        "nombre": "Mazda Serdan",
+        "grupo": "ALDEN",
+        "activo": true,
+        "direccion": "Boulevard Hermanos Serdán No. 202, Colonia Real del Monte, Puebla, Puebla, C.P. 72060",
+        "latitud": 19.066105,
+        "longitud": -98.223156
+    },
+    {
+        "nombre": "Mazda Los Fuertes",
+        "grupo": "ALDEN",
+        "activo": true,
+        "direccion": "Calzada Ignacio Zaragoza No. 178, Colonia Arboledas de Guadalupe Sección Fuentes, Puebla, Puebla, C.P. 72267",
+        "latitud": 19.064176,
+        "longitud": -98.180709
+    },
+    {
+        "nombre": "Mazda Buenavista",
+        "grupo": "AUTOFIN",
+        "activo": true,
+        "direccion": "Insurgentes Norte No. 260, Col. Sta. María la Ribera, Alcaldía Cuauhtémoc, CDMX, C.P. 06400",
+        "latitud": 19.449054,
+        "longitud": -99.152882
+    },
+    {
+        "nombre": "Mazda Del Valle",
+        "grupo": "AUTOFIN",
+        "activo": true,
+        "direccion": "Avenida Cuauhtémoc No. 1372, Colonia Santa Cruz Atoyac, Alcaldía Benito Juárez, CDMX, C.P. 03310",
+        "latitud": 19.368635,
+        "longitud": -99.161449
+    },
+    {
+        "nombre": "Mazda Interlomas",
+        "grupo": "AUTOFIN",
+        "activo": true,
+        "direccion": "Boulevard Magnocentro No. 1, Colonia San Fernando La Herradura, Huixquilucan, Estado de México, C.P. 52787",
+        "latitud": 19.401038,
+        "longitud": -99.274228
+    },
+    {
+        "nombre": "Mazda Pachuca",
+        "grupo": "AUTOFIN",
+        "activo": true,
+        "direccion": "Boulevard General Felipe Angeles No.831, Colonia ISSSTE, Pachuca de Soto, Hidalgo, C.P. 42083",
+        "latitud": 20.071759,
+        "longitud": -98.777776
+    },
+    {
+        "nombre": "Mazda Polanco",
+        "grupo": "AUTOFIN",
+        "activo": true,
+        "direccion": "Boulevard Manuel Ávila Camacho No. 145, Colonia Lomas de Chapultepec, V Sección, Alcaldía Miguel Hidalgo, CDMX, C.P. 11510",
+        "latitud": 19.434421,
+        "longitud": -99.210855
+    },
+    {
+        "nombre": "Mazda Universidad",
+        "grupo": "AUTOFIN",
+        "activo": true,
+        "direccion": "Avenida Universidad No. 1090, Colonia Xoco, Alcaldía Benito Juárez, CDMX, C.P. 03330",
+        "latitud": 19.364759,
+        "longitud": -99.168332
+    },
+    {
+        "nombre": "Mazda Culiacan",
+        "grupo": "BOURS",
+        "activo": true,
+        "direccion": "Boulevard Pedro Infante No. 2619 Pte., Colonia Desarrollo Urbano Tres Ríos, Culiacán Rosales, Sinaloa, C.P. 80020",
+        "latitud": 24.79912,
+        "longitud": -107.419784
+    },
+    {
+        "nombre": "Mazda Mazatlan",
+        "grupo": "BOURS",
+        "activo": true,
+        "direccion": "Quinta Avenida #6229, Marina Mazatlán, Mazatlán, Sinaloa, C.P. 82103",
+        "latitud": 23.282043,
+        "longitud": -106.44678
+    },
+    {
+        "nombre": "Mazda Saltillo",
+        "grupo": "CAR",
+        "activo": true,
+        "direccion": "Boulevard Venustiano Carranza No. 4480, Virreyes, Saltillo, Coahuila, C.P. 25230",
+        "latitud": 25.463225,
+        "longitud": -100.981261
+    },
+    {
+        "nombre": "Mazda Ecatepec",
+        "grupo": "CITELIS",
+        "activo": true,
+        "direccion": "Vía Morelos número 161, Colonia Nuevo Laredo, Ecatepec, Estado de México, C.P. 55080",
+        "latitud": 19.579084,
+        "longitud": -99.042531
+    },
+    {
+        "nombre": "Mazda Ravisa",
+        "grupo": "CITELIS",
+        "activo": true,
+        "direccion": "Avenida Periférico Paseo de la República No. 133, Colonia Pascual Ortiz de Ayala, Morelia, Michoacán, C.P. 58250",
+        "latitud": 19.696023,
+        "longitud": -101.150017
+    },
+    {
+        "nombre": "Mazda Ravisa Mexico",
+        "grupo": "CITELIS",
+        "activo": true,
+        "direccion": "Vía José López Portillo No. 175, Colonia San Lorenzo Tetlixtac, Coacalco de Berriozábal, Estado de México, C.P. 55714",
+        "latitud": 19.629932,
+        "longitud": -99.085978
+    },
+    {
+        "nombre": "Mazda Ravisa Uruapan",
+        "grupo": "CITELIS",
+        "activo": true,
+        "direccion": "Paseo General Lázaro Cárdenas 288, 60050 Uruapan, Michoacán",
+        "latitud": 19.415404,
+        "longitud": -102.051845
+    },
+    {
+        "nombre": "Mazda San Luis",
+        "grupo": "CITELIS",
+        "activo": true,
+        "direccion": "Venustiano Carranza 1520, 38050 Celaya, Guanajuato",
+        "latitud": 22.127195,
+        "longitud": -101.020952
+    },
+    {
+        "nombre": "Mazda CD Juarez",
+        "grupo": "CONTRO",
+        "activo": true,
+        "direccion": "Avenida Paseo Triunfo de la República No. 5406, Colonia Partido Díaz, Cd. Juárez, Chihuahua, C.P. 32417",
+        "latitud": 31.738178,
+        "longitud": -106.437831
+    },
+    {
+        "nombre": "Mazda Aguascalientes",
+        "grupo": "ELFER",
+        "activo": true,
+        "direccion": "Avenida Aguascalientes Nte. No. 812, Colonia Las Hadas, Aguascalientes, Aguascalientes, C.P. 20140",
+        "latitud": 21.915148,
+        "longitud": -102.29044
+    },
+    {
+        "nombre": "Mazda Chiapas",
+        "grupo": "GEMA",
+        "activo": true,
+        "direccion": "Boulevard Ángel Albino Corzo No. 1126, Colonia Las Palmas, Tuxtla Gutiérrez, Chiapas, C.P. 29040",
+        "latitud": 16.748359,
+        "longitud": -93.089346
+    },
+    {
+        "nombre": "Mazda Coatzacoalcos",
+        "grupo": "GEMA",
+        "activo": true,
+        "direccion": "Avenida Abraham Zabludovsky No. 117-B, Colonia La Herradura, Coatzacoalcos, Veracruz, C.P. 96535",
+        "latitud": 18.142761,
+        "longitud": -94.481948
+    },
+    {
+        "nombre": "Mazda Diaz Miron",
+        "grupo": "GEMA",
+        "activo": true,
+        "direccion": "Avenida Salvador Díaz Mirón 1500, 91910 Veracruz",
+        "latitud": 19.171027,
+        "longitud": -96.13368
+    },
+    {
+        "nombre": "Mazda Tapachula",
+        "grupo": "GEMA",
+        "activo": true,
+        "direccion": "Carretera Costera KM 244.5, San Juan, 30760 Tapachula, Chiapas",
+        "latitud": 14.918887,
+        "longitud": -92.270711
+    },
+    {
+        "nombre": "Mazda Veracruz",
+        "grupo": "GEMA",
+        "activo": true,
+        "direccion": "Avenida Ejército Mexicano No. 694, Colonia Ejido Primero de Mayo, Boca del Río, Veracruz, C.P. 94297",
+        "latitud": 19.140267,
+        "longitud": -96.114408
+    },
+    {
+        "nombre": "Mazda Xalapa",
+        "grupo": "GEMA",
+        "activo": true,
+        "direccion": "Avenida Arco Sur No. 81, Colonia Reserva Territorial, Xalapa, Veracruz, C.P. 91096",
+        "latitud": 19.507242,
+        "longitud": -96.883698
+    },
+    {
+        "nombre": "Mazda Tabasco",
+        "grupo": "PAZOS",
+        "activo": true,
+        "direccion": "Boulevard Adolfo Ruiz Cortines 1521C, 86100 Villahermosa, Tabasco",
+        "latitud": 17.98663,
+        "longitud": -92.957575
+    },
+    {
+        "nombre": "Mazda Campeche",
+        "grupo": "PENICHE",
+        "activo": true,
+        "direccion": "Avenida María Lavalle Urbina, Mz. E-1 Lt. 06, 07, 17 y 18, Colonia Sector Fundadores, Área Ah Kim Pech, Campeche, Campeche, C.P. 24014",
+        "latitud": 19.846684,
+        "longitud": -90.520918
+    },
+    {
+        "nombre": "Mazda Cancun",
+        "grupo": "PENICHE",
+        "activo": true,
+        "direccion": "Avenida Tulúm Manzana 3 Lote 1 SM 8, Cancún, Quintana Roo, C.P. 77500",
+        "latitud": 21.137237,
+        "longitud": -86.826198
+    },
+    {
+        "nombre": "Mazda Sureste",
+        "grupo": "PENICHE",
+        "activo": true,
+        "direccion": "Calle 7 No. 421, Colonia Altabrisa, Mérida, Yucatán, C.P. 97130",
+        "latitud": 21.021881,
+        "longitud": -89.578136
+    },
+    {
+        "nombre": "Mazda Cuautla",
+        "grupo": "PICACHO",
+        "activo": true,
+        "direccion": "Avenida Reforma No. 7, Colonia Miguel Hidalgo, Cuautla, Morelos, C.P. 62746",
+        "latitud": 18.8414,
+        "longitud": -98.941218
+    },
+    {
+        "nombre": "Mazda Cuernavaca",
+        "grupo": "PICACHO",
+        "activo": true,
+        "direccion": "Avenida Río Mayo No. 1334, Colonia Vista Hermosa, Cuernavaca, Morelos, C.P. 62290",
+        "latitud": 18.934098,
+        "longitud": -99.208545
+    },
+    {
+        "nombre": "Mazda Ixtapaluca",
+        "grupo": "PICACHO",
+        "activo": true,
+        "direccion": "Plaza El Cortijo, Local H07, Carretera Federal México-Cuautla Km32, Hacienda Santa Barbara I., Ixtapaluca, Estado de México, C.P. 56538",
+        "latitud": 19.297355,
+        "longitud": -98.885028
+    },
+    {
+        "nombre": "Mazda Picacho",
+        "grupo": "PICACHO",
+        "activo": true,
+        "direccion": "Avenida Periférico Sur No. 4080, Colonia Jardines del Pedregal, Alcaldía Álvaro Obregón, CDMX, C.P. 01900",
+        "latitud": 19.307022,
+        "longitud": -99.2113
+    },
+    {
+        "nombre": "Mazda San Angel",
+        "grupo": "PICACHO",
+        "activo": true,
+        "direccion": "Avenida Insurgentes Sur 2084, 01070 Álvaro Obregón, CDMX",
+        "latitud": 19.346374,
+        "longitud": -99.187643
+    },
+    {
+        "nombre": "Mazda Tlahuac",
+        "grupo": "PICACHO",
+        "activo": true,
+        "direccion": "Avenida Tláhuac No.5392 B, Colonia Los Olivos, Alcaldía Tláhuac, CDMX, C.P. 13210",
+        "latitud": 19.303464,
+        "longitud": -99.057819
+    },
+    {
+        "nombre": "Mazda Acueducto",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Avenida Acueducto No. 5455, Fraccionamiento Puerta de Hierro, Zapopan, Jalisco, C.P. 45116",
+        "latitud": 20.718122,
+        "longitud": -103.414048
+    },
+    {
+        "nombre": "Mazda Americas",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Avenida Américas No.918, Colonia Chapultepec Country, Guadalajara, Jalisco, C.P. 44620",
+        "latitud": 20.694385,
+        "longitud": -103.372844
+    },
+    {
+        "nombre": "Mazda Colima",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Avenida Tecnológico No. 125-A, Colonia Miguel Hidalgo, Colima, Colima, C.P. 28037",
+        "latitud": 19.257818,
+        "longitud": -103.719679
+    },
+    {
+        "nombre": "Mazda Galerias",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Avenida Vallarta No. 6210, Colonia Jocotán, Zapopan, Jalisco, C.P. 45010",
+        "latitud": 20.687452,
+        "longitud": -103.444599
+    },
+    {
+        "nombre": "Mazda Gonzalez Gallo",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Calz. González Gallo #1530 , Colonia El Rosario, Guadalajara, Jalisco, C.P. 44890",
+        "latitud": 20.647962,
+        "longitud": -103.334683
+    },
+    {
+        "nombre": "Mazda Manzanillo",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Boulevard Miguel de la Madrid No.754, Colonia Las Brisas, Manzanillo, Colima, C.P. 28210",
+        "latitud": 19.085861,
+        "longitud": -104.309177
+    },
+    {
+        "nombre": "Mazda Plasencia",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Avenida Mariano Otero No. 405, Colonia Jardines del Sol, Zapopan, Jalisco, C.P. 45050",
+        "latitud": 20.644035,
+        "longitud": -103.409564
+    },
+    {
+        "nombre": "Mazda Santa Anita",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Avenida López Mateos Sur No. 4115, Colonia Los Gavilanes Tlajomulco de Zúñiga, Guadalajara, Jalisco, C.P. 45603",
+        "latitud": 20.570934,
+        "longitud": -103.454876
+    },
+    {
+        "nombre": "Mazda Tepic",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Avenida Insurgentes No. 845 Pte., Colonia IMSS, Tepic, Nayarit, C.P. 63120",
+        "latitud": 21.516396,
+        "longitud": -104.913497
+    },
+    {
+        "nombre": "Mazda Vallarta",
+        "grupo": "PLASENCIA",
+        "activo": true,
+        "direccion": "Carretera Tepic No. 5735 Int. 21, Colonia Las Juntas, Puerto Vallarta, Jalisco, C.P. 48291",
+        "latitud": 20.688527,
+        "longitud": -105.25135
+    },
+    {
+        "nombre": "Mazda Bajio",
+        "grupo": "RAL",
+        "activo": true,
+        "direccion": "Boulevard Adolfo López Mateos No. 510-A Norte, Colonia Las Margaritas, León, Guanajuato, C.P. 37180",
+        "latitud": 21.148111,
+        "longitud": -101.684551
+    },
+    {
+        "nombre": "Mazda Irapuato",
+        "grupo": "RAL",
+        "activo": true,
+        "direccion": "Boulevard Villas de Irapuato No. 1443 Local 3-B, Plaza Cibeles, Irapuato, Guanajuato, C.P. 36643",
+        "latitud": 20.681674,
+        "longitud": -101.382992
+    },
+    {
+        "nombre": "Mazda La Joya",
+        "grupo": "RAL",
+        "activo": true,
+        "direccion": "Insurgentes Sur No. 4166, Col. La Joya, Alcaldía Tlalpan, CDMX, C.P. 14090",
+        "latitud": 19.28101,
+        "longitud": -99.171029
+    },
+    {
+        "nombre": "Mazda Ral",
+        "grupo": "RAL",
+        "activo": true,
+        "direccion": "Avenida Periférico Sur No. 6611, Colonia San Juan Tepepan, Alcaldía Xochimilco, CDMX, C.P. 16020",
+        "latitud": 19.282092,
+        "longitud": -99.134781
+    },
+    {
+        "nombre": "Mazda Salamanca",
+        "grupo": "RAL",
+        "activo": true,
+        "direccion": "Boulevard Faja de Oro No. 1612, Colonia El Pirul, Salamanca, Guanajuato, C.P. 36740",
+        "latitud": 20.584687,
+        "longitud": -101.219542
+    },
+    {
+        "nombre": "Mazda Zapata Cuautitlan",
+        "grupo": "ZAPATA",
+        "activo": true,
+        "direccion": "Autopista México-Querétaro Km 38.5, Lateral Mz. 1 Lt. 3, Fraccionamiento Industrial Cuautitlán Izcalli, Cuautitlán Izcalli, Estado de México, C.P. 54730",
+        "latitud": 19.676734,
+        "longitud": -99.200512
+    },
+    {
+        "nombre": "Mazda Zapata Lindavista",
+        "grupo": "ZAPATA",
+        "activo": true,
+        "direccion": "Poniente 140 No. 418, Colonia Lindavista Vallejo, Alcaldía Gustavo A. Madero, CDMX, C.P. 07720",
+        "latitud": 19.494122,
+        "longitud": -99.148406
+    },
+    {
+        "nombre": "Mazda Zapata Queretaro",
+        "grupo": "ZAPATA",
+        "activo": true,
+        "direccion": "Boulevard Bernardo Quintana No. 588, Colonia San Pedrito Peñuelas, Santiago de Querétaro, Querétaro, C.P. 76148",
+        "latitud": 20.617566,
+        "longitud": -100.403701
+    },
+    {
+        "nombre": "Mazda Zapata Tlalnepantla",
+        "grupo": "ZAPATA",
+        "activo": true,
+        "direccion": "Avenida Sor Juana Inés de la Cruz No. 78, Colonia San Lorenzo, Tlalnepantla, Estado de México, C.P. 54000",
+        "latitud": 19.539526,
+        "longitud": -99.203817
+    },
+    {
+        "nombre": "Mazda Zapata Torre Norte",
+        "grupo": "ZAPATA",
+        "activo": true,
+        "direccion": "Boulevard Manuel Ávila Camacho No. 685, Fraccionamiento Industrial Alce Blanco, Naucalpan de Juárez, Estado de México, C.P. 53370",
+        "latitud": 19.478788,
+        "longitud": -99.230888
+    },
+    {
+        "nombre": "Mazda Zapata Zona Esmeralda",
+        "grupo": "ZAPATA",
+        "activo": true,
+        "direccion": "Av. Jorge Jiménez Cantú 87-Lote 2, 52937 Ciudad Adolfo Lopez Mateos, Estado de México",
+        "latitud": 19.557622,
+        "longitud": -99.296317
+    },
+    {
+        "nombre": "Mazda Salina Cruz",
+        "grupo": "ALDEN",
+        "activo": false,
+        "direccion": "Carretera Transistmica 12, 70650 Salina Cruz",
+        "latitud": 16.185249,
+        "longitud": -95.199896
+    },
+    {
+        "nombre": "Mazda Cumbres",
+        "grupo": "ALDORF",
+        "activo": false,
+        "direccion": "Paseo de los Leones 101, 64619 Monterrey, Nuevo León",
+        "latitud": 25.731794,
+        "longitud": -100.399384
+    },
+    {
+        "nombre": "Mazda Gonzalitos",
+        "grupo": "ALDORF",
+        "activo": false,
+        "direccion": "Av. Dr. José Eleuterio González 296-No. 296, 64640 Monterrey, Nuevo León",
+        "latitud": 25.678641,
+        "longitud": -100.352619
+    },
+    {
+        "nombre": "Mazda Las Torres",
+        "grupo": "ALDORF",
+        "activo": false,
+        "direccion": "Avenida Lázaro Cárdenas 525, 64754 Monterrey, Nuevo León",
+        "latitud": 25.634653,
+        "longitud": -100.305611
+    },
+    {
+        "nombre": "Mazda Lindavista MTY",
+        "grupo": "ALDORF",
+        "activo": false,
+        "direccion": "Avenida Miguel Alemán No. 5301–A, Colonia Libertad Guadalupe, Monterrey, Nuevo León, C.P. 67130",
+        "latitud": 25.693329,
+        "longitud": -100.243235
+    },
+    {
+        "nombre": "Mazda Sendero",
+        "grupo": "ALDORF",
+        "activo": false,
+        "direccion": "Avenida Universidad 1290, 66428 San Nicolás de los Garza, Nuevo León",
+        "latitud": 25.766761,
+        "longitud": -100.293875
+    },
+    {
+        "nombre": "Mazda Valle Oriente",
+        "grupo": "ALDORF",
+        "activo": false,
+        "direccion": "Av. Vasconcelos #220-1 Col: Residencial San Agustin, 66220 San Pedro Garza García, Nuevo León",
+        "latitud": 25.653413,
+        "longitud": -100.34221
+    },
+    {
+        "nombre": "Mazda Ciudad Victoria",
+        "grupo": "ALDORF TAMPS",
+        "activo": false,
+        "direccion": "Boulevard Tamaulipas 3228 Plaza Verde Limón, 87025 Ciudad Victoria, Tamaulipas",
+        "latitud": 23.76001,
+        "longitud": -99.139927
+    },
+    {
+        "nombre": "Mazda Reynosa",
+        "grupo": "ALDORF TAMPS",
+        "activo": false,
+        "direccion": "Boulevard Tamaulipas 3228 Plaza Verde Limón, 87025 Ciudad Victoria, Tamaulipas",
+        "latitud": 26.070291,
+        "longitud": -98.332763
+    },
+    {
+        "nombre": "Mazda Tampico",
+        "grupo": "ALDORF TAMPS",
+        "activo": false,
+        "direccion": "Avenida Miguel Hidalgo y Costilla 6004, 89360 Tampico, Tamaulipas",
+        "latitud": 22.277938,
+        "longitud": -97.873844
+    },
+    {
+        "nombre": "Mazda Ensenada",
+        "grupo": "AUTOPASION",
+        "activo": false,
+        "direccion": "Boulevard Costero 1368, 22800 Ensenada, Baja California",
+        "latitud": 31.851671,
+        "longitud": -116.616097
+    },
+    {
+        "nombre": "Mazda Mexicali",
+        "grupo": "AUTOPASION",
+        "activo": false,
+        "direccion": "Boulevard Lázaro Cárdenas 1801, 21090 Mexicali, Baja California",
+        "latitud": 32.624833,
+        "longitud": -115.457143
+    },
+    {
+        "nombre": "Mazda Tijuana",
+        "grupo": "AUTOPASION",
+        "activo": false,
+        "direccion": "Vía Rápida Poniente 15305, 22226 Tijuana, Baja California",
+        "latitud": 32.499348,
+        "longitud": -116.949865
+    },
+    {
+        "nombre": "Mazda Los Cabos",
+        "grupo": "BOURS",
+        "activo": false,
+        "direccion": "Carretera Transpeninsular 35, 23455 Los Cabos, BCS",
+        "latitud": 22.903828,
+        "longitud": -109.889972
+    },
+    {
+        "nombre": "Mazda Monclova",
+        "grupo": "CAR",
+        "activo": false,
+        "direccion": "Blvd Harold R. Pape 607, Jardines de Guadalupe Monclova, Coah.",
+        "latitud": 26.940197,
+        "longitud": -101.414478
+    },
+    {
+        "nombre": "Mazda Piedras Negras",
+        "grupo": "CAR",
+        "activo": false,
+        "direccion": "Avenida Heroico Colegio Militar 914, 26010 Piedras Negras, Coahuila",
+        "latitud": 28.704163,
+        "longitud": -100.528194
+    },
+    {
+        "nombre": "Mazda Lazaro Cardenas",
+        "grupo": "CITELIS",
+        "activo": false,
+        "direccion": "Av. Lázaro Cárdenas #253, Col. Centro, 60950 Lázaro Cárdenas, Michoacán De Ocampo, Mexico, Michoacán De Ocampo",
+        "latitud": 17.964339,
+        "longitud": -102.200765
+    },
+    {
+        "nombre": "Mazda San Luis Carranza",
+        "grupo": "CITELIS",
+        "activo": false,
+        "direccion": "Venustiano Carranza 1520 San Luis, 78310 San Luis Potosí, San Luis Potosí",
+        "latitud": 22.149938,
+        "longitud": -100.99805
+    },
+    {
+        "nombre": "Mazda San Luis Carretera 57",
+        "grupo": "CITELIS",
+        "activo": false,
+        "direccion": "Av. Benito Juarez 1271, 78390 San Luis Potosí, San Luis Potosí",
+        "latitud": 22.144187,
+        "longitud": -100.945271
+    },
+    {
+        "nombre": "Mazda Chihuahua",
+        "grupo": "CONTRO",
+        "activo": false,
+        "direccion": "Av. Periférico De La Juventud No. 6709, 31216 Chihuahua, Chihuahua",
+        "latitud": 28.636032,
+        "longitud": -106.123858
+    },
+    {
+        "nombre": "Mazda Durango",
+        "grupo": "ELFER",
+        "activo": false,
+        "direccion": "Boulevard Francisco Villa No. 4010, Colonia 20 de Noviembre, Durango, Durango, C.P. 34208",
+        "latitud": 24.053499,
+        "longitud": -104.615528
+    },
+    {
+        "nombre": "Mazda Laguna",
+        "grupo": "ELFER",
+        "activo": false,
+        "direccion": "Boulevard Independencia No. 3500 Ote., Residencial El Fresno, Torreón, Coahuila, C.P. 27018",
+        "latitud": 25.576142,
+        "longitud": -103.412577
+    },
+    {
+        "nombre": "Mazda Zacatecas",
+        "grupo": "ELFER",
+        "activo": false,
+        "direccion": "Orquídeas No. 30, Colonia La Florida, Zacatecas, Zacatecas, C.P. 98618",
+        "latitud": 22.759102,
+        "longitud": -102.54012
+    },
+    {
+        "nombre": "Mazda Hermosillo",
+        "grupo": "GEMSO",
+        "activo": false,
+        "direccion": "Boulevard Luis Donaldo Colosio 646, 83249 Hermosillo, Sonora",
+        "latitud": 29.085535,
+        "longitud": -110.993311
+    },
+    {
+        "nombre": "Mazda Obregon",
+        "grupo": "GEMSO",
+        "activo": false,
+        "direccion": "Avenida Jalisco No. 402 Nte., Colonia Centro, Ciudad Obregón, Sonora, C.P. 85000",
+        "latitud": 27.502246,
+        "longitud": -109.928747
+    },
+    {
+        "nombre": "Mazda Carmen",
+        "grupo": "PAZOS",
+        "activo": false,
+        "direccion": "Carretera Carmen-Puerto Real No. 57-A, Colonia Rancho San Antonio del Limón, Ciudad del Carmen, Campeche, C.P. 24158",
+        "latitud": 18.663481,
+        "longitud": -91.762871
+    },
+    {
+        "nombre": "Mazda Zapata Celaya",
+        "grupo": "ZAPATA",
+        "activo": false,
+        "direccion": "Boulevard Adolfo Lopez Mateos No. 1237 Oriente, Colonia Jardines de Celaya, Celaya, Guanajuato, C.P. 38080",
+        "latitud": 20.517694,
+        "longitud": -100.791193
+    },
+    {
+        "nombre": "Mazda Zapata San Juan del Rio",
+        "grupo": "ZAPATA",
+        "activo": false,
+        "direccion": "Boulevard Miguel Hidalgo Sur No. 229, Local 8, 76800 San Juan del Río, Querétaro",
+        "latitud": 20.38419,
+        "longitud": -99.998174
+    }
+]

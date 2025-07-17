@@ -1,27 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:myafmzd/models/reporte_pdf_model.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:pdfx/pdfx.dart';
 
-class VisorPdfScreen extends StatelessWidget {
-  final ReportePdf reporte;
+class VisorPDF extends StatefulWidget {
+  final String assetPath; // puede ser asset o ruta local
 
-  const VisorPdfScreen({super.key, required this.reporte});
+  const VisorPDF({super.key, required this.assetPath});
+
+  @override
+  State<VisorPDF> createState() => _VisorPDFState();
+}
+
+class _VisorPDFState extends State<VisorPDF> {
+  late final PdfControllerPinch _pdfController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.assetPath.startsWith('/')) {
+      _pdfController = PdfControllerPinch(
+        document: PdfDocument.openFile(widget.assetPath),
+      );
+    } else {
+      _pdfController = PdfControllerPinch(
+        document: PdfDocument.openAsset(widget.assetPath),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _pdfController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final rutaParaFlutter = reporte.rutaLocal.replaceFirst('assets/', '');
-
-    print(rutaParaFlutter);
     return Scaffold(
-      appBar: AppBar(title: Text(reporte.nombre)),
-      body: SfPdfViewer.asset(
-        rutaParaFlutter,
-        canShowScrollHead: false,
-        canShowScrollStatus: false,
-        enableDoubleTapZooming: true,
-        enableDocumentLinkAnnotation: true,
-        enableTextSelection: true,
-        pageSpacing: 0.0,
+      appBar: AppBar(title: const Text('Visor PDF')),
+      body: PdfViewPinch(
+        controller: _pdfController,
+        onDocumentLoaded: (doc) {},
+        onPageChanged: (page) {},
       ),
     );
   }
