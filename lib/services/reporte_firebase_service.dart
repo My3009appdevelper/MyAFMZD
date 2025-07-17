@@ -137,4 +137,58 @@ class ReporteFirebaseService {
     }
     return DateTime.now();
   }
+
+  List<String> listarFechasUnicas(List<ReportePdf> reportes) {
+    final meses = reportes
+        .map(
+          (r) =>
+              '${r.fecha.year.toString().padLeft(4, '0')}-${r.fecha.month.toString().padLeft(2, '0')}',
+        )
+        .toSet()
+        .toList();
+
+    meses.sort();
+    return ['Todos', ...meses];
+  }
+
+  Future<void> eliminarDescarga(String rutaRemota) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_keyDescargados);
+      if (raw == null) return;
+
+      final Map<String, dynamic> decoded = jsonDecode(raw);
+      final path = decoded[rutaRemota];
+      if (path != null) {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+        decoded.remove(rutaRemota);
+        await prefs.setString(_keyDescargados, jsonEncode(decoded));
+      }
+    } catch (e) {
+      print('❌ Error al eliminar descarga de $rutaRemota: $e');
+    }
+  }
+
+  Future<void> eliminarTodasLasDescargas() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_keyDescargados);
+      if (raw == null) return;
+
+      final Map<String, dynamic> decoded = jsonDecode(raw);
+      for (final path in decoded.values) {
+        final file = File(path.toString());
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+
+      await prefs.remove(_keyDescargados);
+    } catch (e) {
+      print('❌ Error al eliminar todas las descargas: $e');
+    }
+  }
 }

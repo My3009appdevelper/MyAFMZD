@@ -22,6 +22,10 @@ class ReporteItemTile extends StatefulWidget {
 
 class _ReporteItemTileState extends State<ReporteItemTile> {
   PdfPageImage? _thumbnail;
+  bool _descargando = false;
+
+  // 🧠 Cache estático compartido entre instancias
+  static final Map<String, PdfPageImage> _miniaturaCache = {};
 
   @override
   void initState() {
@@ -30,21 +34,29 @@ class _ReporteItemTileState extends State<ReporteItemTile> {
   }
 
   Future<void> _cargarMiniatura() async {
+    // 🧠 Si ya está en cache, usarla directamente
+    if (_miniaturaCache.containsKey(widget.reporte.nombre)) {
+      setState(() => _thumbnail = _miniaturaCache[widget.reporte.nombre]);
+      return;
+    }
+
     try {
       File? tempFile;
 
       if (widget.reporte.rutaLocal != null &&
           widget.reporte.rutaLocal!.startsWith('/')) {
-        // Es archivo local (descargado de Firebase)
         tempFile = File(widget.reporte.rutaLocal!);
       } else if (widget.reporte.rutaLocal != null) {
-        // Es un asset
         final data = await rootBundle.load(widget.reporte.rutaLocal!);
         final tempDir = await getTemporaryDirectory();
         tempFile = File(
           '${tempDir.path}/${widget.reporte.nombre.hashCode}.pdf',
         );
         await tempFile.writeAsBytes(data.buffer.asUint8List(), flush: true);
+      } else {
+        tempFile = await ReporteFirebaseService().descargarTemporal(
+          widget.reporte.rutaRemota,
+        );
       }
 
       if (tempFile == null || !await tempFile.exists()) return;
@@ -56,6 +68,7 @@ class _ReporteItemTileState extends State<ReporteItemTile> {
 
       setState(() {
         _thumbnail = image;
+        _miniaturaCache[widget.reporte.nombre] = image!;
       });
     } catch (e) {
       debugPrint("❌ Error cargando miniatura: $e");
@@ -64,12 +77,13 @@ class _ReporteItemTileState extends State<ReporteItemTile> {
 
   Future<bool> _archivoExiste(String? path) async {
     if (path == null) return false;
-    final file = File(path);
-    return await file.exists();
+    return File(path).exists();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ListTile(
       leading: _thumbnail != null
           ? Image.memory(_thumbnail!.bytes, width: 50, fit: BoxFit.cover)
@@ -77,38 +91,56 @@ class _ReporteItemTileState extends State<ReporteItemTile> {
               width: 50,
               child: Center(child: Icon(Icons.picture_as_pdf)),
             ),
+
       trailing: FutureBuilder<bool>(
         future: _archivoExiste(widget.reporte.rutaLocal),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(width: 24, height: 24);
-          }
-
           final existe = snapshot.data ?? false;
 
-          return existe
-              ? const Icon(Icons.check_circle, color: Colors.green)
-              : IconButton(
-                  icon: const Icon(Icons.cloud_download),
-                  onPressed: () async {
-                    final file = await ReporteFirebaseService()
-                        .descargarYGuardar(widget.reporte.rutaRemota);
+          return SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(
+              child: _descargando
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : existe
+                  ? Icon(Icons.check_circle, color: colorScheme.primary)
+                  : IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.cloud_download),
+                      onPressed: () async {
+                        setState(() => _descargando = true);
 
-                    if (file != null) {
-                      setState(() {
-                        widget.reporte.rutaLocal = file.path;
-                      });
+                        final file = await ReporteFirebaseService()
+                            .descargarYGuardar(widget.reporte.rutaRemota);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('📥 Reporte descargado')),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('❌ Error al descargar')),
-                      );
-                    }
-                  },
-                );
+                        if (!mounted) return;
+
+                        setState(() {
+                          _descargando = false;
+                          if (file != null)
+                            widget.reporte.rutaLocal = file.path;
+                        });
+
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.hideCurrentSnackBar();
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              file != null
+                                  ? '📥 Reporte descargado'
+                                  : '❌ Error al descargar',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          );
         },
       ),
 
