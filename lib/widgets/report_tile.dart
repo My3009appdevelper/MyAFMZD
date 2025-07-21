@@ -9,11 +9,15 @@ import 'package:myafmzd/models/reporte_pdf_model.dart';
 class ReporteItemTile extends StatefulWidget {
   final ReportePdf reporte;
   final VoidCallback onTap;
+  final void Function() onChanged;
+  final bool downloading;
 
   const ReporteItemTile({
     super.key,
     required this.reporte,
     required this.onTap,
+    required this.onChanged,
+    this.downloading = false,
   });
 
   @override
@@ -82,8 +86,6 @@ class _ReporteItemTileState extends State<ReporteItemTile> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return ListTile(
       leading: _thumbnail != null
           ? Image.memory(_thumbnail!.bytes, width: 50, fit: BoxFit.cover)
@@ -101,22 +103,53 @@ class _ReporteItemTileState extends State<ReporteItemTile> {
             width: 40,
             height: 40,
             child: Center(
-              child: _descargando
+              child: _descargando || widget.downloading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : existe
-                  ? Icon(Icons.check_circle, color: colorScheme.primary)
+                  ? IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Eliminar este reporte',
+                      onPressed: () async {
+                        await ReporteFirebaseService().eliminarDescarga(
+                          widget.reporte.rutaRemota,
+                        );
+
+                        final path = widget.reporte.rutaLocal;
+                        if (path != null && await File(path).exists()) {
+                          try {
+                            await File(path).delete();
+                          } catch (_) {}
+                        }
+
+                        setState(() => widget.reporte.rutaLocal = null);
+                        widget.onChanged(); // Notifica al padre
+
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.hideCurrentSnackBar();
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('🗑️ Reporte eliminado'),
+                          ),
+                        );
+                      },
+                    )
                   : IconButton(
                       padding: EdgeInsets.zero,
                       icon: const Icon(Icons.cloud_download),
+                      tooltip: 'Descargar este reporte',
                       onPressed: () async {
                         setState(() => _descargando = true);
 
                         final file = await ReporteFirebaseService()
-                            .descargarYGuardar(widget.reporte.rutaRemota);
+                            .descargarYGuardar(
+                              widget.reporte.rutaRemota,
+                              tipo: widget.reporte.tipo,
+                            );
 
                         if (!mounted) return;
 
@@ -124,6 +157,7 @@ class _ReporteItemTileState extends State<ReporteItemTile> {
                           _descargando = false;
                           if (file != null)
                             widget.reporte.rutaLocal = file.path;
+                          widget.onChanged(); // Notifica al padre
                         });
 
                         final messenger = ScaffoldMessenger.of(context);

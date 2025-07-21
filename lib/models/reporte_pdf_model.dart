@@ -3,6 +3,7 @@ class ReportePdf {
   final DateTime fecha;
   final String rutaRemota;
   String? rutaLocal;
+  final String tipo;
 
   bool get descargado => rutaLocal != null;
 
@@ -11,13 +12,6 @@ class ReportePdf {
     required this.fecha,
     required this.rutaRemota,
     this.rutaLocal,
+    required this.tipo,
   });
-
-  factory ReportePdf.fromJson(Map<String, dynamic> json) {
-    return ReportePdf(
-      nombre: json['nombre'],
-      fecha: DateTime.parse(json['fecha']),
-      rutaRemota: json['ruta_remota'],
-    );
-  }
 }

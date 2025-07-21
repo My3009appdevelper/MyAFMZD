@@ -1,117 +1,68 @@
 import 'dart:async';
 import 'dart:io';
-
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/models/reporte_pdf_model.dart';
 import 'package:myafmzd/screens/reportes/visor_pdf.dart';
-import 'package:myafmzd/services/connectivity_service.dart';
+import 'package:myafmzd/services/connectivity_provider.dart';
 import 'package:myafmzd/services/reporte_firebase_service.dart';
-import 'package:myafmzd/widgets/app_drawer.dart';
 import 'package:myafmzd/widgets/report_tile.dart';
 
-class ReportesScreen extends StatefulWidget {
+class ReportesScreen extends ConsumerStatefulWidget {
   const ReportesScreen({super.key});
 
   @override
-  State<ReportesScreen> createState() => _ReportesScreenState();
+  ConsumerState<ReportesScreen> createState() => _ReportesScreenState();
 }
 
-class _ReportesScreenState extends State<ReportesScreen> {
+class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   List<ReportePdf> _todos = [];
   List<ReportePdf> _filtrados = [];
-  List<String> _mesesDisponibles = ['Todos'];
-  String _mesSeleccionado = 'Todos';
+  List<String> _mesesDisponibles = [];
+  String? _mesSeleccionado;
+  String? _mesDescargando;
+
   bool _abriendoPdf = false;
   bool _descargandoTodos = false;
 
-  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
-  bool _hayConexion = true;
-
-  final List<String> _amdaNombres = [
-    'AFMZD En El Sector De Autofinanciamiento',
-    'Autofinanciamiento Por Estado',
-    'Informe Ejecutivo 1P',
-    'Promedios AMDA Estimado Cierre',
-  ];
+  final Set<String> _descargasEnCurso = {};
 
   @override
   void initState() {
     super.initState();
     _cargarReportes();
-
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> results,
-    ) async {
-      final hasInternet = await ConnectivityService().hasInternet();
-
-      if (mounted) {
-        setState(() {
-          _hayConexion = hasInternet;
-        });
-      }
-
-      if (hasInternet) {
-        _cargarReportes();
-      } else {
-        _todos = await ReporteFirebaseService().cargarSoloDescargados();
-        final meses = await ReporteFirebaseService().listarFechasUnicas(_todos);
-
-        if (mounted) {
-          setState(() {
-            _filtrados = _todos;
-            _mesesDisponibles = meses;
-          });
-          _filtrar(_mesSeleccionado);
-        }
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _connectivitySubscription.cancel();
-    super.dispose();
   }
 
   void _cargarReportes() async {
-    final conn = await ConnectivityService().hasInternet();
+    final conn = ref.read(connectivityProvider); // usa el estado actual
 
-    List<ReportePdf> nuevos;
     if (conn) {
-      nuevos = await ReporteFirebaseService().listarReportesDesdeFirebase();
+      _todos = await ReporteFirebaseService().listarReportesDesdeFirestore();
     } else {
-      nuevos = await ReporteFirebaseService().cargarSoloDescargados();
+      _todos = await ReporteFirebaseService().cargarSoloDescargados();
     }
 
-    final meses = await ReporteFirebaseService().listarFechasUnicas(nuevos);
+    final meses = await ReporteFirebaseService().listarFechasUnicas(_todos);
 
     setState(() {
-      _todos = nuevos; // ✅ Esto sí actualiza
       _mesesDisponibles = meses;
+      _mesSeleccionado = meses.isNotEmpty ? meses.first : null;
     });
 
-    _filtrar(_mesSeleccionado); // ✅ Se aplica a la lista correcta
+    if (_mesSeleccionado != null) {
+      _filtrar(_mesSeleccionado!);
+    }
   }
 
   void _filtrar(String mes) {
     setState(() {
       _mesSeleccionado = mes;
-      if (mes == 'Todos') {
-        _filtrados = _todos;
-      } else {
-        _filtrados = _todos.where((r) {
-          final formatoMes =
-              '${r.fecha.year.toString().padLeft(4, '0')}-${r.fecha.month.toString().padLeft(2, '0')}';
-          return formatoMes == mes;
-        }).toList();
-      }
+      _filtrados = _todos.where((r) {
+        final formatoMes =
+            '${r.fecha.year.toString().padLeft(4, '0')}-${r.fecha.month.toString().padLeft(2, '0')}';
+        return formatoMes == mes;
+      }).toList();
     });
-  }
-
-  bool _esAmda(ReportePdf r) {
-    final nombreNormalizado = r.nombre.toLowerCase().trim();
-    return _amdaNombres.any((n) => n.toLowerCase().trim() == nombreNormalizado);
   }
 
   bool _todosDescargados() {
@@ -121,81 +72,97 @@ class _ReportesScreenState extends State<ReportesScreen> {
   }
 
   Future<void> _descargarTodos() async {
-    setState(() => _descargandoTodos = true);
+    setState(() {
+      _descargandoTodos = true;
+      _mesDescargando = _mesSeleccionado;
 
-    final reportes = _filtrados;
+      _descargasEnCurso.clear();
+      _descargasEnCurso.addAll(_filtrados.map((r) => r.rutaRemota));
+    });
+
     int descargados = 0;
 
-    for (final r in reportes) {
-      if (r.rutaLocal != null && File(r.rutaLocal!).existsSync()) continue;
+    for (final r in _filtrados) {
+      if (r.rutaLocal != null && File(r.rutaLocal!).existsSync()) {
+        _descargasEnCurso.remove(r.rutaRemota);
+        continue;
+      }
 
       final file = await ReporteFirebaseService().descargarYGuardar(
         r.rutaRemota,
+        tipo: r.tipo,
       );
       if (file != null) {
         r.rutaLocal = file.path;
         descargados++;
       }
+
+      setState(() {
+        _descargasEnCurso.remove(r.rutaRemota);
+      });
     }
 
     setState(() => _descargandoTodos = false);
 
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('📥 $descargados reporte(s) descargado(s)')),
     );
   }
 
-  Future<void> _eliminarDescargasFiltradas() async {
+  Future<void> _eliminarTodos() async {
     final service = ReporteFirebaseService();
-
     int eliminados = 0;
 
     for (final r in _filtrados) {
-      if (r.rutaLocal != null && File(r.rutaLocal!).existsSync()) {
+      if (r.rutaLocal != null) {
         await service.eliminarDescarga(r.rutaRemota);
+        final file = File(r.rutaLocal!);
+        if (await file.exists()) {
+          try {
+            await file.delete();
+          } catch (_) {}
+        }
+        r.rutaLocal = null;
         eliminados++;
-        r.rutaLocal = null; // Limpiar en memoria también
       }
     }
 
-    setState(() {}); // Refresca UI
+    final tieneInternet = ref.read(connectivityProvider);
+
+    if (!tieneInternet) {
+      final descargados = await service.cargarSoloDescargados();
+      final meses = await service.listarFechasUnicas(descargados);
+
+      setState(() {
+        _todos = descargados;
+        _mesesDisponibles = meses;
+        _mesSeleccionado = meses.isNotEmpty ? meses.first : null;
+      });
+
+      if (_mesSeleccionado != null) {
+        _filtrar(_mesSeleccionado!);
+      }
+    } else {
+      setState(() {}); // Actualiza el estado sin recargar lista
+    }
 
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('🗑️ $eliminados descarga(s) eliminada(s)')),
+      SnackBar(content: Text('🗑️ $eliminados reporte(s) eliminado(s)')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final amdaReportes = _filtrados.where(_esAmda).toList();
-    final internosReportes = _filtrados.where((r) => !_esAmda(r)).toList();
-
     return Stack(
       children: [
         Scaffold(
           appBar: AppBar(
             title: const Center(child: Text("Reportes mensuales")),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Tooltip(
-                  message: _hayConexion
-                      ? 'Conectado a Internet'
-                      : 'Sin conexión',
-                  child: Icon(
-                    _hayConexion ? Icons.wifi : Icons.wifi_off,
-                    color: colorScheme.onPrimary,
-                  ),
-                ),
-              ),
-            ],
           ),
-          drawer: const AppDrawer(),
+
           body: Column(
             children: [
               if (_mesesDisponibles.length > 1)
@@ -218,7 +185,11 @@ class _ReportesScreenState extends State<ReportesScreen> {
                               ),
                               DropdownButton<String>(
                                 value: _mesSeleccionado,
-                                onChanged: (value) => _filtrar(value!),
+                                onChanged: _descargandoTodos
+                                    ? null
+                                    : (value) {
+                                        if (value != null) _filtrar(value);
+                                      },
                                 items: _mesesDisponibles.map((mes) {
                                   return DropdownMenuItem(
                                     value: mes,
@@ -236,7 +207,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
                                 padding: const EdgeInsets.only(bottom: 4.0),
                                 child: Text(
                                   _todosDescargados()
-                                      ? 'Descargado'
+                                      ? 'Descargado Todo'
                                       : 'Descargar Todos',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
@@ -256,16 +227,16 @@ class _ReportesScreenState extends State<ReportesScreen> {
                                   ? IconButton(
                                       icon: const Icon(Icons.delete_outline),
                                       tooltip:
-                                          'Eliminar todos los descargados del mes',
+                                          'Eliminar todos los reportes descargados',
                                       onPressed: () async {
                                         final confirmar = await showDialog<bool>(
                                           context: context,
                                           builder: (context) => AlertDialog(
                                             title: const Text(
-                                              '¿Eliminar descargas?',
+                                              '¿Eliminar reportes descargados?',
                                             ),
                                             content: const Text(
-                                              '¿Quieres eliminar todos los reportes descargados de este filtro?',
+                                              '¿Quieres eliminar todos los reportes descargados actualmente visibles?',
                                             ),
                                             actions: [
                                               TextButton(
@@ -287,7 +258,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
                                         );
 
                                         if (confirmar == true) {
-                                          await _eliminarDescargasFiltradas();
+                                          await _eliminarTodos();
                                         }
                                       },
                                     )
@@ -295,7 +266,8 @@ class _ReportesScreenState extends State<ReportesScreen> {
                                       icon: const Icon(
                                         Icons.download_for_offline,
                                       ),
-                                      tooltip: 'Descargar todos',
+                                      tooltip:
+                                          'Descargar todos los reportes visibles',
                                       onPressed: _descargarTodos,
                                     ),
                             ],
@@ -306,14 +278,32 @@ class _ReportesScreenState extends State<ReportesScreen> {
                   ),
                 ),
               Expanded(
-                child: ListView(
-                  children: [
-                    if (amdaReportes.isNotEmpty)
-                      _buildSeccion('Reportes AMDA', amdaReportes),
-                    if (internosReportes.isNotEmpty)
-                      _buildSeccion('Reportes Internos', internosReportes),
-                  ],
-                ),
+                child: _filtrados.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.insert_drive_file_outlined,
+                                size: 48,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No hay reportes disponibles',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView(children: _buildSeccionesPorTipo()),
               ),
             ],
           ),
@@ -352,6 +342,25 @@ class _ReportesScreenState extends State<ReportesScreen> {
     );
   }
 
+  List<Widget> _buildSeccionesPorTipo() {
+    final entries = _filtrados
+        .fold<Map<String, List<ReportePdf>>>({}, (mapa, r) {
+          final tipo = r.tipo.toUpperCase();
+          mapa.putIfAbsent(tipo, () => []).add(r);
+          return mapa;
+        })
+        .entries
+        .toList();
+
+    entries.sort((a, b) => a.key.compareTo(b.key));
+
+    return entries.map((entry) {
+      final reportesOrdenados = entry.value
+        ..sort((a, b) => a.nombre.compareTo(b.nombre));
+      return _buildSeccion('Reportes ${entry.key}', reportesOrdenados);
+    }).toList();
+  }
+
   Widget _buildSeccion(String titulo, List<ReportePdf> reportes) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,6 +375,10 @@ class _ReportesScreenState extends State<ReportesScreen> {
         ...reportes.map(
           (reporte) => ReporteItemTile(
             reporte: reporte,
+            onChanged: () {
+              setState(() {}); // Forzar reconstrucción del botón superior
+            },
+            downloading: _descargasEnCurso.contains(reporte.rutaRemota),
             onTap: () async {
               if (_abriendoPdf) return; // 🔒 Ignora si ya está abriendo uno
 

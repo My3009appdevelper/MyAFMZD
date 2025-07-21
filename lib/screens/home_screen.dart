@@ -1,53 +1,68 @@
 import 'package:flutter/material.dart';
-import 'package:myafmzd/screens/contrato_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/screens/distribuidores_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
+import 'package:myafmzd/services/connectivity_provider.dart';
 import 'package:myafmzd/widgets/app_drawer.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _indiceActual = 0;
 
-  final List<Widget> _screens = const [
-    ContratoScreen(),
+  final List<Widget> _pantallas = const [
     ReportesScreen(),
     DistribuidoresScreen(),
+    // Agrega aquí más pantallas si tienes
   ];
-
-  final List<BottomNavigationBarItem> _bottomItems = const [
-    BottomNavigationBarItem(icon: Icon(Icons.description), label: 'Contrato'),
-    BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Reportes'),
-    BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Distribuidores'),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final bool hayConexion = ref.watch(connectivityProvider);
 
     return Scaffold(
-      drawer: AppDrawer(),
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      appBar: AppBar(
+        title: Center(child: const Text("AFMZD")),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Tooltip(
+              message: hayConexion
+                  ? 'Conectado a Internet'
+                  : 'Sin conexión a Internet',
+              child: Icon(
+                hayConexion ? Icons.wifi : Icons.wifi_off,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+      drawer: const AppDrawer(),
+      body: _pantallas[_indiceActual],
       bottomNavigationBar: BottomNavigationBar(
-        items: _bottomItems,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: Theme.of(
-          context,
-        ).colorScheme.onSurface.withOpacity(0.6),
-        backgroundColor: colorScheme.surface,
+        currentIndex: _indiceActual,
+        onTap: (index) {
+          setState(() {
+            _indiceActual = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.picture_as_pdf),
+            label: 'Reportes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.location_on),
+            label: 'Distribuidores',
+          ),
+          // Más items si es necesario
+        ],
       ),
     );
   }

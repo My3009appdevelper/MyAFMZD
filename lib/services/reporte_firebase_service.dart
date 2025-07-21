@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:myafmzd/models/reporte_pdf_model.dart';
@@ -11,38 +12,33 @@ class ReporteFirebaseService {
   static const _keyDescargados = 'reportes_descargados';
 
   /// Descarga y parsea el archivo reportes_index.json desde Firebase Storage.
-  Future<List<ReportePdf>> listarReportesDesdeFirebase() async {
+  Future<List<ReportePdf>> listarReportesDesdeFirestore() async {
+    print('🌐 Obteniendo reportes desde Firestore...');
+
     try {
-      // 1. Referencia al archivo en el bucket
-      final ref = _storage.ref('reportes/reportes_index.json');
+      final snapshot = await FirebaseFirestore.instance
+          .collection('reportes')
+          .orderBy('fecha', descending: true)
+          .get();
+      print('✅ Documentos encontrados: ${snapshot.docs.length}');
 
-      // 2. Obtener directorio temporal para guardar temporalmente el JSON
-      final dir = await getTemporaryDirectory();
-      final tempFile = File('${dir.path}/reportes_index.json');
-
-      // 3. Descargar el JSON a archivo temporal
-      await ref.writeToFile(tempFile);
-
-      // 4. Leer y parsear
-      final contenido = await tempFile.readAsString();
-      final List<dynamic> jsonList = json.decode(contenido);
-
-      // 5. Crear lista de objetos ReportePdf
       final descargados = await _cargarDescargados();
 
-      return jsonList.map((e) {
-        final rutaRemota = e['ruta_remota'];
-        final rutaLocal = descargados[rutaRemota];
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+
+        final rutaRemota = data['ruta_remota'] as String;
 
         return ReportePdf(
-          nombre: e['nombre'],
-          fecha: DateTime.parse(e['fecha']),
+          nombre: data['nombre'] ?? 'Sin título',
+          fecha: (data['fecha'] as Timestamp).toDate(),
           rutaRemota: rutaRemota,
-          rutaLocal: rutaLocal,
+          rutaLocal: descargados[rutaRemota]?['path_local'],
+          tipo: data['tipo'] ?? 'Otros',
         );
       }).toList();
     } catch (e) {
-      print('❌ Error al cargar reportes desde Firebase: $e');
+      print('❌ Error al cargar reportes desde Firestore: $e');
       return [];
     }
   }
@@ -67,7 +63,10 @@ class ReporteFirebaseService {
   }
 
   /// Descarga un archivo PDF y lo guarda en el directorio de documentos.
-  Future<File?> descargarYGuardar(String rutaRemota) async {
+  Future<File?> descargarYGuardar(
+    String rutaRemota, {
+    required String tipo,
+  }) async {
     try {
       final ref = _storage.ref(rutaRemota);
       final bytes = await ref.getData();
@@ -75,8 +74,16 @@ class ReporteFirebaseService {
       if (bytes == null) return null;
 
       final dir = await getApplicationDocumentsDirectory();
+      final fechaCarpeta = rutaRemota.split('/').length >= 2
+          ? rutaRemota.split('/')[1]
+          : 'unknown';
       final nombreArchivo = rutaRemota.split('/').last;
-      final localFile = File('${dir.path}/$nombreArchivo');
+
+      // Esto genera un nombre como: "2024-06_AFMZD_en_el_Sector...pdf"
+      final nombreUnico = '${fechaCarpeta}_$nombreArchivo';
+
+      final localFile = File('${dir.path}/$nombreUnico');
+
       await localFile.writeAsBytes(bytes, flush: true);
 
       // 🔐 Guardar en SharedPreferences
@@ -86,7 +93,8 @@ class ReporteFirebaseService {
           ? {}
           : jsonDecode(raw) as Map<String, dynamic>;
 
-      decoded[rutaRemota] = localFile.path;
+      decoded[rutaRemota] = {'path_local': localFile.path, 'tipo': tipo};
+
       await prefs.setString(_keyDescargados, jsonEncode(decoded));
 
       return localFile;
@@ -96,13 +104,20 @@ class ReporteFirebaseService {
     }
   }
 
-  Future<Map<String, String>> _cargarDescargados() async {
+  Future<Map<String, Map<String, String>>> _cargarDescargados() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_keyDescargados);
     if (raw == null) return {};
+
     try {
-      final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return decoded.map((k, v) => MapEntry(k, v.toString()));
+      final Map<String, dynamic> decoded = jsonDecode(raw);
+      return decoded.map((ruta, data) {
+        final mapa = data as Map<String, dynamic>;
+        return MapEntry(ruta, {
+          'path_local': mapa['path_local'] ?? '',
+          'tipo': mapa['tipo'] ?? 'Otros',
+        });
+      });
     } catch (e) {
       print('❌ Error al leer rutas descargadas: $e');
       return {};
@@ -113,17 +128,24 @@ class ReporteFirebaseService {
     final descargados = await _cargarDescargados();
 
     return descargados.entries.map((entry) {
-      final nombre = entry.key
+      final rutaRemota = entry.key;
+      final rutaLocal = entry.value['path_local']!;
+      final tipo = entry.value['tipo'] ?? 'Otros';
+
+      final nombre = rutaRemota
           .split('/')
           .last
           .replaceAll('.pdf', '')
           .replaceAll('_', ' ');
-      final fecha = _extraerFechaDesdeRuta(entry.key);
+
+      final fecha = _extraerFechaDesdeRuta(rutaRemota);
+
       return ReportePdf(
         nombre: nombre,
         fecha: fecha,
-        rutaRemota: entry.key,
-        rutaLocal: entry.value,
+        rutaRemota: rutaRemota,
+        rutaLocal: rutaLocal,
+        tipo: tipo,
       );
     }).toList();
   }
@@ -148,7 +170,7 @@ class ReporteFirebaseService {
         .toList();
 
     meses.sort();
-    return ['Todos', ...meses];
+    return meses;
   }
 
   Future<void> eliminarDescarga(String rutaRemota) async {
@@ -158,37 +180,25 @@ class ReporteFirebaseService {
       if (raw == null) return;
 
       final Map<String, dynamic> decoded = jsonDecode(raw);
-      final path = decoded[rutaRemota];
-      if (path != null) {
-        final file = File(path);
-        if (await file.exists()) {
-          await file.delete();
-        }
-        decoded.remove(rutaRemota);
-        await prefs.setString(_keyDescargados, jsonEncode(decoded));
-      }
-    } catch (e) {
-      print('❌ Error al eliminar descarga de $rutaRemota: $e');
-    }
-  }
 
-  Future<void> eliminarTodasLasDescargas() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_keyDescargados);
-      if (raw == null) return;
+      final data = decoded[rutaRemota];
+      if (data is Map && data.containsKey('path_local')) {
+        final path = data['path_local'];
 
-      final Map<String, dynamic> decoded = jsonDecode(raw);
-      for (final path in decoded.values) {
-        final file = File(path.toString());
-        if (await file.exists()) {
-          await file.delete();
+        if (path != null && path is String) {
+          final file = File(path);
+          if (await file.exists()) {
+            await file.delete();
+            print('🗑️ Archivo eliminado: $path');
+          }
         }
       }
 
-      await prefs.remove(_keyDescargados);
+      // Remueve del mapa y guarda el nuevo JSON
+      decoded.remove(rutaRemota);
+      await prefs.setString(_keyDescargados, jsonEncode(decoded));
     } catch (e) {
-      print('❌ Error al eliminar todas las descargas: $e');
+      print('❌ Error al eliminar descarga: $e');
     }
   }
 }
