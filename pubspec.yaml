@@ -29,7 +29,8 @@ dependencies:
   firebase_auth: ^4.17.4
   connectivity_plus: ^6.1.4
   internet_connection_checker: ^1.0.0
-  
+  flutter_map_animations: ^0.5.1
+  flutter_map_tile_caching: ^9.0.0  
 
 dev_dependencies:
   flutter_test:
@@ -49,5 +50,4 @@ flutter:
     - assets/reportes/2025-05/
     - assets/reportes/2025-06/
     - assets/reportes/reportes_index.json
-    - assets/distribuidores.json
 

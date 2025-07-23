@@ -24,6 +24,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
   bool _abriendoPdf = false;
   bool _descargandoTodos = false;
+  bool _cargandoInicial = true;
 
   final Set<String> _descargasEnCurso = {};
 
@@ -33,8 +34,12 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     _cargarReportes();
   }
 
-  void _cargarReportes() async {
-    final conn = ref.read(connectivityProvider); // usa el estado actual
+  Future<void> _cargarReportes() async {
+    final conn = ref.read(connectivityProvider);
+
+    setState(() => _cargandoInicial = true);
+
+    final inicio = DateTime.now();
 
     if (conn) {
       _todos = await ReporteFirebaseService().listarReportesDesdeFirestore();
@@ -44,10 +49,20 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
     final meses = await ReporteFirebaseService().listarFechasUnicas(_todos);
 
-    setState(() {
-      _mesesDisponibles = meses;
-      _mesSeleccionado = meses.isNotEmpty ? meses.first : null;
-    });
+    final duracion = DateTime.now().difference(inicio);
+    const duracionMinima = Duration(milliseconds: 1500);
+
+    if (duracion < duracionMinima) {
+      await Future.delayed(duracionMinima - duracion); // fuerza espera mínima
+    }
+
+    if (mounted) {
+      setState(() {
+        _mesesDisponibles = meses;
+        _mesSeleccionado = meses.isNotEmpty ? meses.first : null;
+        _cargandoInicial = false;
+      });
+    }
 
     if (_mesSeleccionado != null) {
       _filtrar(_mesSeleccionado!);
@@ -55,14 +70,16 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   }
 
   void _filtrar(String mes) {
-    setState(() {
-      _mesSeleccionado = mes;
-      _filtrados = _todos.where((r) {
-        final formatoMes =
-            '${r.fecha.year.toString().padLeft(4, '0')}-${r.fecha.month.toString().padLeft(2, '0')}';
-        return formatoMes == mes;
-      }).toList();
-    });
+    if (mounted) {
+      setState(() {
+        _mesSeleccionado = mes;
+        _filtrados = _todos.where((r) {
+          final formatoMes =
+              '${r.fecha.year.toString().padLeft(4, '0')}-${r.fecha.month.toString().padLeft(2, '0')}';
+          return formatoMes == mes;
+        }).toList();
+      });
+    }
   }
 
   bool _todosDescargados() {
@@ -160,7 +177,14 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       children: [
         Scaffold(
           appBar: AppBar(
-            title: const Center(child: Text("Reportes mensuales")),
+            title: Text(
+              "Reportes mensuales",
+              style: TextStyle(color: Colors.black),
+            ),
+            centerTitle: true,
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            scrolledUnderElevation: 0,
           ),
 
           body: Column(
@@ -278,32 +302,54 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                   ),
                 ),
               Expanded(
-                child: _filtrados.isEmpty
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.insert_drive_file_outlined,
-                                size: 48,
-                                color: Colors.grey,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'No hay reportes disponibles',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+                child: _cargandoInicial
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                        onRefresh: _cargarReportes,
+                        elevation: 0,
+                        child: CustomScrollView(
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
                           ),
+                          slivers: [
+                            if (_filtrados.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: const [
+                                        Icon(
+                                          Icons.insert_drive_file_outlined,
+                                          size: 48,
+                                          color: Colors.grey,
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'No hay reportes disponibles',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.grey,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              SliverList(
+                                delegate: SliverChildListDelegate(
+                                  _buildSeccionesPorTipo(),
+                                ),
+                              ),
+                          ],
                         ),
-                      )
-                    : ListView(children: _buildSeccionesPorTipo()),
+                      ),
               ),
             ],
           ),
