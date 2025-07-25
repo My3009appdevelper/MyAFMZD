@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UsuarioModel {
   final String uid;
   final String nombre;
@@ -5,6 +7,7 @@ class UsuarioModel {
   final String rol;
   final String uuidDistribuidora;
   final Map<String, bool> permisos;
+  final DateTime? updatedAt;
 
   UsuarioModel({
     required this.uid,
@@ -13,6 +16,7 @@ class UsuarioModel {
     required this.rol,
     required this.uuidDistribuidora,
     required this.permisos,
+    this.updatedAt,
   });
 
   factory UsuarioModel.fromMap(String uid, Map<String, dynamic> data) {
@@ -23,6 +27,11 @@ class UsuarioModel {
       rol: data['rol'] ?? 'usuario',
       uuidDistribuidora: data['uuidDistribuidora'] ?? '',
       permisos: Map<String, bool>.from(data['permisos'] ?? {}),
+      updatedAt: data['updatedAt'] is Timestamp
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : (data['updatedAt'] is String
+                ? DateTime.tryParse(data['updatedAt'])
+                : null),
     );
   }
 
@@ -33,6 +42,7 @@ class UsuarioModel {
       'rol': rol,
       'uuidDistribuidora': uuidDistribuidora,
       'permisos': permisos,
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 }

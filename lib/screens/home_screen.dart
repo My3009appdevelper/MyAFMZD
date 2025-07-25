@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/providers/distribuidor_provider.dart';
 import 'package:myafmzd/providers/reporte_provider.dart';
 import 'package:myafmzd/providers/perfil_provider.dart';
-import 'package:myafmzd/providers/usuarios_provider.dart';
+import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/screens/distribuidores_screen.dart';
 import 'package:myafmzd/screens/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';

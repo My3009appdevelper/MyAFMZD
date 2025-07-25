@@ -3,22 +3,35 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/firebase_options.dart';
+import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/screens/initial_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
 
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  throw UnimplementedError();
+});
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ✅ Firebase primero
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ✅ Habilitar persistencia offline de Firestore
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
   );
 
-  //final manifestContent = await rootBundle.loadString('AssetManifest.json');
-  //final Map<String, dynamic> manifestMap = json.decode(manifestContent);
+  // ✅ Inicializar la DB de Drift una vez (Singleton)
+  final db = AppDatabase();
 
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    ProviderScope(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends ConsumerWidget {

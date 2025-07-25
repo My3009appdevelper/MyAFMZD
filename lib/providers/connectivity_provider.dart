@@ -14,6 +14,7 @@ class ConnectivityNotifier extends StateNotifier<bool> {
     _init();
   }
 
+  final _checker = InternetConnectionChecker.createInstance();
   void _init() async {
     final initial = await _checkInternet();
     state = initial;
@@ -27,6 +28,6 @@ class ConnectivityNotifier extends StateNotifier<bool> {
   Future<bool> _checkInternet() async {
     final result = await Connectivity().checkConnectivity();
     if (result == ConnectivityResult.none) return false;
-    return await InternetConnectionChecker().hasConnection;
+    return await _checker.hasConnection;
   }
 }

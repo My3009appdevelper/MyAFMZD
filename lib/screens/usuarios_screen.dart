@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/providers/connectivity_provider.dart';
-import 'package:myafmzd/providers/usuarios_provider.dart';
+import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 
 class UsuariosScreen extends ConsumerStatefulWidget {
   const UsuariosScreen({super.key});
