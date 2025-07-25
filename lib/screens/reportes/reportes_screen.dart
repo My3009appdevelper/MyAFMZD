@@ -3,9 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/models/reporte_pdf_model.dart';
+import 'package:myafmzd/providers/reporte_provider.dart';
 import 'package:myafmzd/screens/reportes/visor_pdf.dart';
-import 'package:myafmzd/services/connectivity_provider.dart';
-import 'package:myafmzd/services/reporte_firebase_service.dart';
+import 'package:myafmzd/providers/connectivity_provider.dart';
+import 'package:myafmzd/services/reporte_service.dart';
 import 'package:myafmzd/widgets/report_tile.dart';
 
 class ReportesScreen extends ConsumerStatefulWidget {
@@ -16,12 +17,6 @@ class ReportesScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportesScreenState extends ConsumerState<ReportesScreen> {
-  List<ReportePdf> _todos = [];
-  List<ReportePdf> _filtrados = [];
-  List<String> _mesesDisponibles = [];
-  String? _mesSeleccionado;
-  String? _mesDescargando;
-
   bool _abriendoPdf = false;
   bool _descargandoTodos = false;
   bool _cargandoInicial = true;
@@ -35,71 +30,56 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   }
 
   Future<void> _cargarReportes() async {
-    final conn = ref.read(connectivityProvider);
-
     setState(() => _cargandoInicial = true);
-
     final inicio = DateTime.now();
 
-    if (conn) {
-      _todos = await ReporteFirebaseService().listarReportesDesdeFirestore();
-    } else {
-      _todos = await ReporteFirebaseService().cargarSoloDescargados();
-    }
-
-    final meses = await ReporteFirebaseService().listarFechasUnicas(_todos);
+    final hayInternet = ref.read(connectivityProvider);
+    await ref.read(reporteProvider.notifier).cargar(hayInternet: hayInternet);
 
     final duracion = DateTime.now().difference(inicio);
     const duracionMinima = Duration(milliseconds: 1500);
-
     if (duracion < duracionMinima) {
-      await Future.delayed(duracionMinima - duracion); // fuerza espera mínima
+      await Future.delayed(duracionMinima - duracion);
     }
 
     if (mounted) {
       setState(() {
-        _mesesDisponibles = meses;
-        _mesSeleccionado = meses.isNotEmpty ? meses.first : null;
         _cargandoInicial = false;
       });
-    }
 
-    if (_mesSeleccionado != null) {
-      _filtrar(_mesSeleccionado!);
-    }
-  }
-
-  void _filtrar(String mes) {
-    if (mounted) {
-      setState(() {
-        _mesSeleccionado = mes;
-        _filtrados = _todos.where((r) {
-          final formatoMes =
-              '${r.fecha.year.toString().padLeft(4, '0')}-${r.fecha.month.toString().padLeft(2, '0')}';
-          return formatoMes == mes;
-        }).toList();
-      });
+      // 🟡 Mostrar SnackBar si no hay conexión y no lo hemos mostrado aún
+      if (!hayInternet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '📴 Estás sin conexión. Solo reportes descargados disponibles.',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
-  bool _todosDescargados() {
-    return _filtrados.every(
+  bool _todosDescargados(List<ReportePdf> filtrados) {
+    return filtrados.every(
       (r) => r.rutaLocal != null && File(r.rutaLocal!).existsSync(),
     );
   }
 
   Future<void> _descargarTodos() async {
+    final filtrados = ref.watch(reporteProvider.notifier).filtrados;
+
     setState(() {
       _descargandoTodos = true;
-      _mesDescargando = _mesSeleccionado;
-
-      _descargasEnCurso.clear();
-      _descargasEnCurso.addAll(_filtrados.map((r) => r.rutaRemota));
+      _descargasEnCurso
+        ..clear()
+        ..addAll(filtrados.map((r) => r.rutaRemota));
     });
 
     int descargados = 0;
 
-    for (final r in _filtrados) {
+    for (final r in filtrados) {
       if (r.rutaLocal != null && File(r.rutaLocal!).existsSync()) {
         _descargasEnCurso.remove(r.rutaRemota);
         continue;
@@ -109,14 +89,15 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         r.rutaRemota,
         tipo: r.tipo,
       );
-      if (file != null) {
-        r.rutaLocal = file.path;
+
+      if (file != null && mounted) {
+        ref
+            .read(reporteProvider.notifier)
+            .actualizarRutaLocal(r.rutaRemota, file.path);
         descargados++;
       }
 
-      setState(() {
-        _descargasEnCurso.remove(r.rutaRemota);
-      });
+      setState(() => _descargasEnCurso.remove(r.rutaRemota));
     }
 
     setState(() => _descargandoTodos = false);
@@ -129,9 +110,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
   Future<void> _eliminarTodos() async {
     final service = ReporteFirebaseService();
+    final filtrados = ref.watch(reporteProvider.notifier).filtrados;
     int eliminados = 0;
 
-    for (final r in _filtrados) {
+    for (final r in filtrados) {
       if (r.rutaLocal != null) {
         await service.eliminarDescarga(r.rutaRemota);
         final file = File(r.rutaLocal!);
@@ -140,28 +122,11 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
             await file.delete();
           } catch (_) {}
         }
-        r.rutaLocal = null;
+        ref
+            .read(reporteProvider.notifier)
+            .actualizarRutaLocal(r.rutaRemota, null);
         eliminados++;
       }
-    }
-
-    final tieneInternet = ref.read(connectivityProvider);
-
-    if (!tieneInternet) {
-      final descargados = await service.cargarSoloDescargados();
-      final meses = await service.listarFechasUnicas(descargados);
-
-      setState(() {
-        _todos = descargados;
-        _mesesDisponibles = meses;
-        _mesSeleccionado = meses.isNotEmpty ? meses.first : null;
-      });
-
-      if (_mesSeleccionado != null) {
-        _filtrar(_mesSeleccionado!);
-      }
-    } else {
-      setState(() {}); // Actualiza el estado sin recargar lista
     }
 
     if (!mounted) return;
@@ -169,16 +134,30 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('🗑️ $eliminados reporte(s) eliminado(s)')),
     );
+
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final filtrados = ref.watch(reporteProvider.notifier).filtrados;
+    final mesesDisponibles = ref
+        .watch(reporteProvider.notifier)
+        .mesesDisponibles;
+    final mesSeleccionado = ref.watch(reporteProvider.notifier).mesSeleccionado;
+
+    ref.listen<bool>(connectivityProvider, (previous, next) async {
+      if (previous != next && mounted) {
+        await _cargarReportes();
+      }
+    });
+
     return Stack(
       children: [
         Scaffold(
           appBar: AppBar(
             title: Text(
-              "Reportes mensuales",
+              "R e p o r t e s    M e n s u a l e s",
               style: TextStyle(color: Colors.black),
             ),
             centerTitle: true,
@@ -189,7 +168,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
           body: Column(
             children: [
-              if (_mesesDisponibles.length > 1)
+              if (mesesDisponibles.length > 1)
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
@@ -208,13 +187,20 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                                 ),
                               ),
                               DropdownButton<String>(
-                                value: _mesSeleccionado,
+                                value: mesSeleccionado,
                                 onChanged: _descargandoTodos
                                     ? null
                                     : (value) {
-                                        if (value != null) _filtrar(value);
+                                        if (value != null) {
+                                          setState(() {
+                                            ref
+                                                .read(reporteProvider.notifier)
+                                                .seleccionarMes(value);
+                                          });
+                                        }
                                       },
-                                items: _mesesDisponibles.map((mes) {
+
+                                items: mesesDisponibles.map((mes) {
                                   return DropdownMenuItem(
                                     value: mes,
                                     child: Text(mes),
@@ -230,7 +216,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 4.0),
                                 child: Text(
-                                  _todosDescargados()
+                                  _todosDescargados(filtrados)
                                       ? 'Descargado Todo'
                                       : 'Descargar Todos',
                                   style: const TextStyle(
@@ -247,7 +233,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                                         strokeWidth: 2,
                                       ),
                                     )
-                                  : _todosDescargados()
+                                  : _todosDescargados(filtrados)
                                   ? IconButton(
                                       icon: const Icon(Icons.delete_outline),
                                       tooltip:
@@ -312,7 +298,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                             parent: AlwaysScrollableScrollPhysics(),
                           ),
                           slivers: [
-                            if (_filtrados.isEmpty)
+                            if (filtrados.isEmpty)
                               SliverFillRemaining(
                                 hasScrollBody: false,
                                 child: Center(
@@ -389,7 +375,9 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   }
 
   List<Widget> _buildSeccionesPorTipo() {
-    final entries = _filtrados
+    final filtrados = ref.watch(reporteProvider.notifier).filtrados;
+
+    final entries = filtrados
         .fold<Map<String, List<ReportePdf>>>({}, (mapa, r) {
           final tipo = r.tipo.toUpperCase();
           mapa.putIfAbsent(tipo, () => []).add(r);

@@ -1,27 +1,29 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:myafmzd/models/distribuidor_model.dart';
-import 'package:myafmzd/services/distribuidor_service.dart';
+import 'package:myafmzd/providers/connectivity_provider.dart';
+import 'package:myafmzd/providers/distribuidor_provider.dart';
 import 'package:myafmzd/widgets/distribuidor_popup.dart';
 
-class DistribuidoresScreen extends StatefulWidget {
+class DistribuidoresScreen extends ConsumerStatefulWidget {
   const DistribuidoresScreen({super.key});
   @override
-  State<DistribuidoresScreen> createState() => _DistribuidoresScreenState();
+  ConsumerState<DistribuidoresScreen> createState() =>
+      _DistribuidoresScreenState();
 }
 
-class _DistribuidoresScreenState extends State<DistribuidoresScreen>
+class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     with TickerProviderStateMixin {
-  final DistribuidorService _service = DistribuidorService();
   final PopupController _popupController = PopupController();
-  List<Distribuidor> _distribuidores = [];
   bool _mostrarInactivos = true;
   bool _cargandoInicial = true;
   String? _grupoSeleccionado;
-  late List<String> _gruposDisponibles;
   late final MapController _mapController;
   late final AnimatedMapController _animatedMapController;
 
@@ -41,49 +43,36 @@ class _DistribuidoresScreenState extends State<DistribuidoresScreen>
 
     final inicio = DateTime.now();
 
-    _distribuidores = await _service.cargarDistribuidores();
-
-    _gruposDisponibles = _distribuidores.map((e) => e.grupo).toSet().toList()
-      ..sort();
-
-    _gruposDisponibles.insert(0, 'Todos'); // Agrega opción "Todos"
-    _grupoSeleccionado = _gruposDisponibles.first;
+    final hayInternet = ref.read(connectivityProvider);
+    await ref
+        .read(distribuidoresProvider.notifier)
+        .cargar(hayInternet: hayInternet);
 
     final duracion = DateTime.now().difference(inicio);
     const duracionMinima = Duration(milliseconds: 1500);
-
     if (duracion < duracionMinima) {
       await Future.delayed(duracionMinima - duracion);
     }
 
     if (mounted) {
-      setState(() {
-        _cargandoInicial = false;
-      });
+      final grupos = ref.read(distribuidoresProvider.notifier).gruposUnicos;
+      if (_grupoSeleccionado == null && grupos.isNotEmpty) {
+        _grupoSeleccionado = 'Todos';
+      }
+    }
+
+    if (mounted) {
+      setState(() => _cargandoInicial = false);
     }
   }
 
   List<Distribuidor> get _filtrados {
-    final filtrados = _distribuidores.where((d) {
-      final activoOk = _mostrarInactivos || d.activo;
-      final grupoOk =
-          _grupoSeleccionado == null ||
-          _grupoSeleccionado == 'Todos' ||
-          d.grupo == _grupoSeleccionado;
-      return activoOk && grupoOk;
-    }).toList();
-
-    filtrados.sort((a, b) {
-      // Primero activos
-      if (a.activo != b.activo) {
-        return a.activo ? -1 : 1; // activos primero
-      }
-
-      // Finalmente por nombre
-      return a.nombre.compareTo(b.nombre);
-    });
-
-    return filtrados;
+    return ref
+        .read(distribuidoresProvider.notifier)
+        .filtrar(
+          mostrarInactivos: _mostrarInactivos,
+          grupo: _grupoSeleccionado,
+        );
   }
 
   void _centrarYMostrarPopup(Distribuidor d) async {
@@ -108,10 +97,29 @@ class _DistribuidoresScreenState extends State<DistribuidoresScreen>
     ]);
   }
 
+  double calcularZoom(double maxSpan) {
+    // Rango de zoom deseado
+    const double maxZoom = 12.0; // Muy cerca
+    const double minZoom = 4.0; // Muy lejos
+
+    // Span mínimo y máximo esperados
+    const double minSpan = 0.002; // 1-2 cuadras
+    const double maxSpanDefault = 40.0; // todo el país
+
+    // Clamp para evitar valores extremos
+    final clampedSpan = maxSpan.clamp(minSpan, maxSpanDefault);
+
+    // Escala inversa logarítmica (más precisa para mapas)
+    final scale =
+        log((clampedSpan / minSpan)) / log((maxSpanDefault / minSpan));
+    final zoom = maxZoom - scale * (maxZoom - minZoom);
+
+    return zoom.clamp(minZoom, maxZoom);
+  }
+
   Future<void> _resetMapaSegunFiltro() async {
     _popupController.hideAllPopups();
 
-    // Si no hay distribuidores filtrados, centramos en México directamente
     if (_filtrados.isEmpty || _grupoSeleccionado == 'Todos') {
       await _animatedMapController.animateTo(
         dest: LatLng(23.6345, -102.5528),
@@ -121,51 +129,42 @@ class _DistribuidoresScreenState extends State<DistribuidoresScreen>
       return;
     }
 
-    // Si hay filtrados, calcular bounds para centrar mapa
-    final latitudes = _filtrados.map((d) => d.latitud).toList();
-    final longitudes = _filtrados.map((d) => d.longitud).toList();
-
-    final minLat = latitudes.reduce((a, b) => a < b ? a : b);
-    final maxLat = latitudes.reduce((a, b) => a > b ? a : b);
-    final minLng = longitudes.reduce((a, b) => a < b ? a : b);
-    final maxLng = longitudes.reduce((a, b) => a > b ? a : b);
-
-    final centerLat = (minLat + maxLat) / 2;
-    final centerLng = (minLng + maxLng) / 2;
-    final center = LatLng(centerLat, centerLng);
-
-    const double paddingFactor = 1.2;
-    final latSpan = (maxLat - minLat).abs() * paddingFactor;
-    final lngSpan = (maxLng - minLng).abs() * paddingFactor;
-
-    final maxSpan = latSpan > lngSpan ? latSpan : lngSpan;
-
-    double zoom;
-    if (maxSpan < 0.01) {
-      zoom = 13.0;
-    } else if (maxSpan < 0.05) {
-      zoom = 11.0;
-    } else if (maxSpan < 0.1) {
-      zoom = 9.5;
-    } else if (maxSpan < 0.25) {
-      zoom = 8.0;
-    } else if (maxSpan < 0.5) {
-      zoom = 6.5;
-    } else {
-      zoom = 5.0;
+    // Si hay solo un distribuidor, usar zoom neutral (ej. 10.0)
+    if (_filtrados.length == 1) {
+      final d = _filtrados.first;
+      await _animatedMapController.animateTo(
+        dest: LatLng(d.latitud, d.longitud),
+        zoom: 10.0, // o 9.5, ajustable
+        curve: Curves.easeInOut,
+      );
+      return;
     }
+
+    final firstDistribuidor = _filtrados.first;
+    final bounds = LatLngBounds(
+      LatLng(firstDistribuidor.latitud, firstDistribuidor.longitud),
+      LatLng(firstDistribuidor.latitud, firstDistribuidor.longitud),
+    );
+    for (var d in _filtrados) {
+      bounds.extend(LatLng(d.latitud, d.longitud));
+    }
+
+    final center = LatLng(
+      (bounds.south + bounds.north) / 2,
+      (bounds.west + bounds.east) / 2,
+    );
+
+    final latSpan = (bounds.north - bounds.south).abs();
+    final lngSpan = (bounds.east - bounds.west).abs();
+    final maxSpan = [latSpan, lngSpan].reduce((a, b) => a > b ? a : b);
+
+    final zoom = calcularZoom(maxSpan);
 
     await _animatedMapController.animateTo(
       dest: center,
       zoom: zoom,
       curve: Curves.easeInOut,
     );
-  }
-
-  @override
-  void dispose() {
-    _popupController.dispose();
-    super.dispose();
   }
 
   @override
@@ -199,10 +198,15 @@ class _DistribuidoresScreenState extends State<DistribuidoresScreen>
           ),
         )
         .toList();
+    final hayInternet = ref.watch(connectivityProvider); // 🔄 reactivo
+    final grupos = ref.watch(distribuidoresProvider.notifier).gruposUnicos;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Distribuidores", style: TextStyle(color: Colors.black)),
+        title: Text(
+          "D i s t r i b u i d o r e s",
+          style: TextStyle(color: Colors.black),
+        ),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -231,7 +235,7 @@ class _DistribuidoresScreenState extends State<DistribuidoresScreen>
                               _resetMapaSegunFiltro();
                             },
 
-                            items: _gruposDisponibles
+                            items: grupos
                                 .map(
                                   (g) => DropdownMenuItem(
                                     value: g,
@@ -263,89 +267,126 @@ class _DistribuidoresScreenState extends State<DistribuidoresScreen>
                   ),
                 ),
 
-                SizedBox(
-                  height: 250,
-                  child: Stack(
-                    children: [
-                      FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: LatLng(23.6345, -102.5528),
-                          initialZoom: 3.8,
-                          minZoom: 3.5,
-                          interactionOptions: const InteractionOptions(
-                            flags:
-                                InteractiveFlag.all & ~InteractiveFlag.rotate,
-                          ),
+                hayInternet
+                    ? SizedBox(
+                        height: 250,
+                        child: Stack(
+                          children: [
+                            FlutterMap(
+                              mapController: _mapController,
+                              options: MapOptions(
+                                initialCenter: LatLng(23.6345, -102.5528),
+                                initialZoom: 3.8,
+                                minZoom: 3.5,
+                                interactionOptions: const InteractionOptions(
+                                  flags:
+                                      InteractiveFlag.all &
+                                      ~InteractiveFlag.rotate,
+                                ),
 
-                          onTap: (_, __) => _popupController.hideAllPopups(),
-                        ),
-                        children: [
-                          TileLayer(
-                            urlTemplate:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                                : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                            userAgentPackageName: 'com.example.myafmzd',
-                            tileProvider: NetworkTileProvider(),
-                            retinaMode: RetinaMode.isHighDensity(context),
-                          ),
-                          PopupMarkerLayer(
-                            options: PopupMarkerLayerOptions(
-                              markers: markers,
-                              popupController: _popupController,
-                              popupDisplayOptions: PopupDisplayOptions(
-                                builder: (ctx, marker) {
-                                  final d = _distribuidores.firstWhere(
-                                    (e) =>
-                                        LatLng(e.latitud, e.longitud) ==
-                                        marker.point,
-                                  );
-                                  return DistribuidorPopup(distribuidor: d);
-                                },
+                                onTap: (_, __) =>
+                                    _popupController.hideAllPopups(),
                               ),
-                              markerCenterAnimation:
-                                  const MarkerCenterAnimation(),
-                              markerTapBehavior:
-                                  MarkerTapBehavior.togglePopupAndHideRest(),
-                            ),
-                          ),
-                        ],
-                      ), // como ya lo tienes
-                      // Attribution y popups como los tienes
-                    ],
-                  ),
-                ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                                      : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                  userAgentPackageName: 'com.example.myafmzd',
+                                  tileProvider: NetworkTileProvider(),
+                                  retinaMode: RetinaMode.isHighDensity(context),
+                                  keepBuffer: 4,
+                                ),
+                                PopupMarkerLayer(
+                                  options: PopupMarkerLayerOptions(
+                                    markers: markers,
+                                    popupController: _popupController,
+                                    popupDisplayOptions: PopupDisplayOptions(
+                                      builder: (ctx, marker) {
+                                        final d = _filtrados.firstWhere(
+                                          (e) =>
+                                              e.latitud ==
+                                                  marker.point.latitude &&
+                                              e.longitud ==
+                                                  marker.point.longitude,
+                                          orElse: () => Distribuidor(
+                                            id: 'x',
+                                            nombre: 'Desconocido',
+                                            direccion: '',
+                                            latitud: marker.point.latitude,
+                                            longitud: marker.point.longitude,
+                                            activo: false,
+                                            grupo: '',
+                                          ),
+                                        );
+
+                                        return DistribuidorPopup(
+                                          distribuidor: d,
+                                        );
+                                      },
+                                    ),
+                                    markerCenterAnimation:
+                                        const MarkerCenterAnimation(),
+                                    markerTapBehavior:
+                                        MarkerTapBehavior.togglePopupAndHideRest(),
+                                  ),
+                                ),
+                              ],
+                            ), // como ya lo tienes
+                            // Attribution y popups como los tienes
+                          ],
+                        ),
+                      )
+                    : SizedBox(
+                        height: 100,
+                        child: const Center(
+                          child: Text('🌐 Mapa no disponible sin conexión'),
+                        ),
+                      ),
 
                 Expanded(
                   child: RefreshIndicator(
-                    onRefresh: _cargarDistribuidores,
-                    child: _filtrados.isEmpty
-                        ? const Center(child: Text('No hay distribuidores'))
-                        : ListView.builder(
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            itemCount: _filtrados.length,
-                            itemBuilder: (context, index) {
-                              final d = _filtrados[index];
-                              return ListTile(
-                                leading: Icon(Icons.location_city),
-                                title: Text(d.nombre),
-                                subtitle: Text(d.direccion),
-                                trailing: d.activo
-                                    ? const Icon(
-                                        Icons.check_circle,
-                                        color: Colors.green,
-                                      )
-                                    : const Icon(
-                                        Icons.cancel,
-                                        color: Colors.grey,
-                                      ),
-                                onTap: () => _centrarYMostrarPopup(d),
-                              );
-                            },
-                          ),
+                    onRefresh: () async {
+                      if (mounted) {
+                        setState(() => _cargandoInicial = true);
+                      }
+                      // 🔁 NO fuerzas recarga, porque ya está cargado
+                      await ref
+                          .read(distribuidoresProvider.notifier)
+                          .cargar(hayInternet: hayInternet);
+                      if (_filtrados.isNotEmpty) await _resetMapaSegunFiltro();
+                    },
+
+                    child: ListView.builder(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      itemCount: max(1, _filtrados.length),
+                      itemBuilder: (context, index) {
+                        if (_filtrados.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.only(top: 80.0),
+                            child: Center(child: Text('No hay distribuidores')),
+                          );
+                        }
+
+                        final d = _filtrados[index];
+                        return ListTile(
+                          leading: const Icon(Icons.location_city),
+                          title: Text(d.nombre),
+                          subtitle: Text(d.direccion),
+                          trailing: d.activo
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                )
+                              : const Icon(Icons.cancel, color: Colors.grey),
+                          onTap: () => _centrarYMostrarPopup(d),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],

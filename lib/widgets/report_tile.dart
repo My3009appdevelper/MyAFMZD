@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myafmzd/services/reporte_firebase_service.dart';
+import 'package:myafmzd/services/reporte_service.dart';
 import 'package:pdfx/pdfx.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';

@@ -1,15 +1,18 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:myafmzd/screens/home_screen.dart'; // Cambia por tu pantalla principal real
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/providers/connectivity_provider.dart';
+import 'package:myafmzd/screens/home_screen.dart';
+import 'package:myafmzd/providers/perfil_provider.dart'; // Cambia por tu pantalla principal real
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -22,6 +25,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
+    final hayInternet = ref.read(connectivityProvider);
+
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
@@ -31,6 +36,23 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
 
+      // 🔹 Cargar perfil del usuario desde Firestore
+      final userNotifier = ref.read(perfilProvider.notifier);
+      await userNotifier.cargarUsuario(hayInternet: hayInternet);
+
+      final usuario = ref.read(perfilProvider);
+      if (usuario == null) {
+        // No tiene perfil en Firestore
+        await FirebaseAuth.instance.signOut();
+
+        if (!mounted) return;
+        setState(() {
+          _error = 'No tienes acceso autorizado (perfil no encontrado)';
+        });
+        return;
+      }
+
+      // 🔸 Si todo bien, redirigir
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
