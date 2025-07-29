@@ -1,128 +1,102 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
-import 'package:myafmzd/database/actualizaciones/actualizaciones_dao.dart';
+import 'package:myafmzd/database/usuarios/usuarios_dao.dart';
+import 'package:myafmzd/database/usuarios/usuarios_service.dart';
+import 'package:myafmzd/database/usuarios/usuarios_sync.dart';
 import 'package:myafmzd/main.dart';
-import 'package:myafmzd/database/usuarios/usuario_service.dart';
 
-final usuariosProvider = StateNotifierProvider<UsuariosNotifier, List<Usuario>>(
-  (ref) {
-    final db = ref.watch(appDatabaseProvider); // ✅ usa la DB global
-    return UsuariosNotifier(db);
-  },
-);
+final usuariosProvider =
+    StateNotifierProvider<UsuariosNotifier, List<UsuarioDb>>((ref) {
+      final db = ref.watch(appDatabaseProvider);
+      return UsuariosNotifier(db);
+    });
 
-class UsuariosNotifier extends StateNotifier<List<Usuario>> {
+class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
   UsuariosNotifier(AppDatabase db)
-    : _servicio = UsuarioService(db),
-      _daoActualizaciones = ActualizacionesDao(db),
+    : _dao = UsuariosDao(db),
+      _servicio = UsuarioService(db),
+      _sync = UsuarioSync(db),
       super([]);
 
+  final UsuariosDao _dao;
   final UsuarioService _servicio;
-  final ActualizacionesDao _daoActualizaciones; // ✅ usa la misma DB
+  final UsuarioSync _sync;
 
-  bool _yaCargado = false;
-  bool get yaCargado => _yaCargado;
-
-  Future<void> cargar({required bool hayInternet, bool forzar = false}) async {
-    if (_yaCargado && !forzar) {
-      print('🛑 [PROVIDER USUARIOS] Ya cargado y no se fuerza. Cancelando...');
-      return;
-    }
-
+  /// ✅ Cargar usuarios (offline-first)
+  Future<void> cargar({required bool hayInternet}) async {
     try {
-      // ✅ 1. Leer siempre Drift local primero (offline inmediato)
-      final local = await _servicio.leerLocal();
+      // 1️⃣ Pintar siempre la base local primero
+      final local = await _dao.obtenerTodosDrift();
       state = local;
-      print('📴 [PROVIDER USUARIOS] 1 Leyendo local siempre');
+      print(
+        '[📴 MENSAJE USUARIOS PROVIDER] Local cargado -> ${local.length} usuarios',
+      );
 
+      // 2️⃣ Si no hay internet → detenerse aquí
       if (!hayInternet) {
-        print('📴 [PROVIDER USUARIOS] 2 Sin internet, usando solo local');
-        _yaCargado = true;
+        print(
+          '[📴 MENSAJE USUARIOS PROVIDER] Sin internet → usando solo local',
+        );
         return;
       }
 
-      // ✅ 2. Comprobar timestamp remoto
-      final remoto = await _servicio.comprobarActualizaciones();
-      final localTimestamp = await _daoActualizaciones.obtenerUltimaSync(
-        'usuarios',
+      // 3️⃣ Push de cambios offline primero
+      await _sync.pushUsuariosOffline();
+
+      // 4️⃣ Comparar timestamps local vs online
+      final localTimestamp = await _dao
+          .obtenerUltimaActualizacionUsuariosDrift();
+      final remoto = await _servicio.comprobarActualizacionesOnline();
+
+      print(
+        '[⏱️ MENSAJE USUARIOS PROVIDER] Remoto:$remoto | Local:$localTimestamp',
       );
 
-      if (!forzar && remoto != null && localTimestamp != null) {
-        if (!remoto.isAfter(localTimestamp) ||
-            remoto.isAtSameMomentAs(localTimestamp)) {
-          print('✅ [PROVIDER USUARIOS] Sin cambios en Firebase, usando local');
-          _yaCargado = true;
+      // 5️⃣ Si Supabase está vacío → solo usar local
+      if (remoto == null) {
+        print(
+          '[📴 MENSAJE USUARIOS PROVIDER] ⚠️ Supabase vacío → usar solo local',
+        );
+        return;
+      }
+
+      // 6️⃣ Si no hay cambios → mantener local y salir
+      if (localTimestamp != null) {
+        final diff = remoto.difference(localTimestamp).inSeconds.abs();
+        if (diff <= 1) {
+          print('[📴 MENSAJE USUARIOS PROVIDER] Sin cambios → mantener local');
           return;
         }
       }
 
-      // ✅ 3. Si hay cambios o es forzado → descargar servidor
-      final desdeServidor = await _servicio.leerDesdeServidor(
-        ultimaSync: localTimestamp,
-      );
-      state = desdeServidor;
+      // 7️⃣ Hacer sync completo (pull + push)
+      await _sync.pullUsuariosOnline(ultimaSync: localTimestamp);
 
-      // ✅ 4. Guardar timestamp de sync
-      if (remoto != null) {
-        await _daoActualizaciones.guardarUltimaSync('usuarios', remoto);
-        print('💾 [PROVIDER USUARIOS] Timestamp actualizado: $remoto');
-      }
-
-      _yaCargado = true;
+      // 8️⃣ Cargar datos actualizados desde Drift
+      final actualizados = await _dao.obtenerTodosDrift();
+      state = actualizados;
     } catch (e) {
-      print('❌ [PROVIDER USUARIOS] Error al cargar usuarios: $e');
-      // fallback a local, ya que state se cargó al inicio
-      _yaCargado = true;
+      print('[📴 MENSAJE USUARIOS PROVIDER] Error al cargar usuarios: $e');
     }
   }
 
-  Usuario? obtenerPorUid(String uid) {
-    return state.firstWhere((u) => u.uid == uid);
-  }
-
-  void limpiar() {
-    _yaCargado = false;
-    state = [];
-  }
-
-  /// ✅ Crear usuario
-  Future<void> crearUsuarioConAuth({
+  /// ✅ Crear usuario (Supabase)
+  Future<void> crearUsuario({
     required String nombre,
     required String correo,
-    required String contrasena,
+    required String password,
     required String rol,
     required String uuidDistribuidora,
     required Map<String, bool> permisos,
-    required String correoAdmin,
-    required String contrasenaAdmin,
   }) async {
-    final nuevo = await _servicio.crearUsuarioEnAuthYFirestore(
+    final nuevo = await _servicio.crearUsuarioEnSupabase(
       nombre: nombre,
       correo: correo,
-      contrasena: contrasena,
+      password: password,
       rol: rol,
       uuidDistribuidora: uuidDistribuidora,
       permisos: permisos,
-      correoAdmin: correoAdmin,
-      contrasenaAdmin: contrasenaAdmin,
     );
     state = [...state, nuevo];
-  }
-
-  /// ✅ Editar usuario
-  Future<void> editarUsuario(Usuario usuario) async {
-    await _servicio.actualizarUsuario(usuario);
-    final index = state.indexWhere((u) => u.uid == usuario.uid);
-    if (index != -1) {
-      final nuevaLista = [...state];
-      nuevaLista[index] = usuario;
-      state = nuevaLista;
-    }
-  }
-
-  /// ✅ Eliminar usuario
-  Future<void> eliminarUsuario(String uid) async {
-    await _servicio.eliminarUsuario(uid);
-    state = state.where((u) => u.uid != uid).toList();
   }
 }

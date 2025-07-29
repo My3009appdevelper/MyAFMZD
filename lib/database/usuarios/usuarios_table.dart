@@ -1,20 +1,18 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 
-@DataClassName('Usuario')
+@DataClassName('UsuarioDb')
 class Usuarios extends Table {
   TextColumn get uid => text()(); // Primary key
   TextColumn get nombre => text().withDefault(const Constant(''))();
   TextColumn get correo => text().withDefault(const Constant(''))();
   TextColumn get rol => text().withDefault(const Constant('usuario'))();
   TextColumn get uuidDistribuidora => text().withDefault(const Constant(''))();
-
-  /// Guardamos el Map<String,bool> como JSON
   TextColumn get permisos =>
       text().map(const PermisosConverter()).withDefault(const Constant('{}'))();
-
-  /// 🆕 Nuevo campo para sincronización incremental
-  DateTimeColumn get updatedAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {uid};

@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/models/distribuidor_model.dart';
+import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/providers/connectivity_provider.dart';
-import 'package:myafmzd/providers/distribuidor_provider.dart';
-import 'package:myafmzd/providers/perfil_provider.dart';
-import 'package:myafmzd/services/distribuidor_service.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/login/perfil_provider.dart';
 
 class PerfilScreen extends ConsumerStatefulWidget {
   const PerfilScreen({super.key});
@@ -16,7 +16,7 @@ class PerfilScreen extends ConsumerStatefulWidget {
 }
 
 class _PerfilScreenState extends ConsumerState<PerfilScreen> {
-  Distribuidor? _distribuidor;
+  DistribuidorDb? _distribuidor;
   bool _cargandoInicial = true;
 
   @override
@@ -32,13 +32,19 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
     final hayInternet = ref.read(connectivityProvider);
 
-    // 🔁 Forzar recarga de usuario
+    // 🔹 Actualizar Usuarios y Distribuidoras para encontrar información del perfil
+    await ref.read(usuariosProvider.notifier).cargar(hayInternet: hayInternet);
+    await ref
+        .read(distribuidoresProvider.notifier)
+        .cargar(hayInternet: hayInternet);
+
+    // 🔹 Cargar perfil de usuario
     await ref
         .read(perfilProvider.notifier)
         .cargarUsuario(hayInternet: hayInternet);
-
     final usuario = ref.read(perfilProvider);
 
+    // ⏳ Delay mínimo para UX
     final duracion = DateTime.now().difference(inicio);
     const duracionMinima = Duration(milliseconds: 1500);
     if (duracion < duracionMinima) {
@@ -59,29 +65,15 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
       return;
     }
 
-    final provider = ref.read(distribuidoresProvider.notifier);
-    final distribuidor = provider.obtenerPorId(uuid);
+    // 🔹 Buscar el distribuidor ya sincronizado en local
+    final distribuidor = ref
+        .read(distribuidoresProvider.notifier)
+        .obtenerPorId(uuid);
 
-    if (distribuidor != null) {
-      setState(() {
-        _distribuidor = distribuidor;
-        _cargandoInicial = false;
-      });
-      return;
-    }
-
-    if (hayInternet) {
-      final remoto = await DistribuidorService().obtenerPorUuid(uuid);
-      if (!mounted)
-        return; // ✅ Por si el usuario se fue mientras esperaba Firebase
-      setState(() {
-        _distribuidor = remoto;
-        _cargandoInicial = false;
-      });
-    } else {
-      if (!mounted) return;
-      setState(() => _cargandoInicial = false);
-    }
+    setState(() {
+      _distribuidor = distribuidor;
+      _cargandoInicial = false;
+    });
   }
 
   String _getNombreDistribuidor(String uuid) {

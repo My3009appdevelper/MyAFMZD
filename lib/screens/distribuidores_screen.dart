@@ -6,9 +6,9 @@ import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:myafmzd/models/distribuidor_model.dart';
+import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/providers/connectivity_provider.dart';
-import 'package:myafmzd/providers/distribuidor_provider.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/widgets/distribuidor_popup.dart';
 
 class DistribuidoresScreen extends ConsumerStatefulWidget {
@@ -66,7 +66,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     }
   }
 
-  List<Distribuidor> get _filtrados {
+  List<DistribuidorDb> get _filtrados {
     return ref
         .read(distribuidoresProvider.notifier)
         .filtrar(
@@ -75,7 +75,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
         );
   }
 
-  void _centrarYMostrarPopup(Distribuidor d) async {
+  void _centrarYMostrarPopup(DistribuidorDb d) async {
     final punto = LatLng(d.latitud, d.longitud);
 
     _popupController.hideAllPopups();
@@ -311,14 +311,17 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                                                   marker.point.latitude &&
                                               e.longitud ==
                                                   marker.point.longitude,
-                                          orElse: () => Distribuidor(
-                                            id: 'x',
+                                          orElse: () => DistribuidorDb(
+                                            uid: 'x',
                                             nombre: 'Desconocido',
                                             direccion: '',
                                             latitud: marker.point.latitude,
                                             longitud: marker.point.longitude,
                                             activo: false,
                                             grupo: '',
+                                            updatedAt: DateTime.now().toUtc(),
+                                            deleted: false,
+                                            isSynced: false,
                                           ),
                                         );
 

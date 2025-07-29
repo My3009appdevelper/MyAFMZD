@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/providers/distribuidor_provider.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/login/perfil_provider.dart';
 import 'package:myafmzd/providers/reporte_provider.dart';
-import 'package:myafmzd/providers/perfil_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/screens/distribuidores_screen.dart';
-import 'package:myafmzd/screens/perfil_screen.dart';
+import 'package:myafmzd/login/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
 import 'package:myafmzd/providers/connectivity_provider.dart';
 import 'package:myafmzd/screens/usuarios_screen.dart';
@@ -36,20 +36,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     Future.microtask(() async {
       final hayInternet = ref.read(connectivityProvider);
+      await ref.read(reporteProvider.notifier).cargar(hayInternet: hayInternet);
+
       await ref
-          .read(reporteProvider.notifier)
-          .cargar(hayInternet: hayInternet, forzar: true);
+          .read(usuariosProvider.notifier)
+          .cargar(hayInternet: hayInternet);
 
       await ref
           .read(distribuidoresProvider.notifier)
-          .cargar(hayInternet: hayInternet, forzar: true);
+          .cargar(hayInternet: hayInternet);
 
       await ref
           .read(perfilProvider.notifier)
-          .cargarUsuario(hayInternet: hayInternet, forzar: true);
-      await ref
-          .read(usuariosProvider.notifier)
-          .cargar(hayInternet: hayInternet, forzar: true);
+          .cargarUsuario(hayInternet: hayInternet);
     });
   }
 

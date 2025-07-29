@@ -1,9 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/providers/connectivity_provider.dart';
+import 'package:myafmzd/login/perfil_provider.dart';
 import 'package:myafmzd/screens/home_screen.dart';
-import 'package:myafmzd/providers/perfil_provider.dart'; // Cambia por tu pantalla principal real
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -31,19 +33,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      // 🔑 Iniciar sesión con Supabase Auth
+      final response = await Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
-      // 🔹 Cargar perfil del usuario desde Firestore
-      final userNotifier = ref.read(perfilProvider.notifier);
-      await userNotifier.cargarUsuario(hayInternet: hayInternet);
+      if (response.user == null) {
+        setState(() {
+          _error = 'No se pudo iniciar sesión. Verifica tus credenciales.';
+        });
+        return;
+      }
+
+      // 🔹 Cargar usuarios y distribuidores primero
+      await ref
+          .read(usuariosProvider.notifier)
+          .cargar(hayInternet: hayInternet);
+      await ref
+          .read(distribuidoresProvider.notifier)
+          .cargar(hayInternet: hayInternet);
+      // 🔹 Cargar perfil desde tu tabla "usuarios"
+      await ref
+          .read(perfilProvider.notifier)
+          .cargarUsuario(hayInternet: hayInternet);
 
       final usuario = ref.read(perfilProvider);
       if (usuario == null) {
-        // No tiene perfil en Firestore
-        await FirebaseAuth.instance.signOut();
+        // Si no hay perfil en la tabla, cerrar sesión
+        await Supabase.instance.client.auth.signOut();
 
         if (!mounted) return;
         setState(() {
@@ -52,15 +70,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      // 🔸 Si todo bien, redirigir
+      // 🔸 Si todo bien, redirigir a HomeScreen
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
-    } on FirebaseAuthException catch (e) {
+    } on AuthException catch (e) {
       setState(() {
-        _error = _traducirError(e.code);
+        _error = _traducirError(e.message);
       });
     } catch (e) {
       setState(() {
@@ -71,17 +89,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  String _traducirError(String code) {
-    switch (code) {
-      case 'invalid-email':
-        return 'Correo inválido';
-      case 'user-not-found':
-        return 'Usuario no registrado';
-      case 'wrong-password':
-        return 'Contraseña incorrecta';
-      default:
-        return 'Error: $code';
+  String _traducirError(String message) {
+    if (message.contains('Invalid login credentials')) {
+      return 'Credenciales incorrectas';
     }
+    if (message.contains('Email not confirmed')) {
+      return 'Correo no confirmado';
+    }
+    return 'Error: $message';
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override

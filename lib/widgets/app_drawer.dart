@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:myafmzd/login/perfil_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -61,12 +62,16 @@ class AppDrawer extends ConsumerWidget {
               );
 
               if (confirm == true) {
-                await FirebaseAuth.instance.signOut();
+                // 🔑 Cerrar sesión con Supabase
+                await Supabase.instance.client.auth.signOut();
 
-                // 🔁 Navegación limpia: vuelve a la pantalla inicial
+                // 🧹 Limpiar perfilProvider
+                ref.read(perfilProvider.notifier).limpiarUsuario();
+
+                // 🔁 Navegación limpia
                 if (context.mounted) {
                   Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/', // o el nombre que uses para InitialScreen
+                    '/', // Ruta de InitialScreen
                     (_) => false,
                   );
                 }

@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:myafmzd/database/actualizaciones/actualizaciones_dao.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_table.dart';
 import 'package:myafmzd/database/usuarios/usuarios_dao.dart';
-import 'package:myafmzd/database/actualizaciones/actualizaciones_table.dart';
 import 'package:myafmzd/database/usuarios/usuarios_table.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -11,8 +11,8 @@ import 'package:path_provider/path_provider.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Usuarios, Actualizaciones], // ✅ Ahora incluye ambas tablas
-  daos: [UsuariosDao, ActualizacionesDao], // ✅ Registramos ambos DAOs
+  tables: [Usuarios, Distribuidores], // ✅ Ahora incluye ambas tablas
+  daos: [UsuariosDao, DistribuidoresDao], // ✅ Registramos ambos DAOs
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -36,8 +36,21 @@ class AppDatabase extends _$AppDatabase {
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
-    await dir.create(recursive: true); // ✅ FIX Android
+    await dir.create(recursive: true);
     final dbFile = File(p.join(dir.path, 'myafmzd.sqlite'));
+
+    /*
+    // 🧹 OPCIÓN: Borrar base de datos para pruebas/migraciones
+    // ⚠️ Comenta esta sección en producción cuando no quieras borrar datos
+    const bool borrarDB =
+        true; // ⬅️ Cambia a true cuando quieras forzar recrear
+    if (borrarDB && await dbFile.exists()) {
+      print(
+        '[🗑️ MENSAJE APP DATABASE] Eliminando base de datos local para recrear...',
+      );
+      await dbFile.delete();
+    }
+*/
     return NativeDatabase(dbFile);
   });
 }

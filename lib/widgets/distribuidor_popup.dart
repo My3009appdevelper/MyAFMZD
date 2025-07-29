@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:myafmzd/models/distribuidor_model.dart';
+import 'package:myafmzd/database/app_database.dart';
 
 class DistribuidorPopup extends StatelessWidget {
-  final Distribuidor distribuidor;
+  final DistribuidorDb distribuidor;
 
   const DistribuidorPopup({super.key, required this.distribuidor});
 

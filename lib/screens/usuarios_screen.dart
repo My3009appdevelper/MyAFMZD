@@ -39,13 +39,13 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
   }
 
   Future<void> _crearUsuario() async {
-    // 1. Confirmación inicial
+    // 1️⃣ Confirmación inicial
     final confirmacion = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Crear usuario de ejemplo'),
+        title: const Text('Crear usuario'),
         content: const Text(
-          '¿Estás seguro de que deseas crear un usuario de prueba?',
+          '¿Estás seguro de que deseas crear un nuevo usuario?',
         ),
         actions: [
           TextButton(
@@ -62,70 +62,21 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
 
     if (confirmacion != true) return;
 
-    // 2. Solicitar correo y contraseña del admin
-    final correoCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
-
-    final credenciales = await showDialog<(String, String)?>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Credenciales del administrador'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: correoCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: passCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Contraseña',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () {
-              final correo = correoCtrl.text.trim();
-              final pass = passCtrl.text.trim();
-              if (correo.isEmpty || pass.isEmpty) return;
-              Navigator.of(context).pop((correo, pass));
-            },
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
-    );
-
-    if (credenciales == null) return;
-    final (correoAdmin, contrasenaAdmin) = credenciales;
-
-    // 3. Crear el usuario
     try {
+      // 2️⃣ Generar correo temporal de ejemplo (puedes reemplazarlo por un form)
+      final email = 'ejemplo_${DateTime.now().millisecondsSinceEpoch}@mail.com';
+      final password = 'password123'; // Temporal o ingresado por admin
+
+      // 3️⃣ Crear el usuario vía Provider (que ya hace auth + tabla)
       await ref
           .read(usuariosProvider.notifier)
-          .crearUsuarioConAuth(
-            nombre: 'Ejemplo Prueba',
-            correo: 'ejemplo_${DateTime.now().millisecondsSinceEpoch}@mail.com',
-            contrasena: 'Prueba123',
+          .crearUsuario(
+            nombre: 'Nuevo Usuario',
+            correo: email,
+            password: password,
             rol: 'distribuidor',
             uuidDistribuidora: 'AFMZD',
             permisos: {'Ver reportes': true, 'Ver usuarios': false},
-            correoAdmin: correoAdmin,
-            contrasenaAdmin: contrasenaAdmin,
           );
 
       if (mounted) {
@@ -175,9 +126,24 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
                     elevation: 2,
                     child: ListTile(
                       leading: const Icon(Icons.person),
-                      title: Text(usuario.nombre),
-                      subtitle: Text(usuario.correo),
-                      trailing: Text(usuario.rol),
+                      title: Text(
+                        usuario.nombre,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Correo: ${usuario.correo}'),
+                          Text('Rol: ${usuario.rol}'),
+                          Text('Distribuidora: ${usuario.uuidDistribuidora}'),
+                          Text('Actualizado: ${usuario.updatedAt.toLocal()}'),
+                          Text('Eliminado: ${usuario.deleted ? "Sí" : "No"}'),
+                          Text(
+                            'Sincronizado: ${usuario.isSynced ? "Sí" : "No"}',
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
                     ),
                   );
                 },
