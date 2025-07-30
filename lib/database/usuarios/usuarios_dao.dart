@@ -35,7 +35,7 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
   }
 
   // ---------------------------------------------------------------------------
-  // 📌 SINCRONIZACIÓN / UPSERTS
+  // 📌 CONSULTAS
   // ---------------------------------------------------------------------------
 
   // Obtener un usuario por UID
@@ -44,6 +44,10 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
 
   // Obtener todos
   Future<List<UsuarioDb>> obtenerTodosDrift() => select(usuarios).get();
+
+  // ---------------------------------------------------------------------------
+  // 📌 SINCRONIZACIÓN
+  // ---------------------------------------------------------------------------
 
   // Obtener usuarios pendientes de sincronización. pushUsuariosOffline en UsuarioSync
   Future<List<UsuarioDb>> obtenerPendientesSyncDrift() {

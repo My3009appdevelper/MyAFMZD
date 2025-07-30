@@ -14,11 +14,11 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   // ---------------------------------------------------------------------------
 
   /// Insertar o reemplazar un distribuidor. actualizarDistribuidor y obtenerPorId en Distribuidor Service
-  Future<void> upsertDistribuidor(DistribuidorDb distribuidor) =>
+  Future<void> upsertDistribuidorDrift(DistribuidorDb distribuidor) =>
       into(distribuidores).insertOnConflictUpdate(distribuidor);
 
   /// Insertar múltiples distribuidores.
-  Future<void> upsertDistribuidores(List<DistribuidorDb> lista) async {
+  Future<void> upsertDistribuidoresDrift(List<DistribuidorDb> lista) async {
     await batch((batch) {
       batch.insertAllOnConflictUpdate(distribuidores, lista);
     });
@@ -35,17 +35,21 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   }
 
   // ---------------------------------------------------------------------------
-  // 📌 SINCRONIZACIÓN / UPSERTS
+  // 📌 CONSULTAS
   // ---------------------------------------------------------------------------
 
   /// ✅ Obtener por ID
-  Future<DistribuidorDb?> obtenerPorId(String id) => (select(
+  Future<DistribuidorDb?> obtenerPorUidDrift(String id) => (select(
     distribuidores,
   )..where((d) => d.uid.equals(id))).getSingleOrNull();
 
   /// ✅ Obtener todos
   Future<List<DistribuidorDb>> obtenerTodosDrift() =>
       select(distribuidores).get();
+
+  // ---------------------------------------------------------------------------
+  // 📌 SINCRONIZACIÓN
+  // ---------------------------------------------------------------------------
 
   // Obtener distribuidores pendientes de sincronización.
   Future<List<DistribuidorDb>> obtenerPendientesSyncDrift() {
@@ -65,7 +69,7 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Obtener la última fecha de actualización de la tabla. Útil para comparar contra Supabase y decidir si hacer pull.
-  Future<DateTime?> obtenerUltimaActualizacionDistribuidoresDrift() async {
+  Future<DateTime?> obtenerUltimaActualizacionDrift() async {
     final ultimo =
         await (select(distribuidores)
               ..orderBy([(u) => OrderingTerm.desc(u.updatedAt)])

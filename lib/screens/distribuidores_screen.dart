@@ -7,7 +7,7 @@ import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:myafmzd/database/app_database.dart';
-import 'package:myafmzd/providers/connectivity_provider.dart';
+import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/widgets/distribuidor_popup.dart';
 

@@ -45,8 +45,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
       await _sync.pushDistribuidoresOffline();
 
       // 4️⃣ Comparar timestamps
-      final localTimestamp = await _dao
-          .obtenerUltimaActualizacionDistribuidoresDrift();
+      final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
       final remoto = await _service.comprobarActualizacionesOnline();
 
       print(

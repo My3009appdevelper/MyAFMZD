@@ -1155,15 +1155,566 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   }
 }
 
+class $ReportesTable extends Reportes
+    with TableInfo<$ReportesTable, ReportesDb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReportesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
+  @override
+  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
+    'nombre',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _fechaMeta = const VerificationMeta('fecha');
+  @override
+  late final GeneratedColumn<DateTime> fecha = GeneratedColumn<DateTime>(
+    'fecha',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _rutaRemotaMeta = const VerificationMeta(
+    'rutaRemota',
+  );
+  @override
+  late final GeneratedColumn<String> rutaRemota = GeneratedColumn<String>(
+    'ruta_remota',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _rutaLocalMeta = const VerificationMeta(
+    'rutaLocal',
+  );
+  @override
+  late final GeneratedColumn<String> rutaLocal = GeneratedColumn<String>(
+    'ruta_local',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _tipoMeta = const VerificationMeta('tipo');
+  @override
+  late final GeneratedColumn<String> tipo = GeneratedColumn<String>(
+    'tipo',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uid,
+    nombre,
+    fecha,
+    rutaRemota,
+    rutaLocal,
+    tipo,
+    updatedAt,
+    isSynced,
+    deleted,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reportes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReportesDb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('nombre')) {
+      context.handle(
+        _nombreMeta,
+        nombre.isAcceptableOrUnknown(data['nombre']!, _nombreMeta),
+      );
+    }
+    if (data.containsKey('fecha')) {
+      context.handle(
+        _fechaMeta,
+        fecha.isAcceptableOrUnknown(data['fecha']!, _fechaMeta),
+      );
+    }
+    if (data.containsKey('ruta_remota')) {
+      context.handle(
+        _rutaRemotaMeta,
+        rutaRemota.isAcceptableOrUnknown(data['ruta_remota']!, _rutaRemotaMeta),
+      );
+    }
+    if (data.containsKey('ruta_local')) {
+      context.handle(
+        _rutaLocalMeta,
+        rutaLocal.isAcceptableOrUnknown(data['ruta_local']!, _rutaLocalMeta),
+      );
+    }
+    if (data.containsKey('tipo')) {
+      context.handle(
+        _tipoMeta,
+        tipo.isAcceptableOrUnknown(data['tipo']!, _tipoMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  ReportesDb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReportesDb(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      nombre: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nombre'],
+      )!,
+      fecha: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fecha'],
+      )!,
+      rutaRemota: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ruta_remota'],
+      )!,
+      rutaLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ruta_local'],
+      )!,
+      tipo: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tipo'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+    );
+  }
+
+  @override
+  $ReportesTable createAlias(String alias) {
+    return $ReportesTable(attachedDatabase, alias);
+  }
+}
+
+class ReportesDb extends DataClass implements Insertable<ReportesDb> {
+  final String uid;
+  final String nombre;
+  final DateTime fecha;
+  final String rutaRemota;
+  final String rutaLocal;
+  final String tipo;
+  final DateTime updatedAt;
+  final bool isSynced;
+  final bool deleted;
+  const ReportesDb({
+    required this.uid,
+    required this.nombre,
+    required this.fecha,
+    required this.rutaRemota,
+    required this.rutaLocal,
+    required this.tipo,
+    required this.updatedAt,
+    required this.isSynced,
+    required this.deleted,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['nombre'] = Variable<String>(nombre);
+    map['fecha'] = Variable<DateTime>(fecha);
+    map['ruta_remota'] = Variable<String>(rutaRemota);
+    map['ruta_local'] = Variable<String>(rutaLocal);
+    map['tipo'] = Variable<String>(tipo);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_synced'] = Variable<bool>(isSynced);
+    map['deleted'] = Variable<bool>(deleted);
+    return map;
+  }
+
+  ReportesCompanion toCompanion(bool nullToAbsent) {
+    return ReportesCompanion(
+      uid: Value(uid),
+      nombre: Value(nombre),
+      fecha: Value(fecha),
+      rutaRemota: Value(rutaRemota),
+      rutaLocal: Value(rutaLocal),
+      tipo: Value(tipo),
+      updatedAt: Value(updatedAt),
+      isSynced: Value(isSynced),
+      deleted: Value(deleted),
+    );
+  }
+
+  factory ReportesDb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReportesDb(
+      uid: serializer.fromJson<String>(json['uid']),
+      nombre: serializer.fromJson<String>(json['nombre']),
+      fecha: serializer.fromJson<DateTime>(json['fecha']),
+      rutaRemota: serializer.fromJson<String>(json['rutaRemota']),
+      rutaLocal: serializer.fromJson<String>(json['rutaLocal']),
+      tipo: serializer.fromJson<String>(json['tipo']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'nombre': serializer.toJson<String>(nombre),
+      'fecha': serializer.toJson<DateTime>(fecha),
+      'rutaRemota': serializer.toJson<String>(rutaRemota),
+      'rutaLocal': serializer.toJson<String>(rutaLocal),
+      'tipo': serializer.toJson<String>(tipo),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'deleted': serializer.toJson<bool>(deleted),
+    };
+  }
+
+  ReportesDb copyWith({
+    String? uid,
+    String? nombre,
+    DateTime? fecha,
+    String? rutaRemota,
+    String? rutaLocal,
+    String? tipo,
+    DateTime? updatedAt,
+    bool? isSynced,
+    bool? deleted,
+  }) => ReportesDb(
+    uid: uid ?? this.uid,
+    nombre: nombre ?? this.nombre,
+    fecha: fecha ?? this.fecha,
+    rutaRemota: rutaRemota ?? this.rutaRemota,
+    rutaLocal: rutaLocal ?? this.rutaLocal,
+    tipo: tipo ?? this.tipo,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isSynced: isSynced ?? this.isSynced,
+    deleted: deleted ?? this.deleted,
+  );
+  ReportesDb copyWithCompanion(ReportesCompanion data) {
+    return ReportesDb(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      nombre: data.nombre.present ? data.nombre.value : this.nombre,
+      fecha: data.fecha.present ? data.fecha.value : this.fecha,
+      rutaRemota: data.rutaRemota.present
+          ? data.rutaRemota.value
+          : this.rutaRemota,
+      rutaLocal: data.rutaLocal.present ? data.rutaLocal.value : this.rutaLocal,
+      tipo: data.tipo.present ? data.tipo.value : this.tipo,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReportesDb(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('fecha: $fecha, ')
+          ..write('rutaRemota: $rutaRemota, ')
+          ..write('rutaLocal: $rutaLocal, ')
+          ..write('tipo: $tipo, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('deleted: $deleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uid,
+    nombre,
+    fecha,
+    rutaRemota,
+    rutaLocal,
+    tipo,
+    updatedAt,
+    isSynced,
+    deleted,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReportesDb &&
+          other.uid == this.uid &&
+          other.nombre == this.nombre &&
+          other.fecha == this.fecha &&
+          other.rutaRemota == this.rutaRemota &&
+          other.rutaLocal == this.rutaLocal &&
+          other.tipo == this.tipo &&
+          other.updatedAt == this.updatedAt &&
+          other.isSynced == this.isSynced &&
+          other.deleted == this.deleted);
+}
+
+class ReportesCompanion extends UpdateCompanion<ReportesDb> {
+  final Value<String> uid;
+  final Value<String> nombre;
+  final Value<DateTime> fecha;
+  final Value<String> rutaRemota;
+  final Value<String> rutaLocal;
+  final Value<String> tipo;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isSynced;
+  final Value<bool> deleted;
+  final Value<int> rowid;
+  const ReportesCompanion({
+    this.uid = const Value.absent(),
+    this.nombre = const Value.absent(),
+    this.fecha = const Value.absent(),
+    this.rutaRemota = const Value.absent(),
+    this.rutaLocal = const Value.absent(),
+    this.tipo = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReportesCompanion.insert({
+    required String uid,
+    this.nombre = const Value.absent(),
+    this.fecha = const Value.absent(),
+    this.rutaRemota = const Value.absent(),
+    this.rutaLocal = const Value.absent(),
+    this.tipo = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid);
+  static Insertable<ReportesDb> custom({
+    Expression<String>? uid,
+    Expression<String>? nombre,
+    Expression<DateTime>? fecha,
+    Expression<String>? rutaRemota,
+    Expression<String>? rutaLocal,
+    Expression<String>? tipo,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isSynced,
+    Expression<bool>? deleted,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (nombre != null) 'nombre': nombre,
+      if (fecha != null) 'fecha': fecha,
+      if (rutaRemota != null) 'ruta_remota': rutaRemota,
+      if (rutaLocal != null) 'ruta_local': rutaLocal,
+      if (tipo != null) 'tipo': tipo,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (deleted != null) 'deleted': deleted,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReportesCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? nombre,
+    Value<DateTime>? fecha,
+    Value<String>? rutaRemota,
+    Value<String>? rutaLocal,
+    Value<String>? tipo,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isSynced,
+    Value<bool>? deleted,
+    Value<int>? rowid,
+  }) {
+    return ReportesCompanion(
+      uid: uid ?? this.uid,
+      nombre: nombre ?? this.nombre,
+      fecha: fecha ?? this.fecha,
+      rutaRemota: rutaRemota ?? this.rutaRemota,
+      rutaLocal: rutaLocal ?? this.rutaLocal,
+      tipo: tipo ?? this.tipo,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+      deleted: deleted ?? this.deleted,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (nombre.present) {
+      map['nombre'] = Variable<String>(nombre.value);
+    }
+    if (fecha.present) {
+      map['fecha'] = Variable<DateTime>(fecha.value);
+    }
+    if (rutaRemota.present) {
+      map['ruta_remota'] = Variable<String>(rutaRemota.value);
+    }
+    if (rutaLocal.present) {
+      map['ruta_local'] = Variable<String>(rutaLocal.value);
+    }
+    if (tipo.present) {
+      map['tipo'] = Variable<String>(tipo.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReportesCompanion(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('fecha: $fecha, ')
+          ..write('rutaRemota: $rutaRemota, ')
+          ..write('rutaLocal: $rutaLocal, ')
+          ..write('tipo: $tipo, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('deleted: $deleted, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $UsuariosTable usuarios = $UsuariosTable(this);
   late final $DistribuidoresTable distribuidores = $DistribuidoresTable(this);
+  late final $ReportesTable reportes = $ReportesTable(this);
   late final UsuariosDao usuariosDao = UsuariosDao(this as AppDatabase);
   late final DistribuidoresDao distribuidoresDao = DistribuidoresDao(
     this as AppDatabase,
   );
+  late final ReportesDao reportesDao = ReportesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1171,6 +1722,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     usuarios,
     distribuidores,
+    reportes,
   ];
 }
 
@@ -1744,6 +2296,281 @@ typedef $$DistribuidoresTableProcessedTableManager =
       DistribuidorDb,
       PrefetchHooks Function()
     >;
+typedef $$ReportesTableCreateCompanionBuilder =
+    ReportesCompanion Function({
+      required String uid,
+      Value<String> nombre,
+      Value<DateTime> fecha,
+      Value<String> rutaRemota,
+      Value<String> rutaLocal,
+      Value<String> tipo,
+      Value<DateTime> updatedAt,
+      Value<bool> isSynced,
+      Value<bool> deleted,
+      Value<int> rowid,
+    });
+typedef $$ReportesTableUpdateCompanionBuilder =
+    ReportesCompanion Function({
+      Value<String> uid,
+      Value<String> nombre,
+      Value<DateTime> fecha,
+      Value<String> rutaRemota,
+      Value<String> rutaLocal,
+      Value<String> tipo,
+      Value<DateTime> updatedAt,
+      Value<bool> isSynced,
+      Value<bool> deleted,
+      Value<int> rowid,
+    });
+
+class $$ReportesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReportesTable> {
+  $$ReportesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fecha => $composableBuilder(
+    column: $table.fecha,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rutaRemota => $composableBuilder(
+    column: $table.rutaRemota,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rutaLocal => $composableBuilder(
+    column: $table.rutaLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tipo => $composableBuilder(
+    column: $table.tipo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReportesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReportesTable> {
+  $$ReportesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fecha => $composableBuilder(
+    column: $table.fecha,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rutaRemota => $composableBuilder(
+    column: $table.rutaRemota,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rutaLocal => $composableBuilder(
+    column: $table.rutaLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tipo => $composableBuilder(
+    column: $table.tipo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReportesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReportesTable> {
+  $$ReportesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get nombre =>
+      $composableBuilder(column: $table.nombre, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fecha =>
+      $composableBuilder(column: $table.fecha, builder: (column) => column);
+
+  GeneratedColumn<String> get rutaRemota => $composableBuilder(
+    column: $table.rutaRemota,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rutaLocal =>
+      $composableBuilder(column: $table.rutaLocal, builder: (column) => column);
+
+  GeneratedColumn<String> get tipo =>
+      $composableBuilder(column: $table.tipo, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+}
+
+class $$ReportesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReportesTable,
+          ReportesDb,
+          $$ReportesTableFilterComposer,
+          $$ReportesTableOrderingComposer,
+          $$ReportesTableAnnotationComposer,
+          $$ReportesTableCreateCompanionBuilder,
+          $$ReportesTableUpdateCompanionBuilder,
+          (
+            ReportesDb,
+            BaseReferences<_$AppDatabase, $ReportesTable, ReportesDb>,
+          ),
+          ReportesDb,
+          PrefetchHooks Function()
+        > {
+  $$ReportesTableTableManager(_$AppDatabase db, $ReportesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReportesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReportesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReportesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> nombre = const Value.absent(),
+                Value<DateTime> fecha = const Value.absent(),
+                Value<String> rutaRemota = const Value.absent(),
+                Value<String> rutaLocal = const Value.absent(),
+                Value<String> tipo = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReportesCompanion(
+                uid: uid,
+                nombre: nombre,
+                fecha: fecha,
+                rutaRemota: rutaRemota,
+                rutaLocal: rutaLocal,
+                tipo: tipo,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                deleted: deleted,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                Value<String> nombre = const Value.absent(),
+                Value<DateTime> fecha = const Value.absent(),
+                Value<String> rutaRemota = const Value.absent(),
+                Value<String> rutaLocal = const Value.absent(),
+                Value<String> tipo = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReportesCompanion.insert(
+                uid: uid,
+                nombre: nombre,
+                fecha: fecha,
+                rutaRemota: rutaRemota,
+                rutaLocal: rutaLocal,
+                tipo: tipo,
+                updatedAt: updatedAt,
+                isSynced: isSynced,
+                deleted: deleted,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReportesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReportesTable,
+      ReportesDb,
+      $$ReportesTableFilterComposer,
+      $$ReportesTableOrderingComposer,
+      $$ReportesTableAnnotationComposer,
+      $$ReportesTableCreateCompanionBuilder,
+      $$ReportesTableUpdateCompanionBuilder,
+      (ReportesDb, BaseReferences<_$AppDatabase, $ReportesTable, ReportesDb>),
+      ReportesDb,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1752,4 +2579,6 @@ class $AppDatabaseManager {
       $$UsuariosTableTableManager(_db, _db.usuarios);
   $$DistribuidoresTableTableManager get distribuidores =>
       $$DistribuidoresTableTableManager(_db, _db.distribuidores);
+  $$ReportesTableTableManager get reportes =>
+      $$ReportesTableTableManager(_db, _db.reportes);
 }

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/login/perfil_provider.dart';
-import 'package:myafmzd/providers/reporte_provider.dart';
+import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/screens/distribuidores_screen.dart';
 import 'package:myafmzd/login/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
-import 'package:myafmzd/providers/connectivity_provider.dart';
+import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/usuarios_screen.dart';
 import 'package:myafmzd/widgets/app_drawer.dart';
 

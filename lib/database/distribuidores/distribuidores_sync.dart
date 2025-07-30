@@ -49,7 +49,7 @@ class DistribuidoresSync {
       final lista = await _service.obtenerFiltradosOnline(
         ultimaSync: ultimaSync,
       );
-      await _dao.upsertDistribuidores(lista);
+      await _dao.upsertDistribuidoresDrift(lista);
       print(
         '[DISTRIBUIDORES SYNC] ✅ Descargados ${lista.length} distribuidores',
       );

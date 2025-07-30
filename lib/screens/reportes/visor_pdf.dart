@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pdfx/pdfx.dart';
 
 class VisorPDF extends StatefulWidget {
-  final String assetPath; // puede ser asset o ruta local
+  final String assetPath; // Ruta local o asset
 
   const VisorPDF({super.key, required this.assetPath});
 
@@ -16,15 +16,14 @@ class _VisorPDFState extends State<VisorPDF> {
   @override
   void initState() {
     super.initState();
+    _pdfController = PdfControllerPinch(document: _abrirDocumento());
+  }
 
+  Future<PdfDocument> _abrirDocumento() {
     if (widget.assetPath.startsWith('/')) {
-      _pdfController = PdfControllerPinch(
-        document: PdfDocument.openFile(widget.assetPath),
-      );
+      return PdfDocument.openFile(widget.assetPath);
     } else {
-      _pdfController = PdfControllerPinch(
-        document: PdfDocument.openAsset(widget.assetPath),
-      );
+      return PdfDocument.openAsset(widget.assetPath);
     }
   }
 
@@ -40,8 +39,18 @@ class _VisorPDFState extends State<VisorPDF> {
       appBar: AppBar(title: const Text('Visor PDF')),
       body: PdfViewPinch(
         controller: _pdfController,
-        onDocumentLoaded: (doc) {},
-        onPageChanged: (page) {},
+        onDocumentLoaded: (doc) {
+          debugPrint('✅ PDF cargado (${doc.pagesCount} páginas)');
+        },
+        onDocumentError: (error) {
+          debugPrint('❌ Error cargando PDF: $error');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error al abrir el PDF')),
+          );
+        },
+        onPageChanged: (page) {
+          debugPrint('📄 Página actual: $page');
+        },
       ),
     );
   }

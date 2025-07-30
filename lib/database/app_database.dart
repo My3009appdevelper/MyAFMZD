@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_table.dart';
+import 'package:myafmzd/database/reportes/reportes_dao.dart';
+import 'package:myafmzd/database/reportes/reportes_table.dart';
 import 'package:myafmzd/database/usuarios/usuarios_dao.dart';
 import 'package:myafmzd/database/usuarios/usuarios_table.dart';
 import 'package:path/path.dart' as p;
@@ -11,8 +13,12 @@ import 'package:path_provider/path_provider.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Usuarios, Distribuidores], // ✅ Ahora incluye ambas tablas
-  daos: [UsuariosDao, DistribuidoresDao], // ✅ Registramos ambos DAOs
+  tables: [Usuarios, Distribuidores, Reportes], // ✅ Ahora incluye ambas tablas
+  daos: [
+    UsuariosDao,
+    DistribuidoresDao,
+    ReportesDao,
+  ], // ✅ Registramos ambos DAOs
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -38,7 +44,6 @@ LazyDatabase _openConnection() {
     final dir = await getApplicationDocumentsDirectory();
     await dir.create(recursive: true);
     final dbFile = File(p.join(dir.path, 'myafmzd.sqlite'));
-
     /*
     // 🧹 OPCIÓN: Borrar base de datos para pruebas/migraciones
     // ⚠️ Comenta esta sección en producción cuando no quieras borrar datos
