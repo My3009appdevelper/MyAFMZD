@@ -4,10 +4,10 @@ import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/login/perfil_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
-import 'package:myafmzd/screens/distribuidores_screen.dart';
-import 'package:myafmzd/login/perfil_screen.dart';
-import 'package:myafmzd/screens/reportes/reportes_screen.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/screens/distribuidores_screen.dart';
+import 'package:myafmzd/screens/perfil_screen.dart';
+import 'package:myafmzd/screens/reportes_screen.dart';
 import 'package:myafmzd/screens/usuarios_screen.dart';
 import 'package:myafmzd/widgets/app_drawer.dart';
 
@@ -56,10 +56,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final bool hayConexion = ref.watch(connectivityProvider);
     ColorScheme colorScheme = Theme.of(context).colorScheme;
+    TextTheme textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: const Text("AFMZD")),
+        title: Center(
+          child: Text(
+            "MyAFMZD",
+            style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary),
+          ),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -69,7 +75,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   : 'Sin conexión a Internet',
               child: Icon(
                 hayConexion ? Icons.wifi : Icons.wifi_off,
-                color: Colors.white,
+                color: colorScheme.onPrimary,
               ),
             ),
           ),
@@ -78,8 +84,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       drawer: const AppDrawer(),
       body: _pantallas[_indiceActual],
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: colorScheme.primary,
         currentIndex: _indiceActual,
+        backgroundColor: colorScheme.primary,
+
+        selectedItemColor: colorScheme.onPrimary,
+        selectedLabelStyle: textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: colorScheme.onPrimary,
+        ),
+
+        unselectedItemColor: colorScheme.onPrimary.withOpacity(.3),
+        unselectedLabelStyle: textTheme.labelLarge?.copyWith(
+          color: colorScheme.secondary,
+        ),
+
         onTap: (index) {
           setState(() {
             _indiceActual = index;

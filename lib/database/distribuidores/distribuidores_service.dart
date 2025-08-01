@@ -49,7 +49,7 @@ class DistribuidoresService {
       var query = _client.from('distribuidores').select();
 
       if (ultimaSync != null) {
-        query = query.gte('updated_at', ultimaSync.toUtc().toIso8601String());
+        query = query.gte('updated_at', ultimaSync.toUtc());
         print('[📡 DISTRIBUIDORES SERVICE] Delta Sync desde $ultimaSync');
       }
 

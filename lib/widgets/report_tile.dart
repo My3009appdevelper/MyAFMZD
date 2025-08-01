@@ -9,12 +9,14 @@ class ReporteItemTile extends ConsumerStatefulWidget {
   final ReportesDb reporte;
   final VoidCallback onTap;
   final bool downloading;
+  final VoidCallback? onActualizado; // o ValueChanged<String>
 
   const ReporteItemTile({
     super.key,
     required this.reporte,
     required this.onTap,
     this.downloading = false,
+    this.onActualizado,
   });
 
   @override
@@ -74,7 +76,7 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
         width: 40,
         height: 40,
         child: Center(
-          child: _descargando || widget.downloading
+          child: _descargando && widget.downloading
               ? const SizedBox(
                   width: 20,
                   height: 20,
@@ -102,12 +104,16 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
                     setState(() => _descargando = true);
 
                     print('[⬇️ TILE] Descargando PDF: ${reporteActual.uid}');
-                    await notifier.descargarPDF(reporteActual);
+                    final actualizado = await ref
+                        .read(reporteProvider.notifier)
+                        .descargarPDF(reporteActual);
 
                     setState(() => _descargando = false);
 
                     // ✅ Generar miniatura nueva desde PDF local
-                    if (mounted) _cargarMiniatura();
+                    if (actualizado != null && widget.onActualizado != null) {
+                      widget.onActualizado!();
+                    }
                   },
                 ),
         ),

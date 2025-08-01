@@ -52,7 +52,7 @@ class ReportesService {
       var query = _client.from('reportes').select();
 
       if (ultimaSync != null) {
-        query = query.gte('updated_at', ultimaSync.toUtc().toIso8601String());
+        query = query.gte('updated_at', ultimaSync.toUtc());
         print('[📡 REPORTES SERVICE] Delta Sync desde $ultimaSync');
       }
 
@@ -89,10 +89,10 @@ class ReportesService {
     await _client.from('reportes').upsert({
       'uid': reporte.uid,
       'nombre': reporte.nombre,
-      'fecha': reporte.fecha.toUtc().toIso8601String(),
+      'fecha': reporte.fecha.toUtc(),
       'ruta_remota': reporte.rutaRemota,
       'tipo': reporte.tipo,
-      'updated_at': reporte.updatedAt.toIso8601String(),
+      'updated_at': reporte.updatedAt.toUtc().toIso8601String(),
       'deleted': reporte.deleted,
     });
   }
@@ -101,7 +101,13 @@ class ReportesService {
   // 🗑️ Eliminar reporte remoto (soft delete)
   // ---------------------------------------------------------------------------
   Future<void> eliminarReporteOnline(String uid) async {
-    await _client.from('reportes').update({'deleted': true}).eq('uid', uid);
+    await _client
+        .from('reportes')
+        .update({
+          'deleted': true,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('uid', uid);
   }
 
   // ---------------------------------------------------------------------------

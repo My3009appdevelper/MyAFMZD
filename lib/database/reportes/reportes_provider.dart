@@ -257,7 +257,10 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
           _hayInternet ||
           (r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync());
       return fechaOk && tipoOk && descargadoOk;
-    }).toList()..sort((a, b) => b.fecha.compareTo(a.fecha));
+    }).toList()..sort((a, b) {
+      final cmpFecha = b.fecha.compareTo(a.fecha);
+      return cmpFecha != 0 ? cmpFecha : a.nombre.compareTo(b.nombre);
+    });
   }
 
   List<String> _listarMesesDisponibles() {
@@ -273,25 +276,27 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
   }
 
   // 📌 Descargar PDF y actualizar ruta local
-  Future<void> descargarPDF(ReportesDb reporte) async {
+  Future<ReportesDb?> descargarPDF(ReportesDb reporte) async {
     final file = await _service.descargarPDFOnline(reporte.rutaRemota);
     if (file == null) {
       print(
-        '[📴 REPORTES PROVIDER]❌ No se pudo descargar PDF: ${reporte.rutaRemota}',
+        '[REPORTES PROVIDER]❌ No se pudo descargar PDF: ${reporte.rutaRemota}',
       );
-      return;
+      return null;
     }
 
     final actualizado = reporte.copyWith(rutaLocal: file.path);
-    print('[📴 REPORTES PROVIDER] ✅ PDF descargado en: ${file.path}');
+    print('[REPORTES PROVIDER] ✅ PDF descargado en: ${file.path}');
 
-    invalidarMiniatura(reporte.uid);
-
+    await invalidarMiniatura(reporte.uid);
     await _dao.upsertReporteDrift(actualizado);
+
     state = [
       for (final r in state)
         if (r.uid == reporte.uid) actualizado else r,
     ];
+
+    return actualizado;
   }
 
   ReportesDb? obtenerPorUid(String uid) {
@@ -300,6 +305,24 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     } catch (_) {
       return null;
     }
+  }
+
+  // ✅ Verifica si todos los reportes están descargados
+  bool todosDescargados(List<ReportesDb> lista) {
+    return lista.every(
+      (r) => r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync(),
+    );
+  }
+
+  // ✅ Descarga todos los reportes filtrados
+  Future<int> descargarTodos(List<ReportesDb> lista) async {
+    int count = 0;
+    for (final r in lista) {
+      if (r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync()) continue;
+      await descargarPDF(r);
+      count++;
+    }
+    return count;
   }
 
   // 📌 Eliminar PDF local
@@ -319,6 +342,27 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
       for (final r in state)
         if (r.uid == reporte.uid) actualizado else r,
     ];
+  }
+
+  // ✅ Elimina todos los reportes filtrados
+  Future<int> eliminarTodos(List<ReportesDb> lista) async {
+    int count = 0;
+    for (final r in lista) {
+      if (r.rutaLocal.isNotEmpty) {
+        await eliminarPDF(r);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  // ✅ Agrupa por tipo
+  Map<String, List<ReportesDb>> agruparPorTipo(List<ReportesDb> lista) {
+    final grupos = <String, List<ReportesDb>>{};
+    for (final r in lista) {
+      grupos.putIfAbsent(r.tipo.toUpperCase(), () => []).add(r);
+    }
+    return grupos;
   }
 
   void seleccionarMes(String mes) {

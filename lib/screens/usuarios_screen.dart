@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 
 class UsuariosScreen extends ConsumerStatefulWidget {
@@ -17,10 +18,81 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _cargarUsuarios();
   }
 
-  Future<void> _cargar() async {
+  @override
+  Widget build(BuildContext context) {
+    final usuarios = ref.watch(usuariosProvider);
+
+    ref.listen<bool>(connectivityProvider, (previous, next) async {
+      if (previous != next && mounted) {
+        await _cargarUsuarios();
+      }
+    });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Usuarios", style: TextStyle(color: Colors.black)),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+      ),
+      body: _cargandoInicial
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _cargarUsuarios,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
+                itemCount: usuarios.length,
+                itemBuilder: (context, index) {
+                  final usuario = usuarios[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                    child: ListTile(
+                      leading: const Icon(Icons.person),
+                      title: Text(
+                        usuario.nombre,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Correo: ${usuario.correo}'),
+                          Text('Rol: ${usuario.rol}'),
+                          Text(
+                            'Distribuidora: ${_getNombreDistribuidor(usuario.uuidDistribuidora)}',
+                          ),
+                          Text('Actualizado: ${usuario.updatedAt}'),
+                          Text('Eliminado: ${usuario.deleted ? "Sí" : "No"}'),
+                          Text(
+                            'Sincronizado: ${usuario.isSynced ? "Sí" : "No"}',
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
+                    ),
+                  );
+                },
+              ),
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _crearUsuario,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Future<void> _cargarUsuarios() async {
     if (!mounted) return;
     setState(() => _cargandoInicial = true);
     final inicio = DateTime.now();
@@ -36,6 +108,15 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
 
     if (!mounted) return;
     setState(() => _cargandoInicial = false);
+  }
+
+  String _getNombreDistribuidor(String uuid) {
+    if (uuid == 'AFMZD') return 'AFMZD';
+    final distribuidor = ref
+        .read(distribuidoresProvider.notifier)
+        .obtenerPorId(uuid);
+    if (distribuidor != null) return distribuidor.nombre;
+    return 'Sin distribuidora';
   }
 
   Future<void> _crearUsuario() async {
@@ -91,68 +172,5 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
         ).showSnackBar(SnackBar(content: Text('❌ Error al crear usuario: $e')));
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final usuarios = ref.watch(usuariosProvider);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Usuarios", style: TextStyle(color: Colors.black)),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-      ),
-      body: _cargandoInicial
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _cargar,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 24,
-                ),
-                itemCount: usuarios.length,
-                itemBuilder: (context, index) {
-                  final usuario = usuarios[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    child: ListTile(
-                      leading: const Icon(Icons.person),
-                      title: Text(
-                        usuario.nombre,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Correo: ${usuario.correo}'),
-                          Text('Rol: ${usuario.rol}'),
-                          Text('Distribuidora: ${usuario.uuidDistribuidora}'),
-                          Text('Actualizado: ${usuario.updatedAt.toLocal()}'),
-                          Text('Eliminado: ${usuario.deleted ? "Sí" : "No"}'),
-                          Text(
-                            'Sincronizado: ${usuario.isSynced ? "Sí" : "No"}',
-                          ),
-                        ],
-                      ),
-                      isThreeLine: true,
-                    ),
-                  );
-                },
-              ),
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _crearUsuario,
-        child: const Icon(Icons.add),
-      ),
-    );
   }
 }

@@ -58,11 +58,10 @@ class ReportesSync {
   // 📌 SYNC COMPLETO: Push + Pull
   // ---------------------------------------------------------------------------
 
-  Future<void> syncReportes() async {
+  Future<void> syncReportes({DateTime? ultimaSync}) async {
     print('[REPORTES SYNC] 🔄 Iniciando sincronización de reportes...');
-    final ultima = await _dao.obtenerUltimaActualizacionDrift();
     await pushReportesOffline();
-    await pullReportesOnline(ultimaSync: ultima);
+    await pullReportesOnline(ultimaSync: ultimaSync);
     print('[REPORTES SYNC] ✅ Sincronización de reportes finalizada');
   }
 }

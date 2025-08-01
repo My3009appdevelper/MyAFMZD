@@ -352,13 +352,8 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {
-                      if (mounted) {
-                        setState(() => _cargandoInicial = true);
-                      }
-                      // 🔁 NO fuerzas recarga, porque ya está cargado
-                      await ref
-                          .read(distribuidoresProvider.notifier)
-                          .cargar(hayInternet: hayInternet);
+                      _cargarDistribuidores();
+
                       if (_filtrados.isNotEmpty) await _resetMapaSegunFiltro();
                     },
 

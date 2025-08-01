@@ -28,15 +28,11 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
       // 1️⃣ Pintar siempre la base local primero
       final local = await _dao.obtenerTodosDrift();
       state = local;
-      print(
-        '[📴 MENSAJE USUARIOS PROVIDER] Local cargado -> ${local.length} usuarios',
-      );
+      print('[📴 USUARIOS PROVIDER] Local cargado -> ${local.length} usuarios');
 
       // 2️⃣ Si no hay internet → detenerse aquí
       if (!hayInternet) {
-        print(
-          '[📴 MENSAJE USUARIOS PROVIDER] Sin internet → usando solo local',
-        );
+        print('[📴 USUARIOS PROVIDER] Sin internet → usando solo local');
         return;
       }
 
@@ -48,15 +44,11 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
           .obtenerUltimaActualizacionUsuariosDrift();
       final remoto = await _servicio.comprobarActualizacionesOnline();
 
-      print(
-        '[⏱️ MENSAJE USUARIOS PROVIDER] Remoto:$remoto | Local:$localTimestamp',
-      );
+      print('[⏱️ USUARIOS PROVIDER] Remoto:$remoto | Local:$localTimestamp');
 
       // 5️⃣ Si Supabase está vacío → solo usar local
       if (remoto == null) {
-        print(
-          '[📴 MENSAJE USUARIOS PROVIDER] ⚠️ Supabase vacío → usar solo local',
-        );
+        print('[📴 USUARIOS PROVIDER] ⚠️ Supabase vacío → usar solo local');
         return;
       }
 
@@ -64,7 +56,7 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
       if (localTimestamp != null) {
         final diff = remoto.difference(localTimestamp).inSeconds.abs();
         if (diff <= 1) {
-          print('[📴 MENSAJE USUARIOS PROVIDER] Sin cambios → mantener local');
+          print('[📴 USUARIOS PROVIDER] Sin cambios → mantener local');
           return;
         }
       }
@@ -76,7 +68,7 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
       final actualizados = await _dao.obtenerTodosDrift();
       state = actualizados;
     } catch (e) {
-      print('[📴 MENSAJE USUARIOS PROVIDER] Error al cargar usuarios: $e');
+      print('[📴 USUARIOS PROVIDER] Error al cargar usuarios: $e');
     }
   }
 

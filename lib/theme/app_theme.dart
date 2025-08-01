@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'colors.dart';
 
 class AppTheme {
-
   //***************************//
   // Tema claro //
   //***************************//
@@ -21,12 +20,12 @@ class AppTheme {
     ),
 
     textTheme: const TextTheme(
-      displayLarge: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.lightOnBackground),
-      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.lightOnBackground),
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.lightOnSurface),
-      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: AppColors.lightOnSurface),
-      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: AppColors.lightOnSurface),
-      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.lightOnSurface),
+      displayLarge: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
     ),
 
     scaffoldBackgroundColor: AppColors.lightBackground,
@@ -55,14 +54,13 @@ class AppTheme {
     ),
 
     textTheme: const TextTheme(
-      displayLarge: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.darkOnBackground),
-      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.darkOnBackground),
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.darkOnSurface),
-      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: AppColors.darkOnSurface),
-      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: AppColors.darkOnSurface),
-      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.darkOnSurface),
+      displayLarge: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
+      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
     ),
-
 
     scaffoldBackgroundColor: AppColors.darkBackground,
     appBarTheme: const AppBarTheme(

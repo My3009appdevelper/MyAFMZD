@@ -29,7 +29,7 @@ class UsuarioService {
         return null;
       }
 
-      final ts = DateTime.parse(response.first['updated_at']);
+      final ts = DateTime.parse(response.first['updated_at']).toUtc();
       print('[🔍 USUARIOS SERVICE] ⏱️ Última actualización online: $ts');
       return ts;
     } catch (e) {
@@ -64,7 +64,7 @@ class UsuarioService {
               rol: row['rol'] ?? 'usuario',
               uuidDistribuidora: row['uuid_distribuidora'] ?? '',
               permisos: Map<String, bool>.from(row['permisos'] ?? {}),
-              updatedAt: DateTime.parse(row['updated_at']),
+              updatedAt: DateTime.parse(row['updated_at']).toUtc(),
               deleted: row['deleted'] ?? false,
               isSynced: true,
             ),
@@ -100,6 +100,10 @@ class UsuarioService {
       final user = authResponse.user;
       if (user == null) throw Exception('No se pudo crear el usuario en Auth');
 
+      print(
+        '[👤 USUARIOS SERVICE] ✅ Usuario ${user.email} creado en Autenticación',
+      );
+
       final usuario = UsuarioDb(
         uid: user.id,
         nombre: nombre,
@@ -112,7 +116,7 @@ class UsuarioService {
         isSynced: true,
       );
 
-      await _client.from('usuarios').insert({
+      await _client.from('usuarios').upsert({
         'uid': usuario.uid,
         'nombre': usuario.nombre,
         'correo': usuario.correo,
@@ -120,11 +124,12 @@ class UsuarioService {
         'uuid_distribuidora': usuario.uuidDistribuidora,
         'permisos': usuario.permisos,
         'deleted': usuario.deleted,
-        'updated_at': usuario.updatedAt.toIso8601String(),
+        'updated_at': usuario.updatedAt.toUtc().toIso8601String(),
       });
+      print('[👤 USUARIOS SERVICE] ✅ Usuario ${usuario.uid} creado en online');
 
       await _dao.upsertUsuarioDrift(usuario);
-      print('[👤 USUARIOS SERVICE] ✅ Usuario ${usuario.uid} creado online');
+      print('[👤 USUARIOS SERVICE] ✅ Usuario ${usuario.uid} creado offline');
       return usuario;
     } catch (e) {
       print('[👤 USUARIOS SERVICE] ❌ Error creando usuario online: $e');
@@ -158,10 +163,7 @@ class UsuarioService {
     try {
       await _client
           .from('usuarios')
-          .update({
-            'deleted': true,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
+          .update({'deleted': true, 'updated_at': DateTime.now().toUtc()})
           .eq('uid', uid);
 
       print(
