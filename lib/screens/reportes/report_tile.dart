@@ -32,6 +32,17 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
     _cargarMiniatura();
   }
 
+  @override
+  void didUpdateWidget(covariant ReporteItemTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // 🔁 Si la ruta local cambió → recargar miniatura
+    if (widget.reporte.rutaLocal != oldWidget.reporte.rutaLocal) {
+      print('[🖼️ TILE] 📌 Ruta local actualizada, recargando miniatura...');
+      _cargarMiniatura();
+    }
+  }
+
   /// 📌 Llama al provider para obtener/generar miniatura
   Future<void> _cargarMiniatura() async {
     final notifier = ref.read(reporteProvider.notifier);

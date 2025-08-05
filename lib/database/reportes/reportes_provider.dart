@@ -37,6 +37,12 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
   List<ReportesDb> get filtrados =>
       filtrarPorMesYTipo(mes: _mesSeleccionado ?? '');
 
+  List<String> get tiposDisponibles {
+    final tipos = state.map((r) => r.tipo.trim()).toSet().toList();
+    tipos.sort();
+    return tipos;
+  }
+
   // 🧠 Cache en memoria para miniaturas
   final Map<String, Uint8List> _miniaturaCache = {};
 
@@ -134,9 +140,7 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
 
     // 1️⃣ Cache en memoria
     if (_miniaturaCache.containsKey(reporte.uid)) {
-      print(
-        '[🖼️ REPORTES PROVIDER] ✅ Usando miniatura en RAM: ${reporte.uid}',
-      );
+      print('[📂 REPORTES PROVIDER] ✅ Usando miniatura en RAM: ${reporte.uid}');
       return _miniaturaCache[reporte.uid];
     }
 
@@ -149,7 +153,7 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
       final bytes = await fileCache.readAsBytes();
       _miniaturaCache[reporte.uid] = bytes;
       print(
-        '[🖼️ REPORTES PROVIDER] ✅ Miniatura cargada desde disco: ${fileCache.path}',
+        '[📂 REPORTES PROVIDER] ✅ Miniatura cargada desde disco: ${fileCache.path}',
       );
       return bytes;
     }
@@ -178,7 +182,7 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     await page.close();
 
     if (image == null) {
-      print('[🖼️ REPORTES PROVIDER] ⚠️ Render nulo de miniatura');
+      print('[📂 REPORTES PROVIDER] ⚠️ Render nulo de miniatura');
       return null;
     }
 
@@ -370,17 +374,18 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     _mesSeleccionado = mes;
   }
 
-  Future<void> crearReporteLocal({
+  Future<ReportesDb> crearReporteLocal({
     required String nombre,
     required String tipo,
     required DateTime fecha,
+    required String rutaRemota,
   }) async {
     final nuevo = ReportesDb(
       uid: Uuid().v4(),
       nombre: nombre,
       tipo: tipo,
       fecha: fecha,
-      rutaRemota: '',
+      rutaRemota: rutaRemota,
       rutaLocal: '',
       deleted: false,
       isSynced: false,
@@ -394,20 +399,15 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     final actualizados = await _dao.obtenerTodosDrift();
     state = actualizados;
 
-    // 🔁 Hacer sync justo después
-    await cargar(hayInternet: hayInternet);
-
     // Actualizar mes seleccionado si aplica
     final meses = _listarMesesDisponibles();
     if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
       if (meses.isNotEmpty) _mesSeleccionado = meses.first;
     }
+    return nuevo;
   }
 
-  Future<void> editarReporte({
-    required ReportesDb actualizado,
-    required bool hayInternet,
-  }) async {
+  Future<ReportesDb> editarReporte({required ReportesDb actualizado}) async {
     final actualizadoConMeta = actualizado.copyWith(
       updatedAt: DateTime.now().toUtc(),
       isSynced: false,
@@ -422,16 +422,53 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     final actualizados = await _dao.obtenerTodosDrift();
     state = actualizados;
 
-    // Validar miniatura si cambió algo importante
-    await invalidarMiniatura(actualizado.uid);
-    await obtenerMiniatura(actualizadoConMeta);
-
-    // 🔁 Hacer sync justo después
-    await cargar(hayInternet: hayInternet);
     // Verificar mes seleccionado
     final meses = _listarMesesDisponibles();
     if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
       if (meses.isNotEmpty) _mesSeleccionado = meses.first;
+    }
+
+    return actualizadoConMeta;
+  }
+
+  Future<void> subirNuevoPDF({
+    required ReportesDb reporte,
+    required File archivo,
+    required String nuevoPath,
+  }) async {
+    try {
+      // 1️⃣ Copiar archivo localmente primero
+      final dir = await getApplicationDocumentsDirectory();
+      final safeName = nuevoPath.replaceAll('/', '_');
+      final destino = File('${dir.path}/$safeName');
+      await archivo.copy(destino.path);
+
+      // 2️⃣ Actualizar registro local sin subir aún
+      final actualizado = reporte.copyWith(
+        rutaRemota: nuevoPath,
+        rutaLocal: destino.path,
+        updatedAt: DateTime.now().toUtc(),
+        isSynced: false,
+      );
+
+      await _dao.upsertReporteDrift(actualizado);
+
+      state = await _dao.obtenerTodosDrift();
+
+      // Validar miniatura si cambió algo importante
+      await invalidarMiniatura(actualizado.uid);
+      await obtenerMiniatura(actualizado);
+      // 3️⃣ Intentar sync solo si hay conexión
+      if (_hayInternet) {
+        await cargar(hayInternet: true);
+      }
+
+      print(
+        '[📥 REPORTES PROVIDER] PDF guardado localmente en: ${destino.path}',
+      );
+    } catch (e) {
+      print('[❌ REPORTES PROVIDER] Error preparando PDF: $e');
+      rethrow;
     }
   }
 }

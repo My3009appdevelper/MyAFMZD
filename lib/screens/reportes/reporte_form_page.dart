@@ -1,6 +1,9 @@
+import 'dart:io';
+
+import 'package:dropdown_search/dropdown_search.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/widgets/my_dropdown_button.dart';
@@ -9,6 +12,7 @@ import 'package:myafmzd/widgets/my_text_form_field.dart';
 
 class ReporteFormPage extends ConsumerStatefulWidget {
   final ReportesDb? reporteEditar;
+
   const ReporteFormPage({super.key, this.reporteEditar});
 
   @override
@@ -19,9 +23,12 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nombreController;
   late TextEditingController _tipoController;
+  late TextEditingController _rutaRemotaController;
+
   late DateTime _fecha;
 
   bool _esEdicion = false;
+  File? _archivoPDFSeleccionado;
 
   @override
   void initState() {
@@ -31,21 +38,23 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
     _nombreController = TextEditingController(text: r?.nombre ?? '');
     _tipoController = TextEditingController(text: r?.tipo ?? 'INTERNO');
     _fecha = r?.fecha ?? DateTime.now();
+    _rutaRemotaController = TextEditingController(text: r?.rutaRemota ?? '');
   }
 
   @override
   void dispose() {
     _nombreController.dispose();
     _tipoController.dispose();
+    _rutaRemotaController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final notifier = ref.watch(reporteProvider.notifier);
-    final filtrados = notifier.filtrados;
-    final grupos = notifier.agruparPorTipo(filtrados);
-    final tipos = grupos.keys.toList();
+    final tipos = ref.watch(reporteProvider.notifier).tiposDisponibles;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textStyle = theme.textTheme.bodyLarge;
 
     return Scaffold(
       appBar: AppBar(
@@ -67,16 +76,65 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                         v == null || v.isEmpty ? 'Campo obligatorio' : null,
                   ),
                   const SizedBox(height: 12),
-                  MyDropdownButton<String>(
-                    labelText: "Tipo",
-                    value: _tipoController.text.isNotEmpty
-                        ? _tipoController.text
-                        : null,
-                    items: tipos,
+                  DropdownSearch<String>(
+                    items: (String filtro, LoadProps? props) async {
+                      return tipos
+                          .where(
+                            (d) =>
+                                d.toLowerCase().contains(filtro.toLowerCase()),
+                          )
+                          .toList();
+                    },
+                    selectedItem: _tipoController.text,
+
                     onChanged: (value) {
                       if (value != null) _tipoController.text = value;
-                      setState(() {});
                     },
+                    compareFn: (a, b) => a.toLowerCase() == b.toLowerCase(),
+                    dropdownBuilder: (context, selectedItem) {
+                      return TextFormField(
+                        controller: _tipoController,
+                        decoration: const InputDecoration(labelText: 'Tipo'),
+                      );
+                    },
+                    decoratorProps: DropDownDecoratorProps(
+                      decoration: InputDecoration(
+                        labelText: "Tipo",
+                        labelStyle: textStyle?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                        filled: true,
+                        fillColor: colorScheme.surface,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: colorScheme.primary.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: colorScheme.error),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: colorScheme.error,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text("Fecha"),
@@ -89,7 +147,29 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                     trailing: const Icon(Icons.calendar_month),
                     onTap: _seleccionarFecha,
                   ),
+                  const SizedBox(height: 12),
+
+                  MyTextFormField(
+                    controller: _rutaRemotaController,
+                    labelText: 'Ruta remota',
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Campo obligatorio' : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  MyElevatedButton(
+                    icon: Icons.upload_file,
+                    label:
+                        (_archivoPDFSeleccionado != null &&
+                            _archivoPDFSeleccionado!.path.isNotEmpty)
+                        ? 'Archivo seleccionado'
+                        : 'Subir nuevo PDF',
+
+                    onPressed: _seleccionarPDF,
+                  ),
+
                   const SizedBox(height: 24),
+
                   MyElevatedButton(
                     onPressed: _guardar,
                     icon: Icons.save,
@@ -104,21 +184,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
     );
   }
 
-  Future<void> _seleccionarFecha() async {
-    final nuevaFecha = await showDatePicker(
-      context: context,
-      initialDate: _fecha,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-    if (nuevaFecha != null) {
-      setState(() => _fecha = nuevaFecha);
-    }
-  }
-
   Future<void> _guardar() async {
-    final hayInternet = ref.read(connectivityProvider);
-
     if (!_formKey.currentState!.validate()) return;
 
     final nombre = _nombreController.text.trim();
@@ -128,35 +194,114 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
     try {
       if (_esEdicion) {
-        final original = widget.reporteEditar!;
-        final actualizado = original.copyWith(
+        final actualizado = widget.reporteEditar!.copyWith(
           nombre: nombre,
           tipo: tipo,
+          rutaRemota: _rutaRemotaController.text,
           fecha: _fecha,
           updatedAt: DateTime.now().toUtc(),
           isSynced: false,
         );
 
-        await reporteNotifier.editarReporte(
+        print('[📝 MENSAJES REPORTES FORM] PARA EDITAR: ${actualizado.uid}');
+
+        final nuevo = await reporteNotifier.editarReporte(
           actualizado: actualizado,
-          hayInternet: hayInternet,
         );
-        print('[📝 FORM] Editado: ${actualizado.uid}');
+
+        // 🟢 Solo subir si el usuario seleccionó un nuevo archivo manualmente
+        if (_archivoPDFSeleccionado != null &&
+            await _archivoPDFSeleccionado!.exists()) {
+          await reporteNotifier.subirNuevoPDF(
+            reporte: nuevo,
+            archivo: _archivoPDFSeleccionado!,
+            nuevoPath: _rutaRemotaController.text,
+          );
+        }
+
+        print('[📝 MENSAJES REPORTES FORM] Editado: ${actualizado.uid}');
       } else {
-        await reporteNotifier.crearReporteLocal(
+        final nuevo = await reporteNotifier.crearReporteLocal(
           nombre: nombre,
           tipo: tipo,
           fecha: _fecha,
+          rutaRemota: _rutaRemotaController.text,
         );
-        print('[📝 FORM] Creado: $nombre');
+
+        // Subir PDF si se seleccionó
+        if (_archivoPDFSeleccionado != null &&
+            await _archivoPDFSeleccionado!.exists()) {
+          await reporteNotifier.subirNuevoPDF(
+            reporte: nuevo,
+            archivo: _archivoPDFSeleccionado!,
+            nuevoPath: _rutaRemotaController.text,
+          );
+        }
+        print('[📝 MENSAJES REPORTES FORM] Creado: $nombre');
       }
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      print('[📝 FORM] ❌ Error al guardar: $e');
+      print('[📝 MENSAJES REPORTES FORM]❌ Error al guardar: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
+    }
+  }
+
+  Future<void> _seleccionarFecha() async {
+    final nuevaFecha = await showDatePicker(
+      context: context,
+      initialDate: _fecha,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (nuevaFecha != null) {
+      setState(() {
+        _fecha = nuevaFecha;
+
+        if (_archivoPDFSeleccionado != null) {
+          final nombreOriginal = _archivoPDFSeleccionado!.path
+              .split(Platform.pathSeparator)
+              .last;
+          final nombreSanitizado = nombreOriginal.trim().replaceAll(' ', '_');
+          final nombreArchivo = nombreSanitizado.replaceAll('.PDF', '.pdf');
+
+          final mes =
+              '${nuevaFecha.year.toString().padLeft(4, '0')}-${nuevaFecha.month.toString().padLeft(2, '0')}';
+          final rutaRemota = 'reportes/$mes/$nombreArchivo';
+
+          _rutaRemotaController.text = rutaRemota;
+        }
+      });
+    }
+  }
+
+  Future<void> _seleccionarPDF() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      _archivoPDFSeleccionado = File(result.files.single.path!);
+
+      final nombreOriginal = result.files.single.name;
+      final nombreSanitizado = nombreOriginal.trim().replaceAll(' ', '_');
+      final nombreArchivo = nombreSanitizado.replaceAll('.PDF', '.pdf');
+
+      final mes =
+          '${_fecha.year.toString().padLeft(4, '0')}-${_fecha.month.toString().padLeft(2, '0')}';
+      final rutaRemota = 'reportes/$mes/$nombreArchivo';
+
+      setState(() {
+        _rutaRemotaController.text = rutaRemota;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF preparado para subir')));
     }
   }
 }

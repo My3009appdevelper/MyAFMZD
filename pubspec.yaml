@@ -30,6 +30,7 @@ dependencies:
   flutter_map_tile_caching: ^10.1.1
   supabase_flutter: ^2.9.1
   dropdown_search: 6.0.2
+  file_picker: 10.2.1
 
   # ✅ Firebase actualizado (compatible con web 1.x y Drift)
   firebase_core: ^3.9.0

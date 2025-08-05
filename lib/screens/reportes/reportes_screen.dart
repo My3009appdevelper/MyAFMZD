@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
+import 'package:myafmzd/screens/reportes/reporte_form_page.dart';
 import 'package:myafmzd/screens/reportes/visor_pdf.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/reportes/report_tile.dart';
@@ -63,14 +64,28 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               bottom: tipos.isNotEmpty
                   ? TabBar(
                       isScrollable: true,
-                      indicatorColor: colorScheme.primary,
-                      labelColor: colorScheme.primary,
+                      indicatorColor: colorScheme.secondary,
+                      labelColor: colorScheme.secondary,
                       unselectedLabelColor: colorScheme.onSurface.withOpacity(
                         0.6,
                       ),
                       tabs: tipos.map((t) => Tab(text: t)).toList(),
                     )
                   : null,
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () async {
+                final resultado = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ReporteFormPage()),
+                );
+
+                if (mounted && resultado == true) {
+                  await _cargarReportes();
+                }
+              },
+              tooltip: 'Agregar nuevo reporte',
+              child: const Icon(Icons.add),
             ),
 
             body: Column(
@@ -93,6 +108,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                                 itemBuilder: (context, index) {
                                   final reporte = reportes[index];
                                   return ReporteItemTile(
+                                    key: ValueKey(reporte.uid),
                                     reporte: reporte,
                                     onTap: () async {
                                       if (_abriendoPdf) return;

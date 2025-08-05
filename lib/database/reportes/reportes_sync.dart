@@ -1,4 +1,6 @@
 // ignore_for_file: avoid_print
+import 'dart:io';
+
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/reportes/reportes_dao.dart';
 import 'package:myafmzd/database/reportes/reportes_service.dart';
@@ -18,21 +20,33 @@ class ReportesSync {
   Future<void> pushReportesOffline() async {
     final pendientes = await _dao.obtenerPendientesSyncDrift();
     if (pendientes.isEmpty) {
-      print('[REPORTES SYNC] ✅ No hay reportes pendientes de subida');
+      print('[📤 REPORTES SYNC] ✅ No hay reportes pendientes');
       return;
     }
 
-    print(
-      '[REPORTES SYNC] ⬆️ Subiendo ${pendientes.length} reportes offline...',
-    );
-
-    for (final rep in pendientes) {
+    for (final reporte in pendientes) {
       try {
-        await _service.upsertReporteOnline(rep);
-        await _dao.marcarComoSincronizadoDrift([rep.uid]);
-        print('[REPORTES SYNC] ✅ Reporte ${rep.uid} sincronizado');
+        // 1️⃣ Subir PDF si hay rutaLocal válida y el archivo existe
+        if (reporte.rutaLocal.isNotEmpty &&
+            File(reporte.rutaLocal).existsSync()) {
+          await _service.uploadPDFOnline(
+            File(reporte.rutaLocal),
+            reporte.rutaRemota,
+          );
+          print('[📤 REPORTES SYNC] PDF subido: ${reporte.rutaRemota}');
+        } else {
+          print(
+            '[📤 REPORTES SYNC] ⚠️ PDF local no encontrado para ${reporte.uid}',
+          );
+        }
+
+        // 2️⃣ Subir metadata a Supabase
+        await _service.upsertReporteOnline(reporte);
+
+        // 3️⃣ Marcar como sincronizado
+        await _dao.marcarComoSincronizadoDrift([reporte.uid]);
       } catch (e) {
-        print('[REPORTES SYNC] ❌ Error subiendo ${rep.uid}: $e');
+        print('[❌ REPORTES SYNC] Error subiendo ${reporte.uid}: $e');
       }
     }
   }
@@ -60,8 +74,9 @@ class ReportesSync {
 
   Future<void> syncReportes({DateTime? ultimaSync}) async {
     print('[REPORTES SYNC] 🔄 Iniciando sincronización de reportes...');
-    await pushReportesOffline();
     await pullReportesOnline(ultimaSync: ultimaSync);
+    await pushReportesOffline();
+
     print('[REPORTES SYNC] ✅ Sincronización de reportes finalizada');
   }
 }

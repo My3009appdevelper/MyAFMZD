@@ -45,7 +45,6 @@ LazyDatabase _openConnection() {
     await dir.create(recursive: true);
     final dbFile = File(p.join(dir.path, 'myafmzd.sqlite'));
 
-    /*
     // 🧹 OPCIÓN: Borrar base de datos para pruebas/migraciones
     // ⚠️ Comenta esta sección en producción cuando no quieras borrar datos
     const bool borrarDB =
@@ -56,7 +55,31 @@ LazyDatabase _openConnection() {
       );
       await dbFile.delete();
     }
-*/
+
+    if (borrarDB) {
+      final tempDir = await getTemporaryDirectory();
+      final appDir = await getApplicationDocumentsDirectory();
+
+      for (final file in tempDir.listSync()) {
+        if (file is File && file.path.endsWith('.pdf')) {
+          await file.delete();
+        }
+        if (file is File && file.path.contains('miniatura_')) {
+          await file.delete();
+        }
+      }
+
+      for (final file in appDir.listSync()) {
+        if (file is File && file.path.contains('miniatura_')) {
+          await file.delete();
+        }
+      }
+
+      print(
+        '[🗑️ MENSAJE APP DATABASE] 🧹 También se borraron PDFs temporales y miniaturas',
+      );
+    }
+
     return NativeDatabase(dbFile);
   });
 }
