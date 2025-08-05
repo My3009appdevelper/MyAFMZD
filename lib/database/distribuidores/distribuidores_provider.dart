@@ -28,23 +28,20 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
 
   Future<void> cargar({required bool hayInternet}) async {
     try {
-      // 1️⃣ Pintar siempre la base local primero
+      // Pintar siempre la base local primero
       final local = await _dao.obtenerTodosDrift();
       state = local;
       print(
         '[📴 DISTRIBUIDORES PROVIDER] Local cargado -> ${local.length} distribuidores',
       );
 
-      // 2️⃣ Si no hay internet → detenerse aquí
+      // Si no hay internet → detenerse aquí
       if (!hayInternet) {
         print('[📴 DISTRIBUIDORES PROVIDER] Sin internet → usando solo local');
         return;
       }
 
-      // 3️⃣ Subir cambios pendientes primero (push)
-      await _sync.pushDistribuidoresOffline();
-
-      // 4️⃣ Comparar timestamps
+      // Comparar timestamps
       final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
       final remoto = await _service.comprobarActualizacionesOnline();
 
@@ -52,7 +49,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
         '[⏱️ DISTRIBUIDORES PROVIDER] Remoto:$remoto | Local:$localTimestamp',
       );
 
-      // 5️⃣ Si Supabase está vacío → usar solo local
+      // Si Supabase está vacío → usar solo local
       if (remoto == null) {
         print(
           '[📴 DISTRIBUIDORES PROVIDER] ⚠️ Supabase vacío → usar solo local',
@@ -60,7 +57,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
         return;
       }
 
-      // 6️⃣ Si no hay cambios → mantener local
+      // Si no hay cambios → mantener local
       if (localTimestamp != null) {
         final diff = remoto.difference(localTimestamp).inSeconds.abs();
         if (diff <= 1) {
@@ -69,8 +66,11 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
         }
       }
 
-      // 7️⃣ Hacer sync completo (push + pull)
+      // 7️⃣ Pull
       await _sync.pullDistribuidoresOnline(ultimaSync: localTimestamp);
+
+      // 3️⃣ Subir cambios pendientes primero (push)
+      await _sync.pushDistribuidoresOffline();
 
       // 8️⃣ Cargar datos actualizados desde Drift
       final actualizados = await _dao.obtenerTodosDrift();

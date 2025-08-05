@@ -25,34 +25,31 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
   /// ✅ Cargar usuarios (offline-first)
   Future<void> cargar({required bool hayInternet}) async {
     try {
-      // 1️⃣ Pintar siempre la base local primero
+      // Pintar siempre la base local primero
       final local = await _dao.obtenerTodosDrift();
       state = local;
       print('[📴 USUARIOS PROVIDER] Local cargado -> ${local.length} usuarios');
 
-      // 2️⃣ Si no hay internet → detenerse aquí
+      // Si no hay internet → detenerse aquí
       if (!hayInternet) {
         print('[📴 USUARIOS PROVIDER] Sin internet → usando solo local');
         return;
       }
 
-      // 3️⃣ Push de cambios offline primero
-      await _sync.pushUsuariosOffline();
-
-      // 4️⃣ Comparar timestamps local vs online
+      // Comparar timestamps local vs online
       final localTimestamp = await _dao
           .obtenerUltimaActualizacionUsuariosDrift();
       final remoto = await _servicio.comprobarActualizacionesOnline();
 
       print('[⏱️ USUARIOS PROVIDER] Remoto:$remoto | Local:$localTimestamp');
 
-      // 5️⃣ Si Supabase está vacío → solo usar local
+      // Si Supabase está vacío → solo usar local
       if (remoto == null) {
         print('[📴 USUARIOS PROVIDER] ⚠️ Supabase vacío → usar solo local');
         return;
       }
 
-      // 6️⃣ Si no hay cambios → mantener local y salir
+      // Si no hay cambios → mantener local y salir
       if (localTimestamp != null) {
         final diff = remoto.difference(localTimestamp).inSeconds.abs();
         if (diff <= 1) {
@@ -61,10 +58,13 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
         }
       }
 
-      // 7️⃣ Hacer sync completo (pull + push)
+      // Pull
       await _sync.pullUsuariosOnline(ultimaSync: localTimestamp);
 
-      // 8️⃣ Cargar datos actualizados desde Drift
+      // Push de cambios offline primero
+      await _sync.pushUsuariosOffline();
+
+      // Cargar datos actualizados desde Drift
       final actualizados = await _dao.obtenerTodosDrift();
       state = actualizados;
     } catch (e) {
@@ -90,5 +90,60 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
       permisos: permisos,
     );
     state = [...state, nuevo];
+  }
+
+  // Editar usuario
+  Future<void> editarUsuario({
+    required String uid,
+    required String nombre,
+    required String correo,
+    required String rol,
+    required String uuidDistribuidora,
+    required Map<String, bool> permisos,
+    required bool hayInternet, // 👈 nuevo parámetro
+  }) async {
+    try {
+      final actualizado = UsuarioDb(
+        uid: uid,
+        nombre: nombre,
+        correo: correo,
+        rol: rol,
+        uuidDistribuidora: uuidDistribuidora,
+        permisos: permisos,
+        updatedAt: DateTime.now().toUtc(),
+        deleted: false,
+        isSynced: false,
+      );
+
+      await _dao.upsertUsuarioDrift(actualizado);
+
+      final nuevos = [...state];
+      final index = nuevos.indexWhere((u) => u.uid == uid);
+      if (index != -1) {
+        nuevos[index] = actualizado;
+        state = nuevos;
+      }
+
+      print('[📴 USUARIOS PROVIDER] Usuario $uid editado localmente');
+
+      // 🔁 Hacer sync justo después
+      await cargar(hayInternet: hayInternet);
+    } catch (e) {
+      print('[📴 USUARIOS PROVIDER] ❌ Error al editar usuario: $e');
+      rethrow;
+    }
+  }
+
+  bool existeDuplicado({
+    required String uidActual,
+    required String nombre,
+    required String correo,
+  }) {
+    return state.any(
+      (u) =>
+          u.uid != uidActual &&
+          (u.nombre.trim().toLowerCase() == nombre.trim().toLowerCase() ||
+              u.correo.trim().toLowerCase() == correo.trim().toLowerCase()),
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
+import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/login/perfil_provider.dart';
@@ -159,24 +160,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       else
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(
+                          child: MyElevatedButton(
                             onPressed: () {
                               if (_formKey.currentState?.validate() ?? false) {
                                 _iniciarSesion();
                               }
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.primary,
-                              foregroundColor: colors.onPrimary,
-                            ),
-                            child: Text(
-                              'Ingresar',
-                              style: textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colors.onPrimary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+                            icon: Icons.login,
+                            label: 'Ingresar',
                           ),
                         ),
                     ],

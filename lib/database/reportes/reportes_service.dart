@@ -86,15 +86,21 @@ class ReportesService {
   // 📤 PUSH: Subir un solo reporte (upsert)
   // ---------------------------------------------------------------------------
   Future<void> upsertReporteOnline(ReportesDb reporte) async {
-    await _client.from('reportes').upsert({
-      'uid': reporte.uid,
-      'nombre': reporte.nombre,
-      'fecha': reporte.fecha.toUtc(),
-      'ruta_remota': reporte.rutaRemota,
-      'tipo': reporte.tipo,
-      'updated_at': reporte.updatedAt.toUtc().toIso8601String(),
-      'deleted': reporte.deleted,
-    });
+    try {
+      await _client.from('reportes').upsert({
+        'uid': reporte.uid,
+        'nombre': reporte.nombre,
+        'fecha': reporte.fecha.toUtc().toIso8601String(),
+        'ruta_remota': reporte.rutaRemota,
+        'tipo': reporte.tipo,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'deleted': reporte.deleted,
+      });
+      print('[📡 REPORTES SERVICE] Reporte ${reporte.uid} upsert online');
+    } catch (e) {
+      print('[📡 REPORTES SERVICE] ❌ Error subiendo usuario: $e');
+      rethrow;
+    }
   }
 
   // ---------------------------------------------------------------------------

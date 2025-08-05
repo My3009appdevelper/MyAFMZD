@@ -4,18 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
+import 'package:myafmzd/screens/reportes/reporte_form_page.dart';
 
 class ReporteItemTile extends ConsumerStatefulWidget {
   final ReportesDb reporte;
   final VoidCallback onTap;
-  final bool downloading;
   final VoidCallback? onActualizado; // o ValueChanged<String>
 
   const ReporteItemTile({
     super.key,
     required this.reporte,
     required this.onTap,
-    this.downloading = false,
     this.onActualizado,
   });
 
@@ -76,7 +75,7 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
         width: 40,
         height: 40,
         child: Center(
-          child: _descargando && widget.downloading
+          child: _descargando
               ? const SizedBox(
                   width: 20,
                   height: 20,
@@ -124,6 +123,85 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
         '${reporteActual.fecha.year}-${reporteActual.fecha.month.toString().padLeft(2, '0')}',
       ),
       onTap: widget.onTap,
+      onLongPress: () {
+        _mostrarOpcionesReporte(context, reporteActual);
+      },
     );
+  }
+
+  void _mostrarOpcionesReporte(BuildContext context, ReportesDb reporte) async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          runSpacing: 12,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Ver detalles'),
+              onTap: () {
+                Navigator.pop(context);
+                _mostrarDetalles(context, reporte);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Editar'),
+              onTap: () {
+                Navigator.pop(context);
+                _abrirFormularioEdicion(context, reporte);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDetalles(BuildContext context, ReportesDb r) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Detalles de reporte'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('UID: ${r.uid}'),
+            Text('Nombre: ${r.nombre}'),
+            Text('Fecha: ${r.fecha.toIso8601String()}'),
+            Text('Tipo: ${r.tipo}'),
+            Text('Local: ${r.rutaLocal.isNotEmpty ? "Sí" : "No"}'),
+            Text('Synced: ${r.isSynced ? "Sí" : "No"}'),
+            Text('Actualizado: ${(r.updatedAt.toLocal().toString())}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _abrirFormularioEdicion(BuildContext context, ReportesDb reporte) async {
+    final resultado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReporteFormPage(reporteEditar: reporte),
+      ),
+    );
+
+    if (resultado == true && widget.onActualizado != null) {
+      widget.onActualizado!(); // para actualizar miniatura o estado
+    }
   }
 }

@@ -45,6 +45,7 @@ LazyDatabase _openConnection() {
     await dir.create(recursive: true);
     final dbFile = File(p.join(dir.path, 'myafmzd.sqlite'));
 
+    /*
     // 🧹 OPCIÓN: Borrar base de datos para pruebas/migraciones
     // ⚠️ Comenta esta sección en producción cuando no quieras borrar datos
     const bool borrarDB =
@@ -55,7 +56,7 @@ LazyDatabase _openConnection() {
       );
       await dbFile.delete();
     }
-
+*/
     return NativeDatabase(dbFile);
   });
 }

@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
-import 'package:myafmzd/widgets/visor_pdf.dart';
+import 'package:myafmzd/screens/reportes/visor_pdf.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
-import 'package:myafmzd/widgets/report_tile.dart';
+import 'package:myafmzd/screens/reportes/report_tile.dart';
 
 class ReportesScreen extends ConsumerStatefulWidget {
   const ReportesScreen({super.key});
@@ -94,7 +94,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                                   final reporte = reportes[index];
                                   return ReporteItemTile(
                                     reporte: reporte,
-                                    downloading: true,
                                     onTap: () async {
                                       if (_abriendoPdf) return;
                                       setState(() => _abriendoPdf = true);

@@ -7,8 +7,8 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/distribuidores_screen.dart';
 import 'package:myafmzd/screens/perfil_screen.dart';
-import 'package:myafmzd/screens/reportes_screen.dart';
-import 'package:myafmzd/screens/usuarios_screen.dart';
+import 'package:myafmzd/screens/reportes/reportes_screen.dart';
+import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
 import 'package:myafmzd/widgets/app_drawer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+import 'package:myafmzd/screens/usuarios/usuarios_form_page.dart';
 
 class UsuariosScreen extends ConsumerStatefulWidget {
   const UsuariosScreen({super.key});
@@ -24,6 +25,8 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
   @override
   Widget build(BuildContext context) {
     final usuarios = ref.watch(usuariosProvider);
+    final colorsTheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     ref.listen<bool>(connectivityProvider, (previous, next) async {
       if (previous != next && mounted) {
@@ -33,15 +36,21 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Usuarios", style: TextStyle(color: Colors.black)),
+        title: Text(
+          "Usuarios",
+          style: textTheme.titleLarge?.copyWith(color: colorsTheme.onSurface),
+        ),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
       ),
       body: _cargandoInicial
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(color: colorsTheme.secondary),
+            )
           : RefreshIndicator(
+              color: colorsTheme.secondary,
               onRefresh: _cargarUsuarios,
               child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -53,29 +62,74 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
                 itemBuilder: (context, index) {
                   final usuario = usuarios[index];
                   return Card(
+                    color: colorsTheme.surface,
                     margin: const EdgeInsets.only(bottom: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 2,
                     child: ListTile(
+                      onTap: () async {
+                        final resultado = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                UsuariosFormPage(usuarioEditar: usuario),
+                          ),
+                        );
+
+                        if (mounted && resultado == true) {
+                          await _cargarUsuarios();
+                        }
+                      },
+
                       leading: const Icon(Icons.person),
                       title: Text(
                         usuario.nombre,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorsTheme.onSurface,
+                        ),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Correo: ${usuario.correo}'),
-                          Text('Rol: ${usuario.rol}'),
+                          Text(
+                            'Correo: ${usuario.correo}',
+                            style: textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorsTheme.onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Rol: ${usuario.rol}',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorsTheme.onSurface,
+                            ),
+                          ),
                           Text(
                             'Distribuidora: ${_getNombreDistribuidor(usuario.uuidDistribuidora)}',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorsTheme.onSurface,
+                            ),
                           ),
-                          Text('Actualizado: ${usuario.updatedAt}'),
-                          Text('Eliminado: ${usuario.deleted ? "Sí" : "No"}'),
+                          Text(
+                            'Actualizado: ${usuario.updatedAt}',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorsTheme.onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Eliminado: ${usuario.deleted ? "Sí" : "No"}',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorsTheme.onSurface,
+                            ),
+                          ),
                           Text(
                             'Sincronizado: ${usuario.isSynced ? "Sí" : "No"}',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorsTheme.onSurface,
+                            ),
                           ),
                         ],
                       ),
@@ -85,10 +139,6 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
                 },
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _crearUsuario,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -106,8 +156,22 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
       await Future.delayed(duracionMinima - duracion);
     }
 
-    if (!mounted) return;
-    setState(() => _cargandoInicial = false);
+    if (mounted) {
+      setState(() => _cargandoInicial = false);
+
+      if (!hayInternet) {
+        print(
+          '[📄 USUARIOS SCREEN] 📴 Estás sin conexión. Solo reportes descargados disponibles.',
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📴 Estás sin conexión. Solo información local.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   String _getNombreDistribuidor(String uuid) {
@@ -117,60 +181,5 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
         .obtenerPorId(uuid);
     if (distribuidor != null) return distribuidor.nombre;
     return 'Sin distribuidora';
-  }
-
-  Future<void> _crearUsuario() async {
-    // 1️⃣ Confirmación inicial
-    final confirmacion = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Crear usuario'),
-        content: const Text(
-          '¿Estás seguro de que deseas crear un nuevo usuario?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Crear'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmacion != true) return;
-
-    try {
-      // 2️⃣ Generar correo temporal de ejemplo (puedes reemplazarlo por un form)
-      final email = 'ejemplo_${DateTime.now().millisecondsSinceEpoch}@mail.com';
-      final password = 'password123'; // Temporal o ingresado por admin
-
-      // 3️⃣ Crear el usuario vía Provider (que ya hace auth + tabla)
-      await ref
-          .read(usuariosProvider.notifier)
-          .crearUsuario(
-            nombre: 'Nuevo Usuario',
-            correo: email,
-            password: password,
-            rol: 'distribuidor',
-            uuidDistribuidora: 'AFMZD',
-            permisos: {'Ver reportes': true, 'Ver usuarios': false},
-          );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Usuario creado correctamente')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('❌ Error al crear usuario: $e')));
-      }
-    }
   }
 }

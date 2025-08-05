@@ -54,7 +54,7 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
     return (select(usuarios)..where((u) => u.isSynced.equals(false))).get();
   }
 
-  // Marcar usuarios como sincronizados. pushUsuariosOffline en UsuarioSync
+  // Marcar usuarios como sincronizados.
   Future<void> marcarComoSincronizadoDrift(List<String> uids) async {
     await (update(usuarios)..where((u) => u.uid.isIn(uids))).write(
       UsuariosCompanion(

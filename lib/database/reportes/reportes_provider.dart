@@ -8,6 +8,7 @@ import 'package:myafmzd/database/reportes/reportes_sync.dart';
 import 'package:myafmzd/main.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
+import 'package:uuid/uuid.dart';
 
 final reporteProvider =
     StateNotifierProvider<ReporteNotifier, List<ReportesDb>>((ref) {
@@ -45,7 +46,7 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
   Future<void> cargar({required bool hayInternet}) async {
     _hayInternet = hayInternet;
 
-    // 1️⃣ Pintar base local primero
+    // Pintar base local primero
     final local = await _dao.obtenerTodosDrift();
     state = local;
     print('[📴 REPORTES PROVIDER] Local cargado -> ${local.length} reportes');
@@ -70,10 +71,7 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
       return;
     }
 
-    // 3️⃣ Push de pendientes
-    await _sync.pushReportesOffline();
-
-    // 4️⃣ Comparar timestamps
+    // Comparar timestamps
     final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
     final remoto = await _service.comprobarActualizacionesOnline();
 
@@ -91,13 +89,16 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
         return;
       }
     }
-    // 📌 Guardar estado anterior para comparar
+    // Guardar estado anterior para comparar
     final anteriores = Map.fromEntries(state.map((r) => MapEntry(r.uid, r)));
 
-    // 5️⃣ Sync completo
+    // Pull
     await _sync.pullReportesOnline(ultimaSync: localTimestamp);
 
-    // 6️⃣ Recargar actualizados
+    // Push de pendientes
+    await _sync.pushReportesOffline();
+
+    // Recargar actualizados
     final actualizados = await _dao.obtenerTodosDrift();
     // 🔥 Invalidar miniaturas SOLO si el PDF cambió
     for (final r in actualizados) {
@@ -113,7 +114,7 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     }
     state = actualizados;
 
-    // 🔁 Revalidar mes después de sync
+    // Revalidar mes después de sync
     final nuevosMeses = _listarMesesDisponibles();
     if (_mesSeleccionado == null || !nuevosMeses.contains(_mesSeleccionado)) {
       if (nuevosMeses.isNotEmpty) {
@@ -367,5 +368,70 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
 
   void seleccionarMes(String mes) {
     _mesSeleccionado = mes;
+  }
+
+  Future<void> crearReporteLocal({
+    required String nombre,
+    required String tipo,
+    required DateTime fecha,
+  }) async {
+    final nuevo = ReportesDb(
+      uid: Uuid().v4(),
+      nombre: nombre,
+      tipo: tipo,
+      fecha: fecha,
+      rutaRemota: '',
+      rutaLocal: '',
+      deleted: false,
+      isSynced: false,
+      updatedAt: DateTime.now().toUtc(),
+    );
+
+    await _dao.upsertReporteDrift(nuevo);
+    print('[🆕 REPORTES PROVIDER] Reporte creado localmente: ${nuevo.uid}');
+
+    // Recargar desde DB para mantener consistencia
+    final actualizados = await _dao.obtenerTodosDrift();
+    state = actualizados;
+
+    // 🔁 Hacer sync justo después
+    await cargar(hayInternet: hayInternet);
+
+    // Actualizar mes seleccionado si aplica
+    final meses = _listarMesesDisponibles();
+    if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
+      if (meses.isNotEmpty) _mesSeleccionado = meses.first;
+    }
+  }
+
+  Future<void> editarReporte({
+    required ReportesDb actualizado,
+    required bool hayInternet,
+  }) async {
+    final actualizadoConMeta = actualizado.copyWith(
+      updatedAt: DateTime.now().toUtc(),
+      isSynced: false,
+    );
+
+    await _dao.upsertReporteDrift(actualizadoConMeta);
+    print(
+      '[✏️ REPORTES PROVIDER] Reporte actualizado local: ${actualizado.uid}',
+    );
+
+    // Refrescar la lista
+    final actualizados = await _dao.obtenerTodosDrift();
+    state = actualizados;
+
+    // Validar miniatura si cambió algo importante
+    await invalidarMiniatura(actualizado.uid);
+    await obtenerMiniatura(actualizadoConMeta);
+
+    // 🔁 Hacer sync justo después
+    await cargar(hayInternet: hayInternet);
+    // Verificar mes seleccionado
+    final meses = _listarMesesDisponibles();
+    if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
+      if (meses.isNotEmpty) _mesSeleccionado = meses.first;
+    }
   }
 }
