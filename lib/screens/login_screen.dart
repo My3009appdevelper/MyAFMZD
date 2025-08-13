@@ -204,9 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      await ref
-          .read(usuariosProvider.notifier)
-          .cargar(hayInternet: hayInternet);
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       await ref
           .read(distribuidoresProvider.notifier)
           .cargar(hayInternet: hayInternet);

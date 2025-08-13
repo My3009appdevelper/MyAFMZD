@@ -1,7 +1,6 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
@@ -213,8 +212,6 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
   }
 
   Future<void> _guardar() async {
-    final hayInternet = ref.read(connectivityProvider);
-
     if (!_formKey.currentState!.validate()) return;
 
     final nombre = _nombreController.text.trim();
@@ -250,7 +247,6 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
               rol: rol,
               uuidDistribuidora: _uuidDistribuidora,
               permisos: _permisos,
-              hayInternet: hayInternet,
             );
         if (mounted) Navigator.pop(context, true);
       } else {

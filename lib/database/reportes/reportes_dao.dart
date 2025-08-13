@@ -14,11 +14,11 @@ class ReportesDao extends DatabaseAccessor<AppDatabase>
   // ---------------------------------------------------------------------------
 
   /// Insertar o actualizar un reporte
-  Future<void> upsertReporteDrift(ReportesDb reporte) =>
+  Future<void> upsertReporteDrift(ReportesCompanion reporte) =>
       into(reportes).insertOnConflictUpdate(reporte);
 
   /// Insertar múltiples reportes.
-  Future<void> upsertReportesDrift(List<ReportesDb> lista) async {
+  Future<void> upsertReportesDrift(List<ReportesCompanion> lista) async {
     await batch((batch) {
       batch.insertAllOnConflictUpdate(reportes, lista);
     });
@@ -45,6 +45,16 @@ class ReportesDao extends DatabaseAccessor<AppDatabase>
   /// Obtener todos incluyendo eliminados (útil para sync).
   Future<List<ReportesDb>> obtenerTodosDrift() => select(reportes).get();
 
+  /// 🔍 Obtener todos NO eliminados ordenados por nombre/fecha
+  Future<List<ReportesDb>> obtenerTodosNoDeletedDrift() {
+    return (select(reportes)
+          ..where((r) => r.deleted.equals(false))
+          ..orderBy([
+            (r) => OrderingTerm(expression: r.nombre, mode: OrderingMode.asc),
+          ]))
+        .get();
+  }
+
   /// Obtener reportes filtrados por tipo (ej: AMDA / interno).
   Future<List<ReportesDb>> obtenerPorTipoDrift(String tipo) =>
       (select(reportes)..where((r) => r.tipo.equals(tipo))).get();
@@ -59,20 +69,26 @@ class ReportesDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Marcar reportes como sincronizados.
-  Future<void> marcarComoSincronizadoDrift(List<String> uids) async {
-    await (update(reportes)..where((r) => r.uid.isIn(uids))).write(
+  Future<void> marcarComoSincronizadoDrift(String uid, DateTime fecha) async {
+    await (update(reportes)..where((r) => r.uid.equals(uid))).write(
       ReportesCompanion(
         isSynced: const Value(true),
-        updatedAt: Value(DateTime.now().toUtc()),
+        updatedAt: const Value.absent(),
       ),
     );
   }
 
-  /// Obtener la última fecha de actualización local para comparar con Supabase.
+  /// 🔄 Última actualización local considerando SOLO sincronizados
   Future<DateTime?> obtenerUltimaActualizacionDrift() async {
     final ultimo =
         await (select(reportes)
-              ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)])
+              ..where((r) => r.isSynced.equals(true))
+              ..orderBy([
+                (r) => OrderingTerm(
+                  expression: r.updatedAt,
+                  mode: OrderingMode.desc,
+                ),
+              ])
               ..limit(1))
             .getSingleOrNull();
     return ultimo?.updatedAt;

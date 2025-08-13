@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
-import 'package:myafmzd/screens/reportes/reporte_form_page.dart';
+import 'package:myafmzd/screens/reportes/reportes_form_page.dart';
 import 'package:myafmzd/screens/reportes/visor_pdf.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
-import 'package:myafmzd/screens/reportes/report_tile.dart';
+import 'package:myafmzd/screens/reportes/reportes_tile.dart';
 
 class ReportesScreen extends ConsumerStatefulWidget {
   const ReportesScreen({super.key});
@@ -31,7 +31,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     final notifier = ref.watch(reporteProvider.notifier);
     final filtrados = notifier.filtrados;
     final grupos = notifier.agruparPorTipo(filtrados);
-    final tipos = grupos.keys.toList();
+    final tipos = grupos.keys.toList()..sort((a, b) => a.compareTo(b));
 
     final mesesDisponibles = notifier.mesesDisponibles;
     final mesSeleccionado = notifier.mesSeleccionado;
@@ -64,9 +64,9 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               bottom: tipos.isNotEmpty
                   ? TabBar(
                       isScrollable: true,
-                      indicatorColor: colorScheme.secondary,
-                      labelColor: colorScheme.secondary,
-                      unselectedLabelColor: colorScheme.onSurface.withOpacity(
+                      indicatorColor: colorScheme.onSurface,
+                      labelColor: colorScheme.onSurface,
+                      unselectedLabelColor: colorScheme.secondary.withOpacity(
                         0.6,
                       ),
                       tabs: tipos.map((t) => Tab(text: t)).toList(),
@@ -236,13 +236,13 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   }
 
   Future<void> _cargarReportes() async {
-    print('[📄 REPORTES SCREEN] Iniciando carga de reportes...');
+    print('[📄 MENSAJES REPORTES SCREEN] Iniciando carga de reportes...');
 
     setState(() => _cargandoInicial = true);
     final inicio = DateTime.now();
 
     final hayInternet = ref.read(connectivityProvider);
-    await ref.read(reporteProvider.notifier).cargar(hayInternet: hayInternet);
+    await ref.read(reporteProvider.notifier).cargarOfflineFirst();
 
     final duracion = DateTime.now().difference(inicio);
     const duracionMinima = Duration(milliseconds: 1500);
@@ -255,13 +255,13 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
       if (!hayInternet) {
         print(
-          '[📄 REPORTES SCREEN] 📴 Estás sin conexión. Solo reportes descargados disponibles.',
+          '[📄 MENSAJES REPORTES SCREEN] 📴 Estás sin conexión. Solo reportes descargados disponibles.',
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              '[📄 REPORTES SCREEN] 📴 Estás sin conexión. Solo reportes descargados disponibles.',
+              '[📄 MENSAJES REPORTES SCREEN] 📴 Estás sin conexión. Solo reportes descargados disponibles.',
             ),
             duration: Duration(seconds: 3),
           ),
@@ -276,13 +276,15 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     if (reporte == null) return;
 
     File? archivo;
-    print('[📄 REPORTES SCREEN] Abriendo local: ${reporte.rutaLocal}');
+    print('[📄 MENSAJES REPORTES SCREEN] Abriendo local: ${reporte.rutaLocal}');
 
     if (reporte.rutaLocal.isNotEmpty &&
         await File(reporte.rutaLocal).exists()) {
       archivo = File(reporte.rutaLocal);
     } else {
-      print('[📄 REPORTES SCREEN] No local → intentando descargar en línea...');
+      print(
+        '[📄 MENSAJES REPORTES SCREEN] No local → intentando descargar en línea...',
+      );
       final actualizado = await notifier.descargarPDF(reporte);
       if (actualizado != null &&
           actualizado.rutaLocal.isNotEmpty &&
@@ -292,11 +294,14 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     }
 
     if (archivo != null && mounted) {
-      print('[📄 REPORTES SCREEN] ✅ PDF abierto: ${archivo.path}');
+      print('[📄 MENSAJES REPORTES SCREEN] ✅ PDF abierto: ${archivo.path}');
 
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => VisorPDF(assetPath: archivo!.path)),
+        MaterialPageRoute(
+          builder: (_) =>
+              VisorPDF(assetPath: archivo!.path, titulo: reporte.nombre),
+        ),
       );
     }
   }

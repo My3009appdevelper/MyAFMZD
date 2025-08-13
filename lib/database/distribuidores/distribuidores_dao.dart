@@ -29,6 +29,7 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
     await (update(distribuidores)..where((u) => u.uid.isIn(uids))).write(
       DistribuidoresCompanion(
         deleted: const Value(true),
+        isSynced: const Value(false),
         updatedAt: Value(DateTime.now().toUtc()),
       ),
     );

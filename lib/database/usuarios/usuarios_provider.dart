@@ -1,65 +1,63 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_dao.dart';
 import 'package:myafmzd/database/usuarios/usuarios_service.dart';
 import 'package:myafmzd/database/usuarios/usuarios_sync.dart';
-import 'package:myafmzd/main.dart';
 
 final usuariosProvider =
     StateNotifierProvider<UsuariosNotifier, List<UsuarioDb>>((ref) {
       final db = ref.watch(appDatabaseProvider);
-      return UsuariosNotifier(db);
+      return UsuariosNotifier(ref, db);
     });
 
 class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
-  UsuariosNotifier(AppDatabase db)
+  UsuariosNotifier(this._ref, AppDatabase db)
     : _dao = UsuariosDao(db),
       _servicio = UsuarioService(db),
-      _sync = UsuarioSync(db),
+      _sync = UsuariosSync(db),
       super([]);
 
+  bool _hayInternet = true;
+  bool get hayInternet => _hayInternet;
+
+  final Ref _ref;
   final UsuariosDao _dao;
   final UsuarioService _servicio;
-  final UsuarioSync _sync;
+  final UsuariosSync _sync;
 
   /// ✅ Cargar usuarios (offline-first)
-  Future<void> cargar({required bool hayInternet}) async {
+  Future<void> cargarOfflineFirst() async {
     try {
+      _hayInternet = _ref.read(connectivityProvider);
+
       // Pintar siempre la base local primero
       final local = await _dao.obtenerTodosDrift();
       state = local;
-      print('[📴 USUARIOS PROVIDER] Local cargado -> ${local.length} usuarios');
+      print(
+        '[👤 MENSAJES USUARIOS PROVIDER] Local cargado -> ${local.length} usuarios',
+      );
 
       // Si no hay internet → detenerse aquí
-      if (!hayInternet) {
-        print('[📴 USUARIOS PROVIDER] Sin internet → usando solo local');
+      if (!_hayInternet) {
+        print(
+          '[👤 MENSAJES USUARIOS PROVIDER] Sin internet → usando solo local',
+        );
         return;
       }
 
       // Comparar timestamps local vs online
-      final localTimestamp = await _dao
-          .obtenerUltimaActualizacionUsuariosDrift();
+      final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
       final remoto = await _servicio.comprobarActualizacionesOnline();
 
-      print('[⏱️ USUARIOS PROVIDER] Remoto:$remoto | Local:$localTimestamp');
-
-      // Si Supabase está vacío → solo usar local
-      if (remoto == null) {
-        print('[📴 USUARIOS PROVIDER] ⚠️ Supabase vacío → usar solo local');
-        return;
-      }
-
-      // Si no hay cambios → mantener local y salir
-      if (localTimestamp != null) {
-        final diff = remoto.difference(localTimestamp).inSeconds.abs();
-        if (diff <= 1) {
-          print('[📴 USUARIOS PROVIDER] Sin cambios → mantener local');
-          return;
-        }
-      }
+      print(
+        '[👤 MENSAJES USUARIOS PROVIDER] Remoto:$remoto | Local:$localTimestamp',
+      );
 
       // Pull
-      await _sync.pullUsuariosOnline(ultimaSync: localTimestamp);
+      await _sync.pullUsuariosOnline();
 
       // Push de cambios offline primero
       await _sync.pushUsuariosOffline();
@@ -68,12 +66,14 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
       final actualizados = await _dao.obtenerTodosDrift();
       state = actualizados;
     } catch (e) {
-      print('[📴 USUARIOS PROVIDER] Error al cargar usuarios: $e');
+      print('[👤 MENSAJES USUARIOS PROVIDER] Error al cargar usuarios: $e');
     }
   }
 
-  /// ✅ Crear usuario (Supabase)
-  Future<void> crearUsuario({
+  // ---------------------------------------------------------------------------
+  // CREAR (Auth + tabla online) → upsert local (isSynced=true)
+  // ---------------------------------------------------------------------------
+  Future<UsuarioDb?> crearUsuario({
     required String nombre,
     required String correo,
     required String password,
@@ -81,15 +81,42 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
     required String uuidDistribuidora,
     required Map<String, bool> permisos,
   }) async {
-    final nuevo = await _servicio.crearUsuarioEnSupabase(
-      nombre: nombre,
-      correo: correo,
-      password: password,
-      rol: rol,
-      uuidDistribuidora: uuidDistribuidora,
-      permisos: permisos,
-    );
-    state = [...state, nuevo];
+    try {
+      // 1) Crear en Auth + upsert en tabla (ONLINE). El service devuelve el row.
+      final row = await _servicio.crearUsuarioEnAuthYTabla(
+        nombre: nombre,
+        correo: correo,
+        password: password,
+        rol: rol,
+        uuidDistribuidora: uuidDistribuidora,
+        permisos: permisos,
+      );
+
+      // 2) Mapear a Companion (remoto ⇒ isSynced=true)
+      final comp = UsuariosCompanion(
+        uid: Value(row['uid'] as String),
+        nombre: Value((row['nombre'] as String?) ?? ''),
+        correo: Value((row['correo'] as String?) ?? ''),
+        rol: Value((row['rol'] as String?) ?? 'usuario'),
+        uuidDistribuidora: Value((row['uuid_distribuidora'] as String?) ?? ''),
+        permisos: Value(Map<String, bool>.from(row['permisos'] ?? {})),
+        updatedAt: Value(DateTime.parse(row['updated_at']).toUtc()),
+        deleted: Value((row['deleted'] as bool?) ?? false),
+        isSynced: const Value(true),
+      );
+
+      await _dao.upsertUsuarioDrift(comp);
+
+      // 3) Refrescar estado
+      final actualizados = await _dao.obtenerTodosDrift();
+      state = actualizados;
+
+      // 4) Devolver modelo recién creado
+      return actualizados.firstWhere((u) => u.uid == row['uid']);
+    } catch (e) {
+      print('[👤 USUARIOS PROVIDER] ❌ Error al crear usuario: $e');
+      rethrow;
+    }
   }
 
   // Editar usuario
@@ -100,36 +127,28 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
     required String rol,
     required String uuidDistribuidora,
     required Map<String, bool> permisos,
-    required bool hayInternet, // 👈 nuevo parámetro
   }) async {
     try {
-      final actualizado = UsuarioDb(
-        uid: uid,
-        nombre: nombre,
-        correo: correo,
-        rol: rol,
-        uuidDistribuidora: uuidDistribuidora,
-        permisos: permisos,
-        updatedAt: DateTime.now().toUtc(),
-        deleted: false,
-        isSynced: false,
+      final actualizado = UsuariosCompanion(
+        uid: Value(uid),
+        nombre: Value(nombre),
+        correo: Value(correo),
+        rol: Value(rol),
+        uuidDistribuidora: Value(uuidDistribuidora),
+        permisos: Value(permisos),
+        updatedAt: Value(DateTime.now().toUtc()),
+        deleted: const Value.absent(),
+        isSynced: Value(false),
       );
 
       await _dao.upsertUsuarioDrift(actualizado);
 
-      final nuevos = [...state];
-      final index = nuevos.indexWhere((u) => u.uid == uid);
-      if (index != -1) {
-        nuevos[index] = actualizado;
-        state = nuevos;
-      }
+      final actualizados = await _dao.obtenerTodosDrift();
+      state = actualizados;
 
-      print('[📴 USUARIOS PROVIDER] Usuario $uid editado localmente');
-
-      // 🔁 Hacer sync justo después
-      await cargar(hayInternet: hayInternet);
+      print('[👤 MENSAJES USUARIOS PROVIDER] Usuario $uid editado localmente');
     } catch (e) {
-      print('[📴 USUARIOS PROVIDER] ❌ Error al editar usuario: $e');
+      print('[👤 MENSAJES USUARIOS PROVIDER] ❌ Error al editar usuario: $e');
       rethrow;
     }
   }

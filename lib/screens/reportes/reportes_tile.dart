@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
-import 'package:myafmzd/screens/reportes/reporte_form_page.dart';
+import 'package:myafmzd/screens/reportes/reportes_form_page.dart';
 
 class ReporteItemTile extends ConsumerStatefulWidget {
   final ReportesDb reporte;
@@ -38,7 +38,9 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
 
     // 🔁 Si la ruta local cambió → recargar miniatura
     if (widget.reporte.rutaLocal != oldWidget.reporte.rutaLocal) {
-      print('[🖼️ TILE] 📌 Ruta local actualizada, recargando miniatura...');
+      print(
+        '[🧾 MENSAJES REPORTES TILE] 📌 Ruta local actualizada, recargando miniatura...',
+      );
       _cargarMiniatura();
     }
   }
@@ -46,14 +48,18 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
   /// 📌 Llama al provider para obtener/generar miniatura
   Future<void> _cargarMiniatura() async {
     final notifier = ref.read(reporteProvider.notifier);
-    print('[🖼️ TILE] Cargando miniatura: ${widget.reporte.nombre}');
+    print(
+      '[🧾 MENSAJES REPORTES TILE] Cargando miniatura: ${widget.reporte.nombre}',
+    );
     final bytes = await notifier.obtenerMiniatura(widget.reporte);
     if (bytes != null && mounted) {
-      print('[🖼️ TILE] ✅ Miniatura lista para: ${widget.reporte.uid}');
+      print(
+        '[🧾 MENSAJES REPORTES TILE] ✅ Miniatura lista para: ${widget.reporte.uid}',
+      );
       setState(() => _thumbnail = bytes);
     } else {
       print(
-        '[🖼️ TILE] ⚠️ No se pudo generar miniatura: ${widget.reporte.uid}',
+        '[🧾 MENSAJES REPORTES TILE] ⚠️ No se pudo generar miniatura: ${widget.reporte.uid}',
       );
     }
   }
@@ -99,7 +105,9 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
                   onPressed: () async {
                     setState(() => _descargando = true);
 
-                    print('[🗑️ TILE] Eliminando PDF: ${reporteActual.uid}');
+                    print(
+                      '[🧾 MENSAJES REPORTES TILE] Eliminando PDF: ${reporteActual.uid}',
+                    );
                     await notifier.eliminarPDF(reporteActual);
 
                     setState(() {
@@ -113,7 +121,9 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
                   onPressed: () async {
                     setState(() => _descargando = true);
 
-                    print('[⬇️ TILE] Descargando PDF: ${reporteActual.uid}');
+                    print(
+                      '[🧾 MENSAJES REPORTES TILE] Descargando PDF: ${reporteActual.uid}',
+                    );
                     final actualizado = await ref
                         .read(reporteProvider.notifier)
                         .descargarPDF(reporteActual);

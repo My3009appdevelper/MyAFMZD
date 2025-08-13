@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_service.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_sync.dart';
-import 'package:myafmzd/main.dart';
 
 final distribuidoresProvider =
     StateNotifierProvider<DistribuidoresNotifier, List<DistribuidorDb>>((ref) {

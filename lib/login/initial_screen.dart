@@ -35,9 +35,7 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
     try {
       // Supabase mantiene la sesión automáticamente si los tokens son válidos
       // Aquí cargamos el perfil desde Drift/Supabase
-      await ref
-          .read(usuariosProvider.notifier)
-          .cargar(hayInternet: hayInternet);
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       await ref
           .read(distribuidoresProvider.notifier)
           .cargar(hayInternet: hayInternet);

@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
-import 'package:myafmzd/widgets/my_dropdown_button.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
+import 'package:path/path.dart' as p;
 
 class ReporteFormPage extends ConsumerStatefulWidget {
   final ReportesDb? reporteEditar;
@@ -203,12 +203,15 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
           isSynced: false,
         );
 
-        print('[📝 MENSAJES REPORTES FORM] PARA EDITAR: ${actualizado.uid}');
+        print('[🧾 MENSAJES REPORTES FORM] PARA EDITAR: ${actualizado.uid}');
 
         final nuevo = await reporteNotifier.editarReporte(
           actualizado: actualizado,
         );
 
+        print(
+          '[🧾 MENSAJES REPORTES FORM] Seleccionado $_archivoPDFSeleccionado',
+        );
         // 🟢 Solo subir si el usuario seleccionó un nuevo archivo manualmente
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
@@ -219,7 +222,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
           );
         }
 
-        print('[📝 MENSAJES REPORTES FORM] Editado: ${actualizado.uid}');
+        print('[🧾 MENSAJES REPORTES FORM] Editado: ${actualizado.uid}');
       } else {
         final nuevo = await reporteNotifier.crearReporteLocal(
           nombre: nombre,
@@ -237,12 +240,12 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
             nuevoPath: _rutaRemotaController.text,
           );
         }
-        print('[📝 MENSAJES REPORTES FORM] Creado: $nombre');
+        print('[🧾 MENSAJES REPORTES FORM] Creado: $nombre');
       }
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      print('[📝 MENSAJES REPORTES FORM]❌ Error al guardar: $e');
+      print('[🧾 MENSAJES REPORTES FORM]❌ Error al guardar: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
@@ -284,24 +287,46 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
       allowedExtensions: ['pdf'],
     );
 
-    if (result != null && result.files.single.path != null) {
-      _archivoPDFSeleccionado = File(result.files.single.path!);
+    if (result == null || result.files.single.path == null) return;
 
-      final nombreOriginal = result.files.single.name;
-      final nombreSanitizado = nombreOriginal.trim().replaceAll(' ', '_');
-      final nombreArchivo = nombreSanitizado.replaceAll('.PDF', '.pdf');
+    _archivoPDFSeleccionado = File(result.files.single.path!);
 
-      final mes =
-          '${_fecha.year.toString().padLeft(4, '0')}-${_fecha.month.toString().padLeft(2, '0')}';
-      final rutaRemota = 'reportes/$mes/$nombreArchivo';
+    final nombreOriginal =
+        result.files.single.name; // e.g. "Cotización Ñ 2025.PDF"
+    final base = p.basenameWithoutExtension(
+      nombreOriginal,
+    ); // "Cotización Ñ 2025"
+    final safeBase = slugify(base.trim()); // "cotizacion_n_2025"
+    final fileName = safeBase.isEmpty ? 'reporte' : safeBase;
 
-      setState(() {
-        _rutaRemotaController.text = rutaRemota;
-      });
+    // fuerza la extensión .pdf en minúsculas
+    final nombreArchivo = '$fileName.pdf';
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('PDF preparado para subir')));
-    }
+    final mes =
+        '${_fecha.year.toString().padLeft(4, '0')}-${_fecha.month.toString().padLeft(2, '0')}';
+    final rutaRemota = 'reportes/$mes/$nombreArchivo';
+
+    setState(() {
+      _rutaRemotaController.text = rutaRemota;
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('PDF preparado para subir')));
+  }
+
+  String slugify(String texto) {
+    return texto
+        .toLowerCase()
+        .replaceAll(RegExp(r'[áàä]'), 'a')
+        .replaceAll(RegExp(r'[éèë]'), 'e')
+        .replaceAll(RegExp(r'[íìï]'), 'i')
+        .replaceAll(RegExp(r'[óòö]'), 'o')
+        .replaceAll(RegExp(r'[úùü]'), 'u')
+        .replaceAll(RegExp(r'ñ'), 'n')
+        // solo al "base", así que ya no toca el punto de la extensión
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
   }
 }

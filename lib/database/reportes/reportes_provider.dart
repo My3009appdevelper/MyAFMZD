@@ -1,28 +1,35 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_dao.dart';
 import 'package:myafmzd/database/reportes/reportes_service.dart';
 import 'package:myafmzd/database/reportes/reportes_sync.dart';
-import 'package:myafmzd/main.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:uuid/uuid.dart';
 
+// -----------------------------------------------------------------------------
+// Provider global (igual que Productos: pasamos ref y db)
+// -----------------------------------------------------------------------------
 final reporteProvider =
     StateNotifierProvider<ReporteNotifier, List<ReportesDb>>((ref) {
       final db = ref.watch(appDatabaseProvider);
-      return ReporteNotifier(db);
+      return ReporteNotifier(ref, db);
     });
 
 class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
-  ReporteNotifier(AppDatabase db)
+  ReporteNotifier(this._ref, AppDatabase db)
     : _dao = ReportesDao(db),
       _service = ReportesService(db),
       _sync = ReportesSync(db),
       super([]);
 
+  final Ref _ref;
   final ReportesDao _dao;
   final ReportesService _service;
   final ReportesSync _sync;
@@ -46,105 +53,73 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
   // 🧠 Cache en memoria para miniaturas
   final Map<String, Uint8List> _miniaturaCache = {};
 
-  // ---------------------------------------------------------------------------
-  // 📌 Cargar lista desde Drift (local + sync con Supabase)
-  // ---------------------------------------------------------------------------
-  Future<void> cargar({required bool hayInternet}) async {
-    _hayInternet = hayInternet;
+  // -----------------------------------------------------------------------------
+  // CARGA OFFLINE-FIRST (paridad con Productos: local → pull → push → refresh)
+  // -----------------------------------------------------------------------------
+  Future<void> cargarOfflineFirst() async {
+    try {
+      _hayInternet = _ref.read(connectivityProvider);
 
-    // Pintar base local primero
-    final local = await _dao.obtenerTodosDrift();
-    state = local;
-    print('[📴 REPORTES PROVIDER] Local cargado -> ${local.length} reportes');
+      // 1) Pintar base local primero
+      final local = await _dao.obtenerTodosDrift();
+      state = local;
+      print('[🧾 MENSAJES REPORTES PROVIDER] Local cargado → ${local.length}');
 
-    // 🔥 Seleccionar mes inicial apenas cargamos local
-    final meses = _listarMesesDisponibles();
-    if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
-      if (meses.isNotEmpty) {
-        _mesSeleccionado = meses.first;
+      // Mes inicial (con local)
+      _ensureMesInicial();
+
+      // 2) Sin internet → listo
+      if (!_hayInternet) {
         print(
-          '[📅 REPORTES PROVIDER] Mes inicial seleccionado: $_mesSeleccionado',
+          '[🧾 MENSAJES REPORTES PROVIDER] Sin internet → usando solo local',
         );
-      } else {
-        _mesSeleccionado = null;
-        print('[📅 REPORTES PROVIDER] ⚠️ No hay meses disponibles');
-      }
-    }
-
-    // 2️⃣ Si no hay internet → detenerse aquí
-    if (!hayInternet) {
-      print('[📴 REPORTES PROVIDER] Sin internet → usando solo local');
-      return;
-    }
-
-    // Comparar timestamps
-    final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
-    final remoto = await _service.comprobarActualizacionesOnline();
-
-    print('[⏱️ REPORTES PROVIDER] Remoto:$remoto | Local:$localTimestamp');
-
-    if (remoto == null) {
-      print('[📴 REPORTES PROVIDER] ⚠️ Supabase vacío → usar solo local');
-      return;
-    }
-
-    if (localTimestamp != null) {
-      final diff = remoto.difference(localTimestamp).inSeconds.abs();
-      if (diff <= 1) {
-        print('[📴 REPORTES PROVIDER] ✅ Sin cambios → mantener local');
         return;
       }
-    }
-    // Guardar estado anterior para comparar
-    final anteriores = Map.fromEntries(state.map((r) => MapEntry(r.uid, r)));
 
-    // Pull
-    await _sync.pullReportesOnline(ultimaSync: localTimestamp);
+      // 3) Guardar snapshot previo para invalidar miniaturas si cambió la rutaRemota
+      final anteriores = {for (final r in state) r.uid: r.rutaRemota};
 
-    // Push de pendientes
-    await _sync.pushReportesOffline();
+      // 4) Sync completo (igual que Productos)
+      await _sync.pullReportesOnline();
+      await _sync.pushReportesOffline();
 
-    // Recargar actualizados
-    final actualizados = await _dao.obtenerTodosDrift();
-    // 🔥 Invalidar miniaturas SOLO si el PDF cambió
-    for (final r in actualizados) {
-      final anterior = anteriores[r.uid];
+      // 5) Recargar actualizados
+      final actualizados = await _dao.obtenerTodosDrift();
 
-      if (anterior != null && anterior.rutaRemota != r.rutaRemota) {
-        await invalidarMiniatura(r.uid);
-        await obtenerMiniatura(r);
-        print(
-          '[🧹 REPORTES PROVIDER] Miniatura invalidada por cambio remoto: ${r.nombre}',
-        );
+      // 6) Invalidar miniaturas SOLO si cambió rutaRemota
+      for (final r in actualizados) {
+        final beforeRuta = anteriores[r.uid];
+        if (beforeRuta != null && beforeRuta != r.rutaRemota) {
+          await invalidarMiniatura(r.uid);
+          await obtenerMiniatura(r);
+          print(
+            '[🧾 MENSAJES REPORTES PROVIDER] Miniatura invalidada por cambio remoto: ${r.nombre}',
+          );
+        }
       }
-    }
-    state = actualizados;
 
-    // Revalidar mes después de sync
-    final nuevosMeses = _listarMesesDisponibles();
-    if (_mesSeleccionado == null || !nuevosMeses.contains(_mesSeleccionado)) {
-      if (nuevosMeses.isNotEmpty) {
-        _mesSeleccionado = nuevosMeses.first;
-        print(
-          '[📅 REPORTES PROVIDER] Mes actualizado tras sync: $_mesSeleccionado',
-        );
-      }
+      state = actualizados;
+
+      // 7) Verificar/ajustar mes tras sync
+      _ensureMesInicial();
+    } catch (e) {
+      print(
+        '[🧾 MENSAJES REPORTES PROVIDER] ❌ Error en cargarOfflineFirst: $e',
+      );
     }
   }
 
   // ---------------------------------------------------------------------------
-  // 📌 Obtener/generar miniatura PDF
+  // Miniaturas (sin cambios funcionales, solo limpieza menor)
   // ---------------------------------------------------------------------------
   Future<Uint8List?> obtenerMiniatura(ReportesDb reporte) async {
-    print('[📂 REPORTES PROVIDER] Solicitud de miniatura: ${reporte.nombre}');
-
-    // 1️⃣ Cache en memoria
+    // 1) RAM
     if (_miniaturaCache.containsKey(reporte.uid)) {
-      print('[📂 REPORTES PROVIDER] ✅ Usando miniatura en RAM: ${reporte.uid}');
+      print('[🧾 MENSAJES REPORTES PROVIDER] ✅ Miniatura RAM: ${reporte.uid}');
       return _miniaturaCache[reporte.uid];
     }
 
-    // 2️⃣ Cache persistente en disco
+    // 2) Disco (persistente si hay rutaLocal, temporal si no)
     final fileCache = await _miniaturaFile(
       reporte.uid,
       persistente: reporte.rutaLocal.isNotEmpty,
@@ -153,26 +128,26 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
       final bytes = await fileCache.readAsBytes();
       _miniaturaCache[reporte.uid] = bytes;
       print(
-        '[📂 REPORTES PROVIDER] ✅ Miniatura cargada desde disco: ${fileCache.path}',
+        '[🧾 MENSAJES REPORTES PROVIDER] ✅ Miniatura disco: ${fileCache.path}',
       );
       return bytes;
     }
 
     File? file;
 
-    // 3️⃣ PDF local descargado
+    // 3) PDF local
     if (reporte.rutaLocal.isNotEmpty &&
         await File(reporte.rutaLocal).exists()) {
       file = File(reporte.rutaLocal);
-      print('[🖼️ REPORTES PROVIDER] 📂 Generando miniatura desde PDF local');
+      print('[🧾 MENSAJES REPORTES PROVIDER] Generando miniatura desde local');
     }
-    // 4️⃣ PDF online temporal
+    // 4) PDF online temporal (solo con internet)
     else if (_hayInternet) {
       file = await descargarTemporal(reporte);
     }
 
     if (file == null) {
-      print('[🖼️ REPORTES PROVIDER] ❌ No hay archivo para miniatura');
+      print('[🧾 MENSAJES REPORTES PROVIDER] ❌ No hay archivo para miniatura');
       return null;
     }
 
@@ -182,26 +157,27 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     await page.close();
 
     if (image == null) {
-      print('[📂 REPORTES PROVIDER] ⚠️ Render nulo de miniatura');
+      print('[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Render nulo de miniatura');
       return null;
     }
 
     _miniaturaCache[reporte.uid] = image.bytes;
 
-    // 5️⃣ Guardar en disco (persistente si es PDF descargado, temporal si no)
+    // 5) Guardar en disco
     final outFile = await _miniaturaFile(
       reporte.uid,
       persistente: reporte.rutaLocal.isNotEmpty,
     );
     await outFile.writeAsBytes(image.bytes);
-    print('[🖼️ REPORTES PROVIDER] 💾 Miniatura guardada en: ${outFile.path}');
+    print(
+      '[🧾 MENSAJES REPORTES PROVIDER] 💾 Miniatura guardada: ${outFile.path}',
+    );
 
     return image.bytes;
   }
 
-  /// Borra miniatura de memoria y disco
   Future<void> invalidarMiniatura(String uid) async {
-    print('[🧹 REPORTES PROVIDER] Invalidando miniatura: $uid');
+    print('[🧾 MENSAJES REPORTES PROVIDER] Invalidando miniatura: $uid');
     _miniaturaCache.remove(uid);
 
     final filePersistente = await _miniaturaFile(uid, persistente: true);
@@ -210,12 +186,11 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     for (final file in [filePersistente, fileTemporal]) {
       if (await file.exists()) {
         await file.delete();
-        print('[🧹 REPORTES PROVIDER] 🗑️ Eliminada: ${file.path}');
+        print('[🧾 MENSAJES REPORTES PROVIDER] 🗑️ Eliminada: ${file.path}');
       }
     }
   }
 
-  /// Decide carpeta según si el PDF está descargado o no
   Future<File> _miniaturaFile(String uid, {required bool persistente}) async {
     final dir = persistente
         ? await getApplicationDocumentsDirectory()
@@ -223,19 +198,16 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     return File('${dir.path}/miniatura_$uid.png');
   }
 
-  // 📌 Descargar PDF temporal para miniaturas
   Future<File?> descargarTemporal(ReportesDb reporte) async {
     print(
-      '[📴 REPORTES PROVIDER] Empezar a descargar Temporalmente: ${reporte.nombre}',
+      '[🧾 MENSAJES REPORTES PROVIDER] Descarga temporal: ${reporte.nombre}',
     );
     final dir = await getTemporaryDirectory();
     final tempPath = '${dir.path}/${reporte.uid}.pdf';
     final tempFile = File(tempPath);
 
     if (await tempFile.exists()) {
-      print(
-        '[📴 REPORTES PROVIDER] Usando PDF temporal ya existente: $tempPath',
-      );
+      print('[🧾 MENSAJES REPORTES PROVIDER] Temporal ya existe: $tempPath');
       return tempFile;
     }
 
@@ -244,27 +216,28 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
 
     await file.copy(tempFile.path);
     print(
-      '[📴 REPORTES PROVIDER] Miniatura descargada temporal: ${tempFile.path}',
+      '[🧾 MENSAJES REPORTES PROVIDER] Temporal guardado: ${tempFile.path}',
     );
     return tempFile;
   }
 
   // ---------------------------------------------------------------------------
-  // 📌 Filtros
+  // Filtros (sin cambios)
   // ---------------------------------------------------------------------------
   List<ReportesDb> filtrarPorMesYTipo({required String mes, String? tipo}) {
     return state.where((r) {
-      final fechaOk =
-          '${r.fecha.year.toString().padLeft(4, '0')}-${r.fecha.month.toString().padLeft(2, '0')}' ==
-          mes;
+      final m =
+          '${r.fecha.year.toString().padLeft(4, '0')}-'
+          '${r.fecha.month.toString().padLeft(2, '0')}';
+      final fechaOk = m == mes;
       final tipoOk = tipo == null || r.tipo == tipo;
       final descargadoOk =
           _hayInternet ||
           (r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync());
       return fechaOk && tipoOk && descargadoOk;
     }).toList()..sort((a, b) {
-      final cmpFecha = b.fecha.compareTo(a.fecha);
-      return cmpFecha != 0 ? cmpFecha : a.nombre.compareTo(b.nombre);
+      final cmpNombre = a.nombre.compareTo(b.nombre);
+      return cmpNombre != 0 ? cmpNombre : b.fecha.compareTo(a.fecha);
     });
   }
 
@@ -280,76 +253,91 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     return meses;
   }
 
-  // 📌 Descargar PDF y actualizar ruta local
+  void seleccionarMes(String mes) {
+    _mesSeleccionado = mes;
+  }
+
+  void _ensureMesInicial() {
+    final meses = _listarMesesDisponibles();
+    if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
+      _mesSeleccionado = meses.isNotEmpty ? meses.first : null;
+      if (_mesSeleccionado == null) {
+        print('[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Sin meses disponibles');
+      } else {
+        print(
+          '[🧾 MENSAJES REPORTES PROVIDER] Mes seleccionado: $_mesSeleccionado',
+        );
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Descarga / Eliminación de PDFs (ajustado a Companions)
+  // ---------------------------------------------------------------------------
   Future<ReportesDb?> descargarPDF(ReportesDb reporte) async {
     final file = await _service.descargarPDFOnline(reporte.rutaRemota);
     if (file == null) {
       print(
-        '[REPORTES PROVIDER]❌ No se pudo descargar PDF: ${reporte.rutaRemota}',
+        '[🧾 MENSAJES REPORTES PROVIDER] ❌ No se pudo descargar ${reporte.rutaRemota}',
       );
       return null;
     }
 
-    final actualizado = reporte.copyWith(rutaLocal: file.path);
-    print('[REPORTES PROVIDER] ✅ PDF descargado en: ${file.path}');
-
+    // Actualización parcial (rutaLocal + updatedAt); no tocamos isSynced
     await invalidarMiniatura(reporte.uid);
-    await _dao.upsertReporteDrift(actualizado);
+    await _dao.upsertReporteDrift(
+      ReportesCompanion(uid: Value(reporte.uid), rutaLocal: Value(file.path)),
+    );
 
-    state = [
-      for (final r in state)
-        if (r.uid == reporte.uid) actualizado else r,
-    ];
+    final actualizados = await _dao.obtenerTodosDrift();
+    state = actualizados;
 
+    final actualizado = actualizados.firstWhere(
+      (r) => r.uid == reporte.uid,
+      orElse: () => reporte,
+    );
+    print('[🧾 MENSAJES REPORTES PROVIDER] ✅ PDF descargado en: ${file.path}');
     return actualizado;
   }
 
-  ReportesDb? obtenerPorUid(String uid) {
-    try {
-      return state.firstWhere((r) => r.uid == uid);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ✅ Verifica si todos los reportes están descargados
   bool todosDescargados(List<ReportesDb> lista) {
     return lista.every(
       (r) => r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync(),
     );
   }
 
-  // ✅ Descarga todos los reportes filtrados
   Future<int> descargarTodos(List<ReportesDb> lista) async {
     int count = 0;
     for (final r in lista) {
       if (r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync()) continue;
-      await descargarPDF(r);
-      count++;
+      final ok = await descargarPDF(r);
+      if (ok != null) count++;
     }
     return count;
   }
 
-  // 📌 Eliminar PDF local
   Future<void> eliminarPDF(ReportesDb reporte) async {
-    print('[🚯 REPORTES PROVIDER] Se borrará PDF: ${reporte.rutaRemota}');
+    print(
+      '[🧾 MENSAJES REPORTES PROVIDER] Borrando PDF: ${reporte.rutaRemota}',
+    );
     if (reporte.rutaLocal.isNotEmpty) {
       final file = File(reporte.rutaLocal);
       if (await file.exists()) {
         await file.delete();
-        print('[🚯 REPORTES PROVIDER] Borrado: ${reporte.rutaRemota}');
+        print(
+          '[🧾 MENSAJES REPORTES PROVIDER] Borrado local: ${reporte.rutaRemota}',
+        );
       }
     }
 
-    final actualizado = reporte.copyWith(rutaLocal: '');
-    await _dao.upsertReporteDrift(actualizado);
-    state = [
-      for (final r in state)
-        if (r.uid == reporte.uid) actualizado else r,
-    ];
+    await _dao.upsertReporteDrift(
+      ReportesCompanion(uid: Value(reporte.uid), rutaLocal: const Value('')),
+    );
+
+    final actualizados = await _dao.obtenerTodosDrift();
+    state = actualizados;
   }
 
-  // ✅ Elimina todos los reportes filtrados
   Future<int> eliminarTodos(List<ReportesDb> lista) async {
     int count = 0;
     for (final r in lista) {
@@ -361,7 +349,6 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     return count;
   }
 
-  // ✅ Agrupa por tipo
   Map<String, List<ReportesDb>> agruparPorTipo(List<ReportesDb> lista) {
     final grupos = <String, List<ReportesDb>>{};
     for (final r in lista) {
@@ -370,105 +357,122 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     return grupos;
   }
 
-  void seleccionarMes(String mes) {
-    _mesSeleccionado = mes;
-  }
-
+  // ---------------------------------------------------------------------------
+  // Crear / Editar (paridad con Productos; companions + flags de sync)
+  // ---------------------------------------------------------------------------
   Future<ReportesDb> crearReporteLocal({
     required String nombre,
     required String tipo,
     required DateTime fecha,
     required String rutaRemota,
   }) async {
-    final nuevo = ReportesDb(
-      uid: Uuid().v4(),
-      nombre: nombre,
-      tipo: tipo,
-      fecha: fecha,
-      rutaRemota: rutaRemota,
-      rutaLocal: '',
-      deleted: false,
-      isSynced: false,
-      updatedAt: DateTime.now().toUtc(),
+    final uid = const Uuid().v4();
+    final now = DateTime.now().toUtc();
+
+    await _dao.upsertReporteDrift(
+      ReportesCompanion.insert(
+        uid: uid,
+        nombre: Value(nombre),
+        tipo: Value(tipo),
+        fecha: Value(fecha.toUtc()),
+        rutaRemota: Value(rutaRemota),
+        rutaLocal: const Value(''),
+        deleted: const Value(false),
+        isSynced: const Value(false),
+        updatedAt: Value(now),
+      ),
     );
 
-    await _dao.upsertReporteDrift(nuevo);
-    print('[🆕 REPORTES PROVIDER] Reporte creado localmente: ${nuevo.uid}');
-
-    // Recargar desde DB para mantener consistencia
     final actualizados = await _dao.obtenerTodosDrift();
     state = actualizados;
 
-    // Actualizar mes seleccionado si aplica
-    final meses = _listarMesesDisponibles();
-    if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
-      if (meses.isNotEmpty) _mesSeleccionado = meses.first;
-    }
-    return nuevo;
+    _ensureMesInicial();
+    return actualizados.firstWhere((r) => r.uid == uid);
   }
 
   Future<ReportesDb> editarReporte({required ReportesDb actualizado}) async {
-    final actualizadoConMeta = actualizado.copyWith(
-      updatedAt: DateTime.now().toUtc(),
-      isSynced: false,
+    final now = DateTime.now().toUtc();
+
+    await _dao.upsertReporteDrift(
+      ReportesCompanion(
+        uid: Value(actualizado.uid),
+        nombre: Value(actualizado.nombre),
+        tipo: Value(actualizado.tipo),
+        fecha: Value(actualizado.fecha.toUtc()),
+        rutaRemota: Value(actualizado.rutaRemota),
+        rutaLocal: Value(actualizado.rutaLocal),
+        isSynced: const Value(false),
+        updatedAt: Value(now),
+        deleted: Value(actualizado.deleted),
+      ),
     );
 
-    await _dao.upsertReporteDrift(actualizadoConMeta);
-    print(
-      '[✏️ REPORTES PROVIDER] Reporte actualizado local: ${actualizado.uid}',
-    );
-
-    // Refrescar la lista
     final actualizados = await _dao.obtenerTodosDrift();
     state = actualizados;
 
-    // Verificar mes seleccionado
-    final meses = _listarMesesDisponibles();
-    if (_mesSeleccionado == null || !meses.contains(_mesSeleccionado)) {
-      if (meses.isNotEmpty) _mesSeleccionado = meses.first;
-    }
-
-    return actualizadoConMeta;
+    _ensureMesInicial();
+    return actualizados.firstWhere((r) => r.uid == actualizado.uid);
   }
 
+  // ---------------------------------------------------------------------------
+  // Subir nuevo PDF (local → invalidación miniatura → sync si hay internet)
+  // ---------------------------------------------------------------------------
   Future<void> subirNuevoPDF({
     required ReportesDb reporte,
     required File archivo,
     required String nuevoPath,
   }) async {
     try {
-      // 1️⃣ Copiar archivo localmente primero
+      // 1) Copiar local
       final dir = await getApplicationDocumentsDirectory();
       final safeName = nuevoPath.replaceAll('/', '_');
       final destino = File('${dir.path}/$safeName');
       await archivo.copy(destino.path);
 
-      // 2️⃣ Actualizar registro local sin subir aún
-      final actualizado = reporte.copyWith(
-        rutaRemota: nuevoPath,
-        rutaLocal: destino.path,
-        updatedAt: DateTime.now().toUtc(),
-        isSynced: false,
+      // 2) Actualizar local (no sync aún)
+      await _dao.upsertReporteDrift(
+        ReportesCompanion(
+          uid: Value(reporte.uid),
+          rutaRemota: Value(nuevoPath),
+          rutaLocal: Value(destino.path),
+          updatedAt: Value(DateTime.now().toUtc()),
+          isSynced: const Value(false),
+        ),
       );
 
-      await _dao.upsertReporteDrift(actualizado);
-
+      // refrescar estado
       state = await _dao.obtenerTodosDrift();
 
-      // Validar miniatura si cambió algo importante
-      await invalidarMiniatura(actualizado.uid);
+      // 3) Miniatura
+      await invalidarMiniatura(reporte.uid);
+      final actualizado = state.firstWhere(
+        (r) => r.uid == reporte.uid,
+        orElse: () => reporte,
+      );
       await obtenerMiniatura(actualizado);
-      // 3️⃣ Intentar sync solo si hay conexión
+
+      // 4) Intentar sync si hay internet
       if (_hayInternet) {
-        await cargar(hayInternet: true);
+        await cargarOfflineFirst();
       }
 
       print(
-        '[📥 REPORTES PROVIDER] PDF guardado localmente en: ${destino.path}',
+        '[🧾 MENSAJES REPORTES PROVIDER] PDF guardado localmente: ${destino.path}',
       );
     } catch (e) {
-      print('[❌ REPORTES PROVIDER] Error preparando PDF: $e');
+      print('[🧾 MENSAJES REPORTES PROVIDER] Error preparando PDF: $e');
       rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Utilidades varias
+  // ---------------------------------------------------------------------------
+  ReportesDb? obtenerPorUid(String uid) {
+    try {
+      return state.firstWhere((r) => r.uid == uid);
+    } catch (_) {
+      return null;
     }
   }
 }

@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/login/initial_screen.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  throw UnimplementedError();
-});
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  pdfrxFlutterInitialize(); // opcional, útil en algunos entornos
 
   await Supabase.initialize(
     url: 'https://xxuldwqylkyeuvyqgtbb.supabase.co',
@@ -22,14 +19,8 @@ void main() async {
   // Mauricio1892220253009
 
   // ✅ Inicializar la DB de Drift una vez (Singleton)
-  final db = AppDatabase();
 
-  runApp(
-    ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-      child: const MyApp(),
-    ),
-  );
+  runApp(ProviderScope(child: const MyApp()));
 }
 
 class MyApp extends ConsumerWidget {

@@ -69,7 +69,7 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
                     ),
                     elevation: 2,
                     child: ListTile(
-                      onTap: () async {
+                      onLongPress: () async {
                         final resultado = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -148,7 +148,7 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
     final inicio = DateTime.now();
 
     final hayInternet = ref.read(connectivityProvider);
-    await ref.read(usuariosProvider.notifier).cargar(hayInternet: hayInternet);
+    await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
 
     final duracion = DateTime.now().difference(inicio);
     const duracionMinima = Duration(milliseconds: 1500);

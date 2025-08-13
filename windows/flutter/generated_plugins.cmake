@@ -4,11 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
-  cloud_firestore
   connectivity_plus
-  firebase_auth
-  firebase_core
-  firebase_storage
   geolocator_windows
   objectbox_flutter_libs
   pdfx
@@ -17,6 +13,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  pdfrx
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

@@ -196,7 +196,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
     final hayInternet = ref.read(connectivityProvider);
 
-    await ref.read(usuariosProvider.notifier).cargar(hayInternet: hayInternet);
+    await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
     await ref
         .read(distribuidoresProvider.notifier)
         .cargar(hayInternet: hayInternet);

@@ -2,10 +2,8 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
-
+import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_dao.dart';
-
-import 'package:myafmzd/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final perfilProvider = StateNotifierProvider<PerfilNotifier, UsuarioDb?>((ref) {

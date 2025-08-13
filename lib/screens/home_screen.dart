@@ -36,11 +36,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     Future.microtask(() async {
       final hayInternet = ref.read(connectivityProvider);
-      await ref.read(reporteProvider.notifier).cargar(hayInternet: hayInternet);
+      await ref.read(reporteProvider.notifier).cargarOfflineFirst();
 
-      await ref
-          .read(usuariosProvider.notifier)
-          .cargar(hayInternet: hayInternet);
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
 
       await ref
           .read(distribuidoresProvider.notifier)

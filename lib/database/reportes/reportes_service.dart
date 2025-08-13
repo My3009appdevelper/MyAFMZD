@@ -6,9 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ReportesService {
-  final SupabaseClient _client;
+  final SupabaseClient supabase;
 
-  ReportesService(AppDatabase db) : _client = Supabase.instance.client;
+  ReportesService(AppDatabase db) : supabase = Supabase.instance.client;
 
   static const _bucket =
       'reportes-pdf'; // 🔑 Ajusta el nombre de tu bucket en Supabase
@@ -19,22 +19,26 @@ class ReportesService {
 
   Future<DateTime?> comprobarActualizacionesOnline() async {
     try {
-      final response = await _client
+      final response = await supabase
           .from('reportes')
           .select('updated_at')
           .order('updated_at', ascending: false)
           .limit(1);
 
       if (response.isEmpty || response.first['updated_at'] == null) {
-        print('[📡 REPORTES SERVICE] ❌ No hay updated_at en Supabase');
+        print('[🧾 MENSAJES REPORTES SERVICE] ❌ No hay updated_at en Supabase');
         return null;
       }
 
-      final ts = DateTime.parse(response.first['updated_at']);
-      print('[📡 REPORTES SERVICE] ⏱️ Última actualización online: $ts');
-      return ts;
+      final fecha = DateTime.parse(response.first['updated_at']).toUtc();
+      print(
+        '[🧾 MENSAJES REPORTES SERVICE] ⏱️ Última actualización online: $fecha',
+      );
+      return fecha;
     } catch (e) {
-      print('[📡 REPORTES SERVICE] ❌ Error comprobando actualizaciones: $e');
+      print(
+        '[🧾 MENSAJES REPORTES SERVICE] ❌ Error comprobando actualizaciones: $e',
+      );
       return null;
     }
   }
@@ -43,41 +47,68 @@ class ReportesService {
   // 📌 OBTENER TODOS ONLINE
   // ---------------------------------------------------------------------------
 
-  Future<List<ReportesDb>> obtenerFiltradosOnline({
-    DateTime? ultimaSync,
-  }) async {
+  /// 🔄 Obtener todos los reportes desde Supabase.
+  Future<List<Map<String, dynamic>>> obtenerTodosOnline() async {
+    print(
+      '[🧾 MENSAJES REPORTES SERVICE] 📥 Obteniendo TODOS los reportes online...',
+    );
     try {
-      print('[📡 REPORTES SERVICE] Buscando filtrados reportes online...');
-
-      var query = _client.from('reportes').select();
-
-      if (ultimaSync != null) {
-        query = query.gte('updated_at', ultimaSync.toUtc());
-        print('[📡 REPORTES SERVICE] Delta Sync desde $ultimaSync');
-      }
-
-      final data = await query;
-
-      final lista = (data as List)
-          .map(
-            (row) => ReportesDb(
-              uid: row['uid'],
-              nombre: row['nombre'] ?? '',
-              fecha: DateTime.parse(row['fecha']).toUtc(),
-              rutaRemota: row['ruta_remota'] ?? '',
-              rutaLocal: row['ruta_local'] ?? '',
-              tipo: row['tipo'] ?? '',
-              updatedAt: DateTime.parse(row['updated_at']).toUtc(),
-              deleted: row['deleted'] ?? false,
-              isSynced: true,
-            ),
-          )
-          .toList();
-
-      print('[📡 REPORTES SERVICE] ✅ ${lista.length} reportes obtenidos');
-      return lista;
+      final response = await supabase.from('reportes').select();
+      print(
+        '[🧾 MENSAJES REPORTES SERVICE] ✅ ${response.length} reportes obtenidos',
+      );
+      return response;
     } catch (e) {
-      print('[📡 REPORTES SERVICE] ❌ Error obteniendo reportes: $e');
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error al obtener todos: $e');
+      rethrow;
+    }
+  }
+
+  /// 🔄 Obtener reportes actualizados estrictamente DESPUÉS de `ultimaSync` (UTC).
+  /// Útil para un pull incremental si NO usas heads→diff.
+  Future<List<Map<String, dynamic>>> obtenerFiltradosOnline(
+    DateTime ultimaSync,
+  ) async {
+    print('[🧾 MENSAJES REPORTES SERVICE] 📥 Filtrando > $ultimaSync (UTC)');
+    try {
+      final response = await supabase
+          .from('reportes')
+          .select()
+          .gt('updated_at', ultimaSync.toUtc().toIso8601String());
+      print(
+        '[🧾 MENSAJES REPORTES SERVICE] ✅ ${response.length} filtrados obtenidos',
+      );
+      return response;
+    } catch (e) {
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error al filtrar: $e');
+      rethrow;
+    }
+  }
+
+  /// 1) Heads: solo `uid` y `updated_at` (barato para diff).
+  Future<List<Map<String, dynamic>>> obtenerCabecerasOnline() async {
+    try {
+      final res = await supabase.from('reportes').select('uid, updated_at');
+      return res;
+    } catch (e) {
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error en cabezeras: $e');
+      rethrow;
+    }
+  }
+
+  /// 2) Fetch selectivo por lote: filas completas solo de los UIDs necesarios.
+  Future<List<Map<String, dynamic>>> obtenerPorUidsOnline(
+    List<String> uids,
+  ) async {
+    if (uids.isEmpty) return [];
+    try {
+      final res = await supabase
+          .from('reportes')
+          .select()
+          .inFilter('uid', uids);
+      return res;
+    } catch (e) {
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error fetch por UIDs: $e');
       rethrow;
     }
   }
@@ -85,20 +116,14 @@ class ReportesService {
   // ---------------------------------------------------------------------------
   // 📤 PUSH: Subir un solo reporte (upsert)
   // ---------------------------------------------------------------------------
-  Future<void> upsertReporteOnline(ReportesDb reporte) async {
+  Future<void> upsertReporteOnline(Map<String, dynamic> data) async {
+    final uid = data['uid'];
+    print('[🧾 MENSAJES REPORTES SERVICE] ⬆️ Upsert online reporte: $uid');
     try {
-      await _client.from('reportes').upsert({
-        'uid': reporte.uid,
-        'nombre': reporte.nombre,
-        'fecha': reporte.fecha.toUtc().toIso8601String(),
-        'ruta_remota': reporte.rutaRemota,
-        'tipo': reporte.tipo,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-        'deleted': reporte.deleted,
-      });
-      print('[📡 REPORTES SERVICE] Reporte ${reporte.uid} upsert online');
+      await supabase.from('reportes').upsert(data);
+      print('[🧾 MENSAJES REPORTES SERVICE] ✅ Upsert $uid OK');
     } catch (e) {
-      print('[📡 REPORTES SERVICE] ❌ Error subiendo usuario: $e');
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error upsert $uid: $e');
       rethrow;
     }
   }
@@ -107,13 +132,20 @@ class ReportesService {
   // 🗑️ Eliminar reporte remoto (soft delete)
   // ---------------------------------------------------------------------------
   Future<void> eliminarReporteOnline(String uid) async {
-    await _client
-        .from('reportes')
-        .update({
-          'deleted': true,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('uid', uid);
+    print('[🧾 MENSAJES REPORTES SERVICE] 🗑️ Soft delete reporte: $uid');
+    try {
+      await supabase
+          .from('reportes')
+          .update({
+            'deleted': true,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('uid', uid);
+      print('[🧾 MENSAJES REPORTES SERVICE] ✅ Marcado como eliminado: $uid');
+    } catch (e) {
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error al eliminar $uid: $e');
+      rethrow;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -121,14 +153,18 @@ class ReportesService {
   // ---------------------------------------------------------------------------
   Future<File?> descargarPDFOnline(String rutaRemota) async {
     try {
-      print('[🔗REPORTE SERVICE] rutaRemota original: "$rutaRemota"');
+      print(
+        '[🧾 MENSAJES REPORTES SERVICE] rutaRemota original: "$rutaRemota"',
+      );
 
       final cleanPath = rutaRemota.startsWith('/')
           ? rutaRemota.substring(1)
           : rutaRemota;
-      print('[🔗REPORTE SERVICE] Intentando descargar: [$cleanPath]');
+      print(
+        '[🧾 MENSAJES REPORTES SERVICE] Intentando descargar: [$cleanPath]',
+      );
 
-      final response = await _client.storage.from(_bucket).download(cleanPath);
+      final response = await supabase.storage.from(_bucket).download(cleanPath);
       final dir = await getApplicationDocumentsDirectory();
       final safeName = rutaRemota.replaceAll('/', '_');
       final file = File('${dir.path}/$safeName');
@@ -136,7 +172,7 @@ class ReportesService {
 
       return file;
     } catch (e) {
-      print('[🔗REPORTE SERVICE] ❌ Error al descargar PDF: $e');
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error al descargar PDF: $e');
       return null;
     }
   }
@@ -146,22 +182,11 @@ class ReportesService {
   // ---------------------------------------------------------------------------
   Future<String?> uploadPDFOnline(File archivo, String rutaRemota) async {
     try {
-      await _client.storage.from(_bucket).upload(rutaRemota, archivo);
+      await supabase.storage.from(_bucket).upload(rutaRemota, archivo);
       return rutaRemota;
     } catch (e) {
-      print('[🔗REPORTE SERVICE] ❌ Error al subir PDF: $e');
+      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error al subir PDF: $e');
       return null;
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // 🗑️ Eliminar PDF de Supabase Storage
-  // ---------------------------------------------------------------------------
-  Future<void> eliminarPDFOnline(String rutaRemota) async {
-    try {
-      await _client.storage.from(_bucket).remove([rutaRemota]);
-    } catch (e) {
-      print('❌ Error al eliminar PDF: $e');
     }
   }
 }
