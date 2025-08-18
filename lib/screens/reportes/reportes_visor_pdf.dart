@@ -30,6 +30,11 @@ class _VisorPDFState extends State<VisorPDF> {
   }
 
   @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorsScheme = Theme.of(context).colorScheme;
 

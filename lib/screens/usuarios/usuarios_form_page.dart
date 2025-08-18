@@ -22,7 +22,6 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
   late TextEditingController _correoController;
   late TextEditingController _contrasenaController;
   late TextEditingController _rolController;
-
   String _uuidDistribuidora = 'AFMZD';
   Map<String, bool> _permisos = {};
   bool _esEdicion = false;
@@ -65,7 +64,6 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
         .watch(distribuidoresProvider)
         .where((d) => d.activo)
         .toList();
-
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textStyle = theme.textTheme.bodyLarge;
@@ -83,6 +81,7 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
               key: _formKey,
               child: ListView(
                 children: [
+                  // Nombre
                   MyTextFormField(
                     controller: _nombreController,
                     labelText: 'Nombre',
@@ -90,7 +89,9 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
                         ? 'Campo requerido'
                         : null,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+
+                  // Correo
                   MyTextFormField(
                     controller: _correoController,
                     labelText: 'Correo',
@@ -100,6 +101,7 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
                         : null,
                   ),
 
+                  // Contraseña
                   if (!_esEdicion)
                     MyTextFormField(
                       controller: _contrasenaController,
@@ -109,7 +111,7 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
                           ? 'Mínimo 6 caracteres'
                           : null,
                     ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
                   DropdownSearch<DistribuidorDb>(
                     selectedItem: distribuidores.firstWhere(
@@ -180,8 +182,9 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
 
-                  const SizedBox(height: 20),
+                  // Rol
                   MyDropdownButton<String>(
                     labelText: "Rol",
                     value: _rolController.text.isNotEmpty
@@ -196,7 +199,9 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
                       }
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+
+                  // Guardar
                   MyElevatedButton(
                     onPressed: _guardar,
                     icon: Icons.save,
@@ -221,6 +226,7 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
 
     final usuariosNotifier = ref.read(usuariosProvider.notifier);
 
+    // Validación de duplicados
     final hayDuplicado = usuariosNotifier.existeDuplicado(
       uidActual: widget.usuarioEditar?.uid ?? '',
       nombre: nombre,
@@ -238,16 +244,14 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
 
     try {
       if (_esEdicion) {
-        await ref
-            .read(usuariosProvider.notifier)
-            .editarUsuario(
-              uid: widget.usuarioEditar!.uid,
-              nombre: nombre,
-              correo: correo,
-              rol: rol,
-              uuidDistribuidora: _uuidDistribuidora,
-              permisos: _permisos,
-            );
+        await usuariosNotifier.editarUsuario(
+          uid: widget.usuarioEditar!.uid,
+          nombre: nombre,
+          correo: correo,
+          rol: rol,
+          uuidDistribuidora: _uuidDistribuidora,
+          permisos: _permisos,
+        );
         if (mounted) Navigator.pop(context, true);
       } else {
         await ref

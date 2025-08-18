@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:myafmzd/database/app_database.dart';
+import 'package:path/path.dart' as p;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -31,9 +32,7 @@ class ReportesService {
       }
 
       final fecha = DateTime.parse(response.first['updated_at']).toUtc();
-      print(
-        '[🧾 MENSAJES REPORTES SERVICE] ⏱️ Última actualización online: $fecha',
-      );
+
       return fecha;
     } catch (e) {
       print(
@@ -151,7 +150,10 @@ class ReportesService {
   // ---------------------------------------------------------------------------
   // 📥 Descargar PDF desde Supabase Storage
   // ---------------------------------------------------------------------------
-  Future<File?> descargarPDFOnline(String rutaRemota) async {
+  Future<File?> descargarPDFOnline(
+    String rutaRemota, {
+    bool temporal = false,
+  }) async {
     try {
       print(
         '[🧾 MENSAJES REPORTES SERVICE] rutaRemota original: "$rutaRemota"',
@@ -164,12 +166,27 @@ class ReportesService {
         '[🧾 MENSAJES REPORTES SERVICE] Intentando descargar: [$cleanPath]',
       );
 
-      final response = await supabase.storage.from(_bucket).download(cleanPath);
-      final dir = await getApplicationDocumentsDirectory();
-      final safeName = rutaRemota.replaceAll('/', '_');
-      final file = File('${dir.path}/$safeName');
-      await file.writeAsBytes(response);
+      final bytes = await supabase.storage.from(_bucket).download(cleanPath);
 
+      // 👇 Decide destino según flag
+      final baseDir = temporal
+          ? await getTemporaryDirectory()
+          : await getApplicationSupportDirectory();
+
+      // Subcarpeta para mantener ordenado
+      final subdir = temporal ? 'pdf_tmp' : 'reports';
+      final targetDir = Directory(p.join(baseDir.path, subdir));
+      if (!await targetDir.exists()) {
+        await targetDir.create(recursive: true);
+      }
+
+      // Nombre de archivo seguro (sin '/')
+      final safeName = rutaRemota.replaceAll('/', '_');
+      final file = File(p.join(targetDir.path, safeName));
+
+      await file.writeAsBytes(bytes);
+
+      print('[🧾 MENSAJES REPORTES SERVICE] PDF guardado en: ${file.path}');
       return file;
     } catch (e) {
       print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error al descargar PDF: $e');
@@ -180,13 +197,42 @@ class ReportesService {
   // ---------------------------------------------------------------------------
   // 📤 Subir PDF a Supabase Storage
   // ---------------------------------------------------------------------------
-  Future<String?> uploadPDFOnline(File archivo, String rutaRemota) async {
+
+  // Nos aseguramos de que no exista
+  Future<bool> exists(String remotePath) async {
+    final dir = p.dirname(remotePath); // e.g. "reportes/2025-02"
+    final fileName = p.basename(remotePath); // e.g. "archivo.pdf"
+
+    final items = await supabase.storage
+        .from(_bucket)
+        .list(path: dir); // sin 'search' en Dart
+
+    return items.any((it) => it.name == fileName);
+  }
+
+  // Subir PDF nuevo
+  Future<void> uploadPDFOnline(
+    File file,
+    String remotePath, {
+    bool overwrite = false,
+  }) async {
     try {
-      await supabase.storage.from(_bucket).upload(rutaRemota, archivo);
-      return rutaRemota;
-    } catch (e) {
-      print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error al subir PDF: $e');
-      return null;
+      await supabase.storage
+          .from(_bucket)
+          .upload(
+            remotePath,
+            file,
+            fileOptions: FileOptions(
+              upsert: overwrite, // si quieres sobreescribir explícitamente
+              contentType: 'application/pdf',
+            ),
+          );
+    } on StorageException catch (e) {
+      if ((e.statusCode ?? 0) == 409 && !overwrite) {
+        // Ya existe y NO queremos sobreescribir → lo tratamos como OK.
+        return;
+      }
+      rethrow;
     }
   }
 }

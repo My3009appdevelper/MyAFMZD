@@ -5,8 +5,7 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:myafmzd/connectivity/connectivity_provider.dart';
-import 'package:myafmzd/login/perfil_provider.dart';
+import 'package:myafmzd/screens/login/perfil_provider.dart';
 import 'package:myafmzd/screens/home_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -187,7 +186,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
 
-    final hayInternet = ref.read(connectivityProvider);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -205,12 +203,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
-      await ref
-          .read(distribuidoresProvider.notifier)
-          .cargar(hayInternet: hayInternet);
-      await ref
-          .read(perfilProvider.notifier)
-          .cargarUsuario(hayInternet: hayInternet);
+      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+      await ref.read(perfilProvider.notifier).cargarUsuario();
 
       final usuario = ref.read(perfilProvider);
       if (usuario == null) {

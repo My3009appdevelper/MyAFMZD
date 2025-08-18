@@ -12,7 +12,6 @@ import 'package:path/path.dart' as p;
 
 class ReporteFormPage extends ConsumerStatefulWidget {
   final ReportesDb? reporteEditar;
-
   const ReporteFormPage({super.key, this.reporteEditar});
 
   @override
@@ -24,21 +23,21 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
   late TextEditingController _nombreController;
   late TextEditingController _tipoController;
   late TextEditingController _rutaRemotaController;
-
   late DateTime _fecha;
-
   bool _esEdicion = false;
   File? _archivoPDFSeleccionado;
 
   @override
   void initState() {
     super.initState();
-    final r = widget.reporteEditar;
-    _esEdicion = r != null;
-    _nombreController = TextEditingController(text: r?.nombre ?? '');
-    _tipoController = TextEditingController(text: r?.tipo ?? 'INTERNO');
-    _fecha = r?.fecha ?? DateTime.now();
-    _rutaRemotaController = TextEditingController(text: r?.rutaRemota ?? '');
+    final reporte = widget.reporteEditar;
+    _esEdicion = reporte != null;
+    _nombreController = TextEditingController(text: reporte?.nombre ?? '');
+    _tipoController = TextEditingController(text: reporte?.tipo ?? 'INTERNO');
+    _fecha = reporte?.fecha ?? DateTime.now();
+    _rutaRemotaController = TextEditingController(
+      text: reporte?.rutaRemota ?? '',
+    );
   }
 
   @override
@@ -69,6 +68,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
               key: _formKey,
               child: ListView(
                 children: [
+                  // Nombre
                   MyTextFormField(
                     controller: _nombreController,
                     labelText: 'Nombre',
@@ -76,6 +76,8 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                         v == null || v.isEmpty ? 'Campo obligatorio' : null,
                   ),
                   const SizedBox(height: 12),
+
+                  // Tipo de reporte
                   DropdownSearch<String>(
                     items: (String filtro, LoadProps? props) async {
                       return tipos
@@ -92,14 +94,13 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                     },
                     compareFn: (a, b) => a.toLowerCase() == b.toLowerCase(),
                     dropdownBuilder: (context, selectedItem) {
-                      return TextFormField(
+                      return MyTextFormField(
                         controller: _tipoController,
-                        decoration: const InputDecoration(labelText: 'Tipo'),
+                        labelText: 'Tipo',
                       );
                     },
                     decoratorProps: DropDownDecoratorProps(
                       decoration: InputDecoration(
-                        labelText: "Tipo",
                         labelStyle: textStyle?.copyWith(
                           color: colorScheme.onSurface,
                         ),
@@ -137,6 +138,8 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // Fecha
                   Text("Fecha"),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -149,6 +152,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                   ),
                   const SizedBox(height: 12),
 
+                  // Ruta Remota
                   MyTextFormField(
                     controller: _rutaRemotaController,
                     labelText: 'Ruta remota',
@@ -157,6 +161,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                   ),
                   const SizedBox(height: 12),
 
+                  // Subir archivo
                   MyElevatedButton(
                     icon: Icons.upload_file,
                     label:
@@ -170,10 +175,11 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
                   const SizedBox(height: 24),
 
+                  // Guardar
                   MyElevatedButton(
-                    onPressed: _guardar,
                     icon: Icons.save,
                     label: 'Guardar',
+                    onPressed: _guardar,
                   ),
                 ],
               ),
@@ -203,15 +209,10 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
           isSynced: false,
         );
 
-        print('[🧾 MENSAJES REPORTES FORM] PARA EDITAR: ${actualizado.uid}');
-
         final nuevo = await reporteNotifier.editarReporte(
           actualizado: actualizado,
         );
 
-        print(
-          '[🧾 MENSAJES REPORTES FORM] Seleccionado $_archivoPDFSeleccionado',
-        );
         // 🟢 Solo subir si el usuario seleccionó un nuevo archivo manualmente
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
@@ -221,8 +222,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
             nuevoPath: _rutaRemotaController.text,
           );
         }
-
-        print('[🧾 MENSAJES REPORTES FORM] Editado: ${actualizado.uid}');
+        if (mounted) Navigator.pop(context, true);
       } else {
         final nuevo = await reporteNotifier.crearReporteLocal(
           nombre: nombre,
@@ -240,12 +240,9 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
             nuevoPath: _rutaRemotaController.text,
           );
         }
-        print('[🧾 MENSAJES REPORTES FORM] Creado: $nombre');
+        if (mounted) Navigator.pop(context, true);
       }
-
-      if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      print('[🧾 MENSAJES REPORTES FORM]❌ Error al guardar: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
@@ -293,9 +290,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
     final nombreOriginal =
         result.files.single.name; // e.g. "Cotización Ñ 2025.PDF"
-    final base = p.basenameWithoutExtension(
-      nombreOriginal,
-    ); // "Cotización Ñ 2025"
+    final base = p.basenameWithoutExtension(nombreOriginal);
     final safeBase = slugify(base.trim()); // "cotizacion_n_2025"
     final fileName = safeBase.isEmpty ? 'reporte' : safeBase;
 
@@ -324,7 +319,6 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
         .replaceAll(RegExp(r'[óòö]'), 'o')
         .replaceAll(RegExp(r'[úùü]'), 'u')
         .replaceAll(RegExp(r'ñ'), 'n')
-        // solo al "base", así que ya no toca el punto de la extensión
         .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
         .replaceAll(RegExp(r'_+'), '_')
         .replaceAll(RegExp(r'^_|_$'), '');

@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/home_screen.dart';
-import 'package:myafmzd/screens/login_screen.dart';
-import 'package:myafmzd/login/perfil_provider.dart';
+import 'package:myafmzd/screens/login/login_screen.dart';
+import 'package:myafmzd/screens/login/perfil_provider.dart';
 
 class InitialScreen extends ConsumerStatefulWidget {
   const InitialScreen({super.key});
@@ -25,7 +24,6 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
   Future<void> _verificarSesion() async {
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
-    final hayInternet = ref.read(connectivityProvider);
 
     if (user == null) {
       _redirigir(const LoginScreen());
@@ -36,12 +34,8 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
       // Supabase mantiene la sesión automáticamente si los tokens son válidos
       // Aquí cargamos el perfil desde Drift/Supabase
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
-      await ref
-          .read(distribuidoresProvider.notifier)
-          .cargar(hayInternet: hayInternet);
-      await ref
-          .read(perfilProvider.notifier)
-          .cargarUsuario(hayInternet: hayInternet);
+      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+      await ref.read(perfilProvider.notifier).cargarUsuario();
 
       final usuario = ref.read(perfilProvider);
       if (usuario == null) {
@@ -53,7 +47,7 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
 
       _redirigir(const HomeScreen());
     } catch (e) {
-      print('❌ Error al verificar usuario: $e');
+      print('[🏁 MENSAJES INITIAL SCREEN]❌ Error al verificar usuario: $e');
       await supabase.auth.signOut();
       _redirigir(const LoginScreen());
     }

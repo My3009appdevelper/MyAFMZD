@@ -29,6 +29,7 @@ class ReportesDao extends DatabaseAccessor<AppDatabase>
     await (update(reportes)..where((r) => r.uid.isIn(uids))).write(
       ReportesCompanion(
         deleted: const Value(true),
+        isSynced: const Value(false),
         updatedAt: Value(DateTime.now().toUtc()),
       ),
     );

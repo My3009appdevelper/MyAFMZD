@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_form_page.dart';
+import 'package:myafmzd/widgets/sheet_action.dart';
+import 'package:myafmzd/widgets/show_detail_dialog.dart';
 
 class ReporteItemTile extends ConsumerStatefulWidget {
   final ReportesDb reporte;
@@ -38,9 +40,6 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
 
     // 🔁 Si la ruta local cambió → recargar miniatura
     if (widget.reporte.rutaLocal != oldWidget.reporte.rutaLocal) {
-      print(
-        '[🧾 MENSAJES REPORTES TILE] 📌 Ruta local actualizada, recargando miniatura...',
-      );
       _cargarMiniatura();
     }
   }
@@ -48,20 +47,11 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
   /// 📌 Llama al provider para obtener/generar miniatura
   Future<void> _cargarMiniatura() async {
     final notifier = ref.read(reporteProvider.notifier);
-    print(
-      '[🧾 MENSAJES REPORTES TILE] Cargando miniatura: ${widget.reporte.nombre}',
-    );
+
     final bytes = await notifier.obtenerMiniatura(widget.reporte);
     if (bytes != null && mounted) {
-      print(
-        '[🧾 MENSAJES REPORTES TILE] ✅ Miniatura lista para: ${widget.reporte.uid}',
-      );
       setState(() => _thumbnail = bytes);
-    } else {
-      print(
-        '[🧾 MENSAJES REPORTES TILE] ⚠️ No se pudo generar miniatura: ${widget.reporte.uid}',
-      );
-    }
+    } else {}
   }
 
   @override
@@ -82,7 +72,7 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
 
     return ListTile(
       leading: _thumbnail != null
-          ? Image.memory(_thumbnail!, width: 50, fit: BoxFit.cover)
+          ? Image.memory(_thumbnail!, width: 50, fit: BoxFit.contain)
           : const SizedBox(
               width: 50,
               child: Center(child: Icon(Icons.picture_as_pdf)),
@@ -105,9 +95,6 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
                   onPressed: () async {
                     setState(() => _descargando = true);
 
-                    print(
-                      '[🧾 MENSAJES REPORTES TILE] Eliminando PDF: ${reporteActual.uid}',
-                    );
                     await notifier.eliminarPDF(reporteActual);
 
                     setState(() {
@@ -121,9 +108,6 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
                   onPressed: () async {
                     setState(() => _descargando = true);
 
-                    print(
-                      '[🧾 MENSAJES REPORTES TILE] Descargando PDF: ${reporteActual.uid}',
-                    );
                     final actualizado = await ref
                         .read(reporteProvider.notifier)
                         .descargarPDF(reporteActual);
@@ -150,66 +134,38 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
     );
   }
 
-  void _mostrarOpcionesReporte(BuildContext context, ReportesDb reporte) async {
-    await showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          runSpacing: 12,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Ver detalles'),
-              onTap: () {
-                Navigator.pop(context);
-                _mostrarDetalles(context, reporte);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Editar'),
-              onTap: () {
-                Navigator.pop(context);
-                _abrirFormularioEdicion(context, reporte);
-              },
-            ),
-          ],
+  Future<void> _mostrarOpcionesReporte(BuildContext context, ReportesDb r) {
+    return showActionSheet(
+      context,
+      title: 'Acciones',
+      actions: [
+        SheetAction(
+          icon: Icons.info_outline,
+          label: 'Ver detalles',
+          onTap: () => _mostrarDetalles(context, r),
         ),
-      ),
+        SheetAction(
+          icon: Icons.edit,
+          label: 'Editar',
+          onTap: () => _abrirFormularioEdicion(context, r),
+        ),
+      ],
     );
   }
 
   void _mostrarDetalles(BuildContext context, ReportesDb r) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Detalles de reporte'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('UID: ${r.uid}'),
-            Text('Nombre: ${r.nombre}'),
-            Text('Fecha: ${r.fecha.toIso8601String()}'),
-            Text('Tipo: ${r.tipo}'),
-            Text('Local: ${r.rutaLocal.isNotEmpty ? "Sí" : "No"}'),
-            Text('Synced: ${r.isSynced ? "Sí" : "No"}'),
-            Text('Actualizado: ${(r.updatedAt.toLocal().toString())}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
+    showDetailsDialog(
+      context,
+      title: 'Detalles de reporte',
+      fields: {
+        'UID': r.uid,
+        'Nombre': r.nombre,
+        'Fecha': r.fecha.toIso8601String(),
+        'Tipo': r.tipo,
+        'Local': r.rutaLocal.isNotEmpty ? 'Sí' : 'No',
+        'Synced': r.isSynced ? 'Sí' : 'No',
+        'Actualizado': r.updatedAt.toLocal().toString(),
+      },
     );
   }
 

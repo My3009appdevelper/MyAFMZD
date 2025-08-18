@@ -4,9 +4,9 @@ import 'package:myafmzd/database/app_database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DistribuidoresService {
-  final SupabaseClient _client;
+  final SupabaseClient supabase;
 
-  DistribuidoresService(AppDatabase db) : _client = Supabase.instance.client;
+  DistribuidoresService(AppDatabase db) : supabase = Supabase.instance.client;
 
   // ---------------------------------------------------------------------------
   // 📌 COMPROBAR ACTUALIZACIONES ONLINE
@@ -14,23 +14,25 @@ class DistribuidoresService {
 
   Future<DateTime?> comprobarActualizacionesOnline() async {
     try {
-      final response = await _client
+      final response = await supabase
           .from('distribuidores')
           .select('updated_at')
           .order('updated_at', ascending: false)
           .limit(1);
 
       if (response.isEmpty || response.first['updated_at'] == null) {
-        print('[📡 DISTRIBUIDORES SERVICE] ❌ No hay updated_at en Supabase');
+        print(
+          '[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ No hay updated_at en Supabase',
+        );
         return null;
       }
 
-      final ts = DateTime.parse(response.first['updated_at']);
-      print('[📡 DISTRIBUIDORES SERVICE] ⏱️ Última actualización online: $ts');
-      return ts;
+      final fecha = DateTime.parse(response.first['updated_at']);
+
+      return fecha;
     } catch (e) {
       print(
-        '[📡 DISTRIBUIDORES SERVICE] ❌ Error comprobando actualizaciones: $e',
+        '[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ Error comprobando actualizaciones: $e',
       );
       return null;
     }
@@ -40,46 +42,68 @@ class DistribuidoresService {
   // 📌 OBTENER TODOS ONLINE
   // ---------------------------------------------------------------------------
 
-  Future<List<DistribuidorDb>> obtenerFiltradosOnline({
-    DateTime? ultimaSync,
-  }) async {
+  Future<List<Map<String, dynamic>>> obtenerTodosOnline() async {
+    print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] 📥 Obteniendo TODOS online…');
     try {
-      print('[📡 DISTRIBUIDORES SERVICE] Descargando distribuidores online...');
-
-      var query = _client.from('distribuidores').select();
-
-      if (ultimaSync != null) {
-        query = query.gte('updated_at', ultimaSync.toUtc());
-        print('[📡 DISTRIBUIDORES SERVICE] Delta Sync desde $ultimaSync');
-      }
-
-      final data = await query;
-
-      final lista = (data as List)
-          .map(
-            (row) => DistribuidorDb(
-              uid: row['uid'],
-              nombre: row['nombre'] ?? '',
-              grupo: row['grupo'] ?? 'AFMZD',
-              direccion: row['direccion'] ?? '',
-              activo: row['activo'] ?? true,
-              latitud: (row['latitud'] ?? 0.0).toDouble(),
-              longitud: (row['longitud'] ?? 0.0).toDouble(),
-              updatedAt: DateTime.parse(row['updated_at']),
-              deleted: row['deleted'] ?? false,
-              isSynced: true,
-            ),
-          )
-          .toList();
-
-      print(
-        '[📡 DISTRIBUIDORES SERVICE] ✅ ${lista.length} distribuidores obtenidos',
-      );
-      return lista;
+      final res = await supabase.from('distribuidores').select();
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ✅ ${res.length} filas');
+      return res;
     } catch (e) {
-      print(
-        '[📡 DISTRIBUIDORES SERVICE] ❌ Error obteniendo distribuidores: $e',
-      );
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ Error obtener todos: $e');
+      rethrow;
+    }
+  }
+
+  /// 🔄 Obtener estrictamente los modificados DESPUÉS de `ultimaSync` (UTC)
+  Future<List<Map<String, dynamic>>> obtenerFiltradosOnline(
+    DateTime ultimaSync,
+  ) async {
+    print(
+      '[🏢 MENSAJES DISTRIBUIDORES SERVICE] 📥 Filtrando > $ultimaSync (UTC)',
+    );
+    try {
+      final res = await supabase
+          .from('distribuidores')
+          .select()
+          .gt('updated_at', ultimaSync.toUtc().toIso8601String());
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ✅ ${res.length} filtrados');
+      return res;
+    } catch (e) {
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ Error filtrados: $e');
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 📌 HEADS (uid, updated_at) → diff barato
+  // ---------------------------------------------------------------------------
+  Future<List<Map<String, dynamic>>> obtenerCabecerasOnline() async {
+    try {
+      final res = await supabase
+          .from('distribuidores')
+          .select('uid, updated_at');
+      return res;
+    } catch (e) {
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ Error en cabeceras: $e');
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 📌 FETCH selectivo por UIDs (lote)
+  // ---------------------------------------------------------------------------
+  Future<List<Map<String, dynamic>>> obtenerPorUidsOnline(
+    List<String> uids,
+  ) async {
+    if (uids.isEmpty) return [];
+    try {
+      final res = await supabase
+          .from('distribuidores')
+          .select()
+          .inFilter('uid', uids);
+      return res;
+    } catch (e) {
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ Error fetch por UIDs: $e');
       rethrow;
     }
   }
@@ -88,32 +112,21 @@ class DistribuidoresService {
   // 📌 CREAR / ACTUALIZAR / ELIMINAR ONLINE
   // ---------------------------------------------------------------------------
 
-  Future<void> upsertDistribuidorOnline(DistribuidorDb distribuidor) async {
+  Future<void> upsertDistribuidorOnline(Map<String, dynamic> data) async {
+    final uid = data['uid'];
+    print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ⬆️ Upsert online: $uid');
     try {
-      await _client.from('distribuidores').upsert({
-        'uid': distribuidor.uid,
-        'nombre': distribuidor.nombre,
-        'grupo': distribuidor.grupo,
-        'direccion': distribuidor.direccion,
-        'activo': distribuidor.activo,
-        'latitud': distribuidor.latitud,
-        'longitud': distribuidor.longitud,
-        'deleted': distribuidor.deleted,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      });
-
-      print(
-        '[⬆️ DISTRIBUIDORES SERVICE] Distribuidor ${distribuidor.uid} subido online',
-      );
+      await supabase.from('distribuidores').upsert(data);
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ✅ Upsert $uid OK');
     } catch (e) {
-      print('[⬆️ DISTRIBUIDORES SERVICE] ❌ Error subiendo distribuidor: $e');
+      print('[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ Error upsert $uid: $e');
       rethrow;
     }
   }
 
   Future<void> eliminarDistribuidorOnline(String uid) async {
     try {
-      await _client
+      await supabase
           .from('distribuidores')
           .update({
             'deleted': true,
@@ -122,10 +135,12 @@ class DistribuidoresService {
           .eq('uid', uid);
 
       print(
-        '[🗑️ DISTRIBUIDORES SERVICE] Distribuidor $uid marcado como eliminado online',
+        '[🏢 MENSAJES DISTRIBUIDORES SERVICE] Distribuidor $uid marcado como eliminado online',
       );
     } catch (e) {
-      print('[🗑️ DISTRIBUIDORES SERVICE] ❌ Error eliminando distribuidor: $e');
+      print(
+        '[🏢 MENSAJES DISTRIBUIDORES SERVICE] ❌ Error eliminando distribuidor: $e',
+      );
       rethrow;
     }
   }

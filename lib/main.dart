@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/login/initial_screen.dart';
+import 'package:myafmzd/screens/login/initial_screen.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';

@@ -14,11 +14,13 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   // ---------------------------------------------------------------------------
 
   /// Insertar o reemplazar un distribuidor. actualizarDistribuidor y obtenerPorId en Distribuidor Service
-  Future<void> upsertDistribuidorDrift(DistribuidorDb distribuidor) =>
+  Future<void> upsertDistribuidorDrift(DistribuidoresCompanion distribuidor) =>
       into(distribuidores).insertOnConflictUpdate(distribuidor);
 
   /// Insertar múltiples distribuidores.
-  Future<void> upsertDistribuidoresDrift(List<DistribuidorDb> lista) async {
+  Future<void> upsertDistribuidoresDrift(
+    List<DistribuidoresCompanion> lista,
+  ) async {
     await batch((batch) {
       batch.insertAllOnConflictUpdate(distribuidores, lista);
     });
@@ -48,6 +50,16 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   Future<List<DistribuidorDb>> obtenerTodosDrift() =>
       select(distribuidores).get();
 
+  /// Obtener NO eliminados, ordenados por nombre.
+  Future<List<DistribuidorDb>> obtenerTodosNoDeletedDrift() {
+    return (select(distribuidores)
+          ..where((d) => d.deleted.equals(false))
+          ..orderBy([
+            (d) => OrderingTerm(expression: d.nombre, mode: OrderingMode.asc),
+          ]))
+        .get();
+  }
+
   // ---------------------------------------------------------------------------
   // 📌 SINCRONIZACIÓN
   // ---------------------------------------------------------------------------
@@ -59,12 +71,12 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
     )..where((u) => u.isSynced.equals(false))).get();
   }
 
-  // Marcar distribuidores como sincronizados.
-  Future<void> marcarComoSincronizadoDrift(List<String> uids) async {
-    await (update(distribuidores)..where((u) => u.uid.isIn(uids))).write(
+  /// Marcar como sincronizados
+  Future<void> marcarComoSincronizadoDrift(String uid, DateTime fecha) async {
+    await (update(distribuidores)..where((r) => r.uid.equals(uid))).write(
       DistribuidoresCompanion(
         isSynced: const Value(true),
-        updatedAt: Value(DateTime.now().toUtc()),
+        updatedAt: const Value.absent(),
       ),
     );
   }
@@ -73,7 +85,13 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   Future<DateTime?> obtenerUltimaActualizacionDrift() async {
     final ultimo =
         await (select(distribuidores)
-              ..orderBy([(u) => OrderingTerm.desc(u.updatedAt)])
+              ..where((r) => r.isSynced.equals(true))
+              ..orderBy([
+                (r) => OrderingTerm(
+                  expression: r.updatedAt,
+                  mode: OrderingMode.desc,
+                ),
+              ])
               ..limit(1))
             .getSingleOrNull();
     return ultimo?.updatedAt;

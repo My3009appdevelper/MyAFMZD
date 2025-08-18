@@ -1,90 +1,203 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_service.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_sync.dart';
+import 'package:uuid/uuid.dart';
 
+/// Estado = lista completa (incluye eliminados si los cargas explícitamente)
 final distribuidoresProvider =
     StateNotifierProvider<DistribuidoresNotifier, List<DistribuidorDb>>((ref) {
       final db = ref.watch(appDatabaseProvider);
-      return DistribuidoresNotifier(db);
+      return DistribuidoresNotifier(ref, db);
     });
 
 class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
-  DistribuidoresNotifier(AppDatabase db)
+  DistribuidoresNotifier(this._ref, AppDatabase db)
     : _dao = DistribuidoresDao(db),
-      _service = DistribuidoresService(db),
+      _servicio = DistribuidoresService(db),
       _sync = DistribuidoresSync(db),
       super([]);
 
+  final Ref _ref;
   final DistribuidoresDao _dao;
-  final DistribuidoresService _service;
+  final DistribuidoresService _servicio;
   final DistribuidoresSync _sync;
 
-  // ---------------------------------------------------------------------------
-  // 📌 Cargar distribuidores (offline-first)
-  // ---------------------------------------------------------------------------
+  bool _hayInternet = true;
+  bool get hayInternet => _hayInternet;
 
-  Future<void> cargar({required bool hayInternet}) async {
+  // ---------------------------------------------------------------------------
+  // ✅ Cargar distribuidores (offline-first)
+  // ---------------------------------------------------------------------------
+  Future<void> cargarOfflineFirst() async {
     try {
-      // Pintar siempre la base local primero
+      _hayInternet = _ref.read(connectivityProvider);
+
+      // 1) Pintar siempre local primero
       final local = await _dao.obtenerTodosDrift();
       state = local;
       print(
-        '[📴 DISTRIBUIDORES PROVIDER] Local cargado -> ${local.length} distribuidores',
+        '[🏢 MENSAJES DISTRIBUIDORES PROVIDER] Local cargado -> ${local.length} distribuidores',
       );
 
-      // Si no hay internet → detenerse aquí
-      if (!hayInternet) {
-        print('[📴 DISTRIBUIDORES PROVIDER] Sin internet → usando solo local');
-        return;
-      }
-
-      // Comparar timestamps
-      final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
-      final remoto = await _service.comprobarActualizacionesOnline();
-
-      print(
-        '[⏱️ DISTRIBUIDORES PROVIDER] Remoto:$remoto | Local:$localTimestamp',
-      );
-
-      // Si Supabase está vacío → usar solo local
-      if (remoto == null) {
+      // 2) Sin internet → detener
+      if (!_hayInternet) {
         print(
-          '[📴 DISTRIBUIDORES PROVIDER] ⚠️ Supabase vacío → usar solo local',
+          '[🏢 MENSAJES DISTRIBUIDORES PROVIDER] Sin internet → usando solo local',
         );
         return;
       }
 
-      // Si no hay cambios → mantener local
-      if (localTimestamp != null) {
-        final diff = remoto.difference(localTimestamp).inSeconds.abs();
-        if (diff <= 1) {
-          print('[📴 DISTRIBUIDORES PROVIDER] ✅ Sin cambios → mantener local');
-          return;
-        }
-      }
+      // 3) (Opcional) comparar timestamps para logging/telemetría
+      final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
+      final remotoTimestamp = await _servicio.comprobarActualizacionesOnline();
+      print(
+        '[🏢 MENSAJES DISTRIBUIDORES PROVIDER] Remoto:$remotoTimestamp | Local:$localTimestamp',
+      );
 
-      // 7️⃣ Pull
-      await _sync.pullDistribuidoresOnline(ultimaSync: localTimestamp);
+      // 4) Pull (heads → diff → bulk)
+      await _sync.pullDistribuidoresOnline();
 
-      // 3️⃣ Subir cambios pendientes primero (push)
+      // 5) Push de cambios offline
       await _sync.pushDistribuidoresOffline();
 
-      // 8️⃣ Cargar datos actualizados desde Drift
+      // 6) Recargar desde Drift
       final actualizados = await _dao.obtenerTodosDrift();
       state = actualizados;
     } catch (e) {
-      print('[❌ DISTRIBUIDORES PROVIDER] Error al cargar distribuidores: $e');
+      print(
+        '[🏢 MENSAJES DISTRIBUIDORES PROVIDER] ❌ Error al cargar distribuidores: $e',
+      );
     }
   }
 
   // ---------------------------------------------------------------------------
-  // 📌 Utilidades
+  // ➕ Crear distribuidor (ONLINE upsert → local isSynced=true)
+  //    Simétrico a crearUsuario pero sin Auth.
   // ---------------------------------------------------------------------------
+  Future<DistribuidorDb?> crearDistribuidor({
+    required String nombre,
+    String grupo = 'AFMZD',
+    String direccion = '',
+    bool activo = true,
+    double latitud = 0.0,
+    double longitud = 0.0,
+  }) async {
+    final uid = const Uuid().v4();
 
-  /// ✅ Obtener distribuidor por UID (importante para pantallas de perfil)
+    try {
+      final now = DateTime.now().toUtc();
+
+      // 1) Upsert ONLINE (no toca Drift)
+      final row = <String, dynamic>{
+        'uid': uid,
+        'nombre': nombre,
+        'grupo': grupo,
+        'direccion': direccion,
+        'activo': activo,
+        'latitud': latitud,
+        'longitud': longitud,
+        'deleted': false,
+        'updated_at': now.toIso8601String(),
+      };
+      await _servicio.upsertDistribuidorOnline(row);
+
+      // 2) Upsert LOCAL (remoto ⇒ isSynced=true)
+      final comp = DistribuidoresCompanion(
+        uid: Value(uid),
+        nombre: Value(nombre),
+        grupo: Value(grupo),
+        direccion: Value(direccion),
+        activo: Value(activo),
+        latitud: Value(latitud),
+        longitud: Value(longitud),
+        deleted: const Value(false),
+        updatedAt: Value(now),
+        isSynced: const Value(true),
+      );
+      await _dao.upsertDistribuidoresDrift([comp]);
+
+      // 3) Refrescar estado
+      final actualizados = await _dao.obtenerTodosDrift();
+      state = actualizados;
+
+      // 4) Devolver el insertado
+      return actualizados.firstWhere(
+        (d) => d.uid == uid,
+        orElse: () => actualizados.last,
+      );
+    } catch (e) {
+      print(
+        '[🏢 MENSAJES DISTRIBUIDORES PROVIDER] ❌ Error al crear distribuidor: $e',
+      );
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ✏️ Editar distribuidor (LOCAL → isSynced=false; el push lo sube)
+  // ---------------------------------------------------------------------------
+  Future<void> editarDistribuidor({
+    required String uid,
+    required String nombre,
+    String? grupo,
+    String? direccion,
+    bool? activo,
+    double? latitud,
+    double? longitud,
+  }) async {
+    try {
+      final comp = DistribuidoresCompanion(
+        uid: Value(uid),
+        nombre: Value(nombre),
+        grupo: grupo == null ? const Value.absent() : Value(grupo),
+        direccion: direccion == null ? const Value.absent() : Value(direccion),
+        activo: activo == null ? const Value.absent() : Value(activo),
+        latitud: latitud == null ? const Value.absent() : Value(latitud),
+        longitud: longitud == null ? const Value.absent() : Value(longitud),
+        updatedAt: Value(DateTime.now().toUtc()),
+        deleted: const Value.absent(),
+        isSynced: const Value(false),
+      );
+
+      await _dao.upsertDistribuidorDrift(comp);
+
+      final actualizados = await _dao.obtenerTodosDrift();
+      state = actualizados;
+      print(
+        '[🏢 MENSAJES DISTRIBUIDORES PROVIDER] Distribuidor $uid editado localmente',
+      );
+    } catch (e) {
+      print(
+        '[🏢 MENSAJES DISTRIBUIDORES PROVIDER] ❌ Error al editar distribuidor: $e',
+      );
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🧪 Validación de duplicados
+  //    (Simétrico a usuarios: usamos nombre y/o dirección como llave "humana")
+  // ---------------------------------------------------------------------------
+  bool existeDuplicado({
+    required String uidActual,
+    required String nombre,
+    String? direccion,
+  }) {
+    final nom = nombre.trim().toLowerCase();
+    final dir = (direccion ?? '').trim().toLowerCase();
+    return state.any((d) {
+      if (d.uid == uidActual) return false;
+      final sameName = d.nombre.trim().toLowerCase() == nom;
+      final sameDir = dir.isNotEmpty && d.direccion.trim().toLowerCase() == dir;
+      return sameName || sameDir;
+    });
+  }
+
   DistribuidorDb? obtenerPorId(String id) {
     try {
       return state.firstWhere((d) => d.uid == id);

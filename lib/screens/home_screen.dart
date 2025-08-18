@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
-import 'package:myafmzd/login/perfil_provider.dart';
+import 'package:myafmzd/screens/login/perfil_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
-import 'package:myafmzd/screens/distribuidores_screen.dart';
+import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
 import 'package:myafmzd/screens/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
@@ -35,18 +35,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
 
     Future.microtask(() async {
-      final hayInternet = ref.read(connectivityProvider);
       await ref.read(reporteProvider.notifier).cargarOfflineFirst();
 
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
 
-      await ref
-          .read(distribuidoresProvider.notifier)
-          .cargar(hayInternet: hayInternet);
+      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
 
-      await ref
-          .read(perfilProvider.notifier)
-          .cargarUsuario(hayInternet: hayInternet);
+      await ref.read(perfilProvider.notifier).cargarUsuario();
     });
   }
 

@@ -30,15 +30,23 @@ class ReportesSync {
 
     for (final r in pendientes) {
       try {
-        // 1) Subir PDF a Storage si está disponible localmente
+        // 1) Subir PDF a Storage si está disponible localmente y si no se encuentra en Storage
         final hasLocalPdf =
             r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync();
+
         if (hasLocalPdf && r.rutaRemota.isNotEmpty) {
-          await _service.uploadPDFOnline(File(r.rutaLocal), r.rutaRemota);
-          print('[🧾 MENSAJES REPORTES SYNC] ☁️ PDF subido: ${r.rutaRemota}');
+          final yaExiste = await _service.exists(r.rutaRemota);
+          if (!yaExiste) {
+            await _service.uploadPDFOnline(File(r.rutaLocal), r.rutaRemota);
+            print('[🧾 MENSAJES REPORTES SYNC] ☁️ PDF subido: ${r.rutaRemota}');
+          } else {
+            print(
+              '[🧾 MENSAJES REPORTES SYNC] ⏭️ Remoto ya existe, no subo: ${r.rutaRemota}',
+            );
+          }
         } else {
           print(
-            '[🧾 MENSAJES REPORTES SYNC] ⚠️ Sin PDF local para ${r.uid} o rutaRemota vacía',
+            '[🧾 MENSAJES REPORTES SYNC] ⚠️ Sin PDF local o rutaRemota vacía para ${r.uid}',
           );
         }
 

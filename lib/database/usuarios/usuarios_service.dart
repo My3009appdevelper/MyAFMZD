@@ -28,9 +28,7 @@ class UsuarioService {
       }
 
       final fecha = DateTime.parse(response.first['updated_at']).toUtc();
-      print(
-        '[👤 MENSAJES USUARIOS SERVICE] ⏱️ Última actualización online: $fecha',
-      );
+
       return fecha;
     } catch (e) {
       print(

@@ -28,7 +28,9 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
   final UsuarioService _servicio;
   final UsuariosSync _sync;
 
-  /// ✅ Cargar usuarios (offline-first)
+  // ---------------------------------------------------------------------------
+  // ✅ Cargar distribuidores (offline-first)
+  // ---------------------------------------------------------------------------
   Future<void> cargarOfflineFirst() async {
     try {
       _hayInternet = _ref.read(connectivityProvider);
@@ -50,10 +52,10 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
 
       // Comparar timestamps local vs online
       final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
-      final remoto = await _servicio.comprobarActualizacionesOnline();
+      final remotoTimestamp = await _servicio.comprobarActualizacionesOnline();
 
       print(
-        '[👤 MENSAJES USUARIOS PROVIDER] Remoto:$remoto | Local:$localTimestamp',
+        '[👤 MENSAJES USUARIOS PROVIDER] Remoto:$remotoTimestamp | Local:$localTimestamp',
       );
 
       // Pull

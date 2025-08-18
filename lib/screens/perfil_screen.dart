@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
-import 'package:myafmzd/login/perfil_provider.dart';
+import 'package:myafmzd/screens/login/perfil_provider.dart';
 
 class PerfilScreen extends ConsumerStatefulWidget {
   const PerfilScreen({super.key});
@@ -194,15 +194,9 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     setState(() => _cargandoInicial = true);
     final inicio = DateTime.now();
 
-    final hayInternet = ref.read(connectivityProvider);
-
     await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
-    await ref
-        .read(distribuidoresProvider.notifier)
-        .cargar(hayInternet: hayInternet);
-    await ref
-        .read(perfilProvider.notifier)
-        .cargarUsuario(hayInternet: hayInternet);
+    await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+    await ref.read(perfilProvider.notifier).cargarUsuario();
     final usuario = ref.read(perfilProvider);
 
     final duracion = DateTime.now().difference(inicio);

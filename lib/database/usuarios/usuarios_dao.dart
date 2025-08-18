@@ -29,6 +29,8 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
     await (update(usuarios)..where((u) => u.uid.isIn(uids))).write(
       UsuariosCompanion(
         deleted: const Value(true),
+        isSynced: const Value(false),
+
         updatedAt: Value(DateTime.now().toUtc()),
         // isSynced lo dejamos como está; el Sync decidirá si marcar pendiente
       ),

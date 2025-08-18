@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_form_page.dart';
-import 'package:myafmzd/screens/reportes/visor_pdf.dart';
+import 'package:myafmzd/screens/reportes/reportes_visor_pdf.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_tile.dart';
 
 class ReportesScreen extends ConsumerStatefulWidget {
   const ReportesScreen({super.key});
-
   @override
   ConsumerState<ReportesScreen> createState() => _ReportesScreenState();
 }
@@ -28,13 +27,14 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final notifier = ref.watch(reporteProvider.notifier);
-    final filtrados = notifier.filtrados;
-    final grupos = notifier.agruparPorTipo(filtrados);
+    final reportesNotifier = ref.watch(reporteProvider.notifier);
+    final filtrados = reportesNotifier.filtrados;
+    final grupos = reportesNotifier.agruparPorTipo(filtrados);
     final tipos = grupos.keys.toList()..sort((a, b) => a.compareTo(b));
+    final totalMes = filtrados.length;
 
-    final mesesDisponibles = notifier.mesesDisponibles;
-    final mesSeleccionado = notifier.mesSeleccionado;
+    final mesesDisponibles = reportesNotifier.mesesDisponibles;
+    final mesSeleccionado = reportesNotifier.mesSeleccionado;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -47,8 +47,8 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     return Stack(
       children: [
         DefaultTabController(
+          key: ValueKey(tipos.join('|')),
           length: tipos.length,
-
           child: Scaffold(
             appBar: AppBar(
               title: Text(
@@ -69,7 +69,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                       unselectedLabelColor: colorScheme.secondary.withOpacity(
                         0.6,
                       ),
-                      tabs: tipos.map((t) => Tab(text: t)).toList(),
+                      tabs: tipos.map((t) {
+                        final count = (grupos[t] ?? const []).length;
+                        return Tab(text: '$t ($count)');
+                      }).toList(),
                     )
                   : null,
             ),
@@ -91,7 +94,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
             body: Column(
               children: [
                 if (mesesDisponibles.length > 1)
-                  _buildFiltroMes(mesesDisponibles, mesSeleccionado),
+                  _buildFiltroMes(mesesDisponibles, mesSeleccionado, totalMes),
 
                 Expanded(
                   child: _cargandoInicial
@@ -102,8 +105,13 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                             return RefreshIndicator(
                               onRefresh: _cargarReportes,
                               child: ListView.builder(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                padding: const EdgeInsets.all(8),
+                                physics: const BouncingScrollPhysics(
+                                  parent: AlwaysScrollableScrollPhysics(),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 24,
+                                ),
                                 itemCount: reportes.length,
                                 itemBuilder: (context, index) {
                                   final reporte = reportes[index];
@@ -118,7 +126,9 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                                         setState(() => _abriendoPdf = false);
                                       }
                                     },
-                                    onActualizado: () => setState(() {}),
+                                    onActualizado: () async {
+                                      await _cargarReportes(); // ← en vez de setState()
+                                    },
                                   );
                                 },
                               ),
@@ -163,7 +173,13 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     );
   }
 
-  Widget _buildFiltroMes(List<String> meses, String? seleccionado) {
+  Widget _buildFiltroMes(
+    List<String> meses,
+    String? seleccionado,
+    int totalMes,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Row(
@@ -182,6 +198,12 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
             items: meses
                 .map((mes) => DropdownMenuItem(value: mes, child: Text(mes)))
                 .toList(),
+          ),
+          const SizedBox(width: 12),
+          // 👇 Chip con el total del mes filtrado
+          Chip(
+            label: Text('Total: $totalMes'),
+            backgroundColor: colorScheme.surface,
           ),
           const SizedBox(width: 12),
           _buildAccionDescarga(),
@@ -236,7 +258,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   }
 
   Future<void> _cargarReportes() async {
-    print('[📄 MENSAJES REPORTES SCREEN] Iniciando carga de reportes...');
+    if (!mounted) return;
 
     setState(() => _cargandoInicial = true);
     final inicio = DateTime.now();
@@ -244,8 +266,8 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     final hayInternet = ref.read(connectivityProvider);
     await ref.read(reporteProvider.notifier).cargarOfflineFirst();
 
-    final duracion = DateTime.now().difference(inicio);
     const duracionMinima = Duration(milliseconds: 1500);
+    final duracion = DateTime.now().difference(inicio);
     if (duracion < duracionMinima) {
       await Future.delayed(duracionMinima - duracion);
     }
@@ -254,14 +276,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       setState(() => _cargandoInicial = false);
 
       if (!hayInternet) {
-        print(
-          '[📄 MENSAJES REPORTES SCREEN] 📴 Estás sin conexión. Solo reportes descargados disponibles.',
-        );
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              '[📄 MENSAJES REPORTES SCREEN] 📴 Estás sin conexión. Solo reportes descargados disponibles.',
+              '📴 Estás sin conexión. Solo reportes descargados disponibles.',
             ),
             duration: Duration(seconds: 3),
           ),
@@ -294,8 +312,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     }
 
     if (archivo != null && mounted) {
-      print('[📄 MENSAJES REPORTES SCREEN] ✅ PDF abierto: ${archivo.path}');
-
       await Navigator.push(
         context,
         MaterialPageRoute(

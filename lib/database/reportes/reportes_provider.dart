@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
@@ -9,8 +10,9 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_dao.dart';
 import 'package:myafmzd/database/reportes/reportes_service.dart';
 import 'package:myafmzd/database/reportes/reportes_sync.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:pdfx/pdfx.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:uuid/uuid.dart';
 
 // -----------------------------------------------------------------------------
@@ -76,6 +78,13 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
         return;
       }
 
+      // (Opcional) comparar timestamps para logging/telemetría
+      final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
+      final remotoTimestamp = await _service.comprobarActualizacionesOnline();
+      print(
+        '[🧾 MENSAJES REPORTES PROVIDER] Remoto:$remotoTimestamp | Local:$localTimestamp',
+      );
+
       // 3) Guardar snapshot previo para invalidar miniaturas si cambió la rutaRemota
       final anteriores = {for (final r in state) r.uid: r.rutaRemota};
 
@@ -110,115 +119,200 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
   }
 
   // ---------------------------------------------------------------------------
-  // Miniaturas (sin cambios funcionales, solo limpieza menor)
+  // Miniaturas con pdfrx (abrir por bytes, render, convertir a PNG y cerrar bien)
   // ---------------------------------------------------------------------------
-  Future<Uint8List?> obtenerMiniatura(ReportesDb reporte) async {
-    // 1) RAM
-    if (_miniaturaCache.containsKey(reporte.uid)) {
-      print('[🧾 MENSAJES REPORTES PROVIDER] ✅ Miniatura RAM: ${reporte.uid}');
-      return _miniaturaCache[reporte.uid];
-    }
+  Future<Uint8List?> obtenerMiniatura(ReportesDb r) async {
+    try {
+      // 1) RAM
+      final cached = _miniaturaCache[r.uid];
+      if (cached != null) {
+        print('[🧾 MENSAJES REPORTES PROVIDER] ✅ Miniatura RAM: ${r.uid}');
+        return cached;
+      }
 
-    // 2) Disco (persistente si hay rutaLocal, temporal si no)
-    final fileCache = await _miniaturaFile(
-      reporte.uid,
-      persistente: reporte.rutaLocal.isNotEmpty,
-    );
-    if (await fileCache.exists()) {
-      final bytes = await fileCache.readAsBytes();
-      _miniaturaCache[reporte.uid] = bytes;
-      print(
-        '[🧾 MENSAJES REPORTES PROVIDER] ✅ Miniatura disco: ${fileCache.path}',
+      // 2) Disco (cache de miniatura)
+      final thumbFile = await _miniaturaFile(
+        r.uid,
+        persistente: r.rutaLocal.isNotEmpty,
       );
-      return bytes;
-    }
+      if (await thumbFile.exists()) {
+        final bytes = await thumbFile.readAsBytes();
+        _miniaturaCache[r.uid] = bytes;
+        print(
+          '[🧾 MENSAJES REPORTES PROVIDER] ✅ Miniatura disco: ${thumbFile.path}',
+        );
+        return bytes;
+      }
 
-    File? file;
+      // 3) Fuente PDF: local si existe; si no, temporal online
+      File? pdfFile;
+      final tieneLocal =
+          r.rutaLocal.isNotEmpty && await File(r.rutaLocal).exists();
+      if (tieneLocal) {
+        pdfFile = File(r.rutaLocal);
+        print('[🧾 MENSAJES REPORTES PROVIDER] Miniatura desde local');
+      } else if (_hayInternet) {
+        pdfFile = await descargarTemporal(r); // /tmp
+      }
 
-    // 3) PDF local
-    if (reporte.rutaLocal.isNotEmpty &&
-        await File(reporte.rutaLocal).exists()) {
-      file = File(reporte.rutaLocal);
-      print('[🧾 MENSAJES REPORTES PROVIDER] Generando miniatura desde local');
-    }
-    // 4) PDF online temporal (solo con internet)
-    else if (_hayInternet) {
-      file = await descargarTemporal(reporte);
-    }
+      if (pdfFile == null) {
+        print(
+          '[🧾 MENSAJES REPORTES PROVIDER] ❌ Sin archivo PDF para miniatura',
+        );
+        return null;
+      }
 
-    if (file == null) {
-      print('[🧾 MENSAJES REPORTES PROVIDER] ❌ No hay archivo para miniatura');
+      // 4) Abrir por bytes con pdfrx → evita locks en desktop
+      final pdfBytes = await pdfFile.readAsBytes();
+      PdfDocument? doc;
+      try {
+        doc = await PdfDocument.openData(
+          pdfBytes,
+          sourceName: r.nombre, // útil para logs/depuración
+        );
+
+        if (doc.pages.isEmpty) {
+          print('[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Documento sin páginas');
+          return null;
+        }
+
+        final page = doc.pages.first; // primera página
+        // Mejor pasar solo width para mantener proporción (pdfrx escala solo)
+        final pdfImg = await page.render();
+        if (pdfImg == null) {
+          print('[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Render nulo de miniatura');
+          return null;
+        }
+
+        // 5) PdfImage -> ui.Image -> PNG bytes
+        Uint8List? pngBytes;
+        ui.Image? uiImg;
+        try {
+          uiImg = await pdfImg.createImage();
+          final byteData = await uiImg.toByteData(
+            format: ui.ImageByteFormat.png,
+          );
+          pngBytes = byteData?.buffer.asUint8List();
+        } finally {
+          // Liberar recursos gráficos (si tu versión lo soporta)
+          try {
+            uiImg?.dispose();
+          } catch (_) {}
+          pdfImg.dispose(); // pdfrx: liberar el buffer de píxeles
+        }
+
+        if (pngBytes == null) {
+          print('[🧾 MENSAJES REPORTES PROVIDER] ⚠️ No se pudo codificar PNG');
+          return null;
+        }
+
+        // 6) Cache en RAM + disco
+        _miniaturaCache[r.uid] = pngBytes;
+        try {
+          await thumbFile.writeAsBytes(pngBytes);
+          print(
+            '[🧾 MENSAJES REPORTES PROVIDER] 💾 Miniatura guardada: ${thumbFile.path}',
+          );
+        } catch (e) {
+          print(
+            '[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Error guardando miniatura: $e',
+          );
+        }
+
+        return pngBytes;
+      } catch (e, st) {
+        print(
+          '[🧾 MENSAJES REPORTES PROVIDER] ❌ Error generando miniatura: $e\n$st',
+        );
+        return null;
+      } finally {
+        // 7) Cerrar documento y limpiar archivo temporal si aplica
+        try {
+          await doc?.dispose(); // pdfrx: cerrar documento
+        } catch (e) {
+          print('[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Error al cerrar doc: $e');
+        }
+        if (!tieneLocal) {
+          try {
+            await pdfFile.delete();
+            print(
+              '[🧾 MENSAJES REPORTES PROVIDER] 🗑️ Temporal PDF borrado: ${pdfFile.path}',
+            );
+          } catch (e) {
+            print(
+              '[🧾 MENSAJES REPORTES PROVIDER] ⚠️ No pude borrar temporal: $e',
+            );
+          }
+        }
+      }
+    } catch (e, st) {
+      print(
+        '[🧾 MENSAJES REPORTES PROVIDER] ❌ Excepción inesperada en obtenerMiniatura: $e\n$st',
+      );
       return null;
     }
-
-    final doc = await PdfDocument.openFile(file.path);
-    final page = await doc.getPage(1);
-    final image = await page.render(width: 110, height: 80);
-    await page.close();
-
-    if (image == null) {
-      print('[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Render nulo de miniatura');
-      return null;
-    }
-
-    _miniaturaCache[reporte.uid] = image.bytes;
-
-    // 5) Guardar en disco
-    final outFile = await _miniaturaFile(
-      reporte.uid,
-      persistente: reporte.rutaLocal.isNotEmpty,
-    );
-    await outFile.writeAsBytes(image.bytes);
-    print(
-      '[🧾 MENSAJES REPORTES PROVIDER] 💾 Miniatura guardada: ${outFile.path}',
-    );
-
-    return image.bytes;
   }
 
   Future<void> invalidarMiniatura(String uid) async {
     print('[🧾 MENSAJES REPORTES PROVIDER] Invalidando miniatura: $uid');
     _miniaturaCache.remove(uid);
 
-    final filePersistente = await _miniaturaFile(uid, persistente: true);
-    final fileTemporal = await _miniaturaFile(uid, persistente: false);
+    try {
+      final filePersistente = await _miniaturaFile(uid, persistente: true);
+      final fileTemporal = await _miniaturaFile(uid, persistente: false);
 
-    for (final file in [filePersistente, fileTemporal]) {
-      if (await file.exists()) {
-        await file.delete();
-        print('[🧾 MENSAJES REPORTES PROVIDER] 🗑️ Eliminada: ${file.path}');
+      for (final file in [filePersistente, fileTemporal]) {
+        if (await file.exists()) {
+          await file.delete();
+          print('[🧾 MENSAJES REPORTES PROVIDER] 🗑️ Eliminada: ${file.path}');
+        }
       }
+    } catch (e, st) {
+      print(
+        '[🧾 MENSAJES REPORTES PROVIDER] ❌ Error invalidando miniatura $uid: $e\n$st',
+      );
     }
   }
 
   Future<File> _miniaturaFile(String uid, {required bool persistente}) async {
-    final dir = persistente
-        ? await getApplicationDocumentsDirectory()
-        : await getTemporaryDirectory();
-    return File('${dir.path}/miniatura_$uid.png');
+    final cacheDir = await getTemporaryDirectory();
+    return File('${cacheDir.path}/miniatura_$uid.png');
   }
 
   Future<File?> descargarTemporal(ReportesDb reporte) async {
-    print(
-      '[🧾 MENSAJES REPORTES PROVIDER] Descarga temporal: ${reporte.nombre}',
-    );
-    final dir = await getTemporaryDirectory();
-    final tempPath = '${dir.path}/${reporte.uid}.pdf';
-    final tempFile = File(tempPath);
+    try {
+      print(
+        '[🧾 MENSAJES REPORTES PROVIDER] Descarga temporal: ${reporte.nombre}',
+      );
+      final dir = await getTemporaryDirectory();
+      final tempPath = '${dir.path}/${reporte.uid}.pdf';
+      final tempFile = File(tempPath);
 
-    if (await tempFile.exists()) {
-      print('[🧾 MENSAJES REPORTES PROVIDER] Temporal ya existe: $tempPath');
+      if (await tempFile.exists()) {
+        print('[🧾 MENSAJES REPORTES PROVIDER] Temporal ya existe: $tempPath');
+        return tempFile;
+      }
+
+      final file = await _service.descargarPDFOnline(
+        reporte.rutaRemota,
+        temporal: true,
+      );
+      if (file == null) {
+        print('[🧾 MENSAJES REPORTES PROVIDER] ❌ Falló descarga online');
+        return null;
+      }
+
+      await file.copy(tempFile.path);
+      print(
+        '[🧾 MENSAJES REPORTES PROVIDER] Temporal guardado: ${tempFile.path}',
+      );
       return tempFile;
+    } catch (e, st) {
+      print(
+        '[🧾 MENSAJES REPORTES PROVIDER] ❌ Error en descargarTemporal: $e\n$st',
+      );
+      return null;
     }
-
-    final file = await _service.descargarPDFOnline(reporte.rutaRemota);
-    if (file == null) return null;
-
-    await file.copy(tempFile.path);
-    print(
-      '[🧾 MENSAJES REPORTES PROVIDER] Temporal guardado: ${tempFile.path}',
-    );
-    return tempFile;
   }
 
   // ---------------------------------------------------------------------------
@@ -322,20 +416,28 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
     );
     if (reporte.rutaLocal.isNotEmpty) {
       final file = File(reporte.rutaLocal);
-      if (await file.exists()) {
-        await file.delete();
+      try {
+        if (await file.exists()) {
+          await file.delete();
+          print(
+            '[🧾 MENSAJES REPORTES PROVIDER] Borrado local: ${reporte.rutaRemota}',
+          );
+        }
+      } catch (e) {
         print(
-          '[🧾 MENSAJES REPORTES PROVIDER] Borrado local: ${reporte.rutaRemota}',
+          '[🧾 MENSAJES REPORTES PROVIDER] ⚠️ Error borrando archivo local: $e',
         );
       }
     }
+
+    // Limpia la miniatura asociada (RAM + disco)
+    await invalidarMiniatura(reporte.uid);
 
     await _dao.upsertReporteDrift(
       ReportesCompanion(uid: Value(reporte.uid), rutaLocal: const Value('')),
     );
 
-    final actualizados = await _dao.obtenerTodosDrift();
-    state = actualizados;
+    state = await _dao.obtenerTodosDrift();
   }
 
   Future<int> eliminarTodos(List<ReportesDb> lista) async {
@@ -424,9 +526,13 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
   }) async {
     try {
       // 1) Copiar local
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await getApplicationSupportDirectory();
+      final reportsDir = Directory(p.join(dir.path, 'reports'));
+      if (!await reportsDir.exists()) {
+        await reportsDir.create(recursive: true);
+      }
       final safeName = nuevoPath.replaceAll('/', '_');
-      final destino = File('${dir.path}/$safeName');
+      final destino = File(p.join(reportsDir.path, safeName));
       await archivo.copy(destino.path);
 
       // 2) Actualizar local (no sync aún)
