@@ -104,6 +104,13 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
       return arr;
     })();
 
+    // Lista completa (gatilla rebuild si cambia el estado)
+    final todos = ref.watch(distribuidoresProvider);
+
+    // Conteos base
+    final totalGeneral = todos.length;
+    final mostrados = filtrados.length;
+
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -188,6 +195,30 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                     ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                      ),
+                      child: Text(
+                        'Mostrados: $mostrados / $totalGeneral',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
                 hayInternet
                     ? SizedBox(
                         height: 250,

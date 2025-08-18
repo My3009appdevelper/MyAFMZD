@@ -101,7 +101,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                     onChanged: (value) {
                       if (value != null) _grupoController.text = value;
                     },
-                    compareFn: (a, b) => a.toLowerCase == b.toLowerCase,
+                    compareFn: (a, b) => a.toLowerCase() == b.toLowerCase(),
                     popupProps: const PopupProps.menu(
                       showSearchBox: true,
                       searchFieldProps: TextFieldProps(
