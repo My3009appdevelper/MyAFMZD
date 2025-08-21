@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/screens/login/perfil_provider.dart';
+import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
 

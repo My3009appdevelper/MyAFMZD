@@ -5,7 +5,7 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/screens/home_screen.dart';
 import 'package:myafmzd/screens/login/login_screen.dart';
-import 'package:myafmzd/screens/login/perfil_provider.dart';
+import 'package:myafmzd/database/perfil/perfil_provider.dart';
 
 class InitialScreen extends ConsumerStatefulWidget {
   const InitialScreen({super.key});

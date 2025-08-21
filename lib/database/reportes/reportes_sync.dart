@@ -23,6 +23,7 @@ class ReportesSync {
   Future<void> pushReportesOffline() async {
     print('[🧾 MENSAJES REPORTES SYNC] ⬆️ PUSH: buscando pendientes...');
     final pendientes = await _dao.obtenerPendientesSyncDrift();
+
     if (pendientes.isEmpty) {
       print('[🧾 MENSAJES REPORTES SYNC] ✅ No hay pendientes de subida');
       return;
@@ -35,7 +36,7 @@ class ReportesSync {
             r.rutaLocal.isNotEmpty && File(r.rutaLocal).existsSync();
 
         if (hasLocalPdf && r.rutaRemota.isNotEmpty) {
-          final yaExiste = await _service.exists(r.rutaRemota);
+          final yaExiste = await _service.existsReporte(r.rutaRemota);
           if (!yaExiste) {
             await _service.uploadPDFOnline(File(r.rutaLocal), r.rutaRemota);
             print('[🧾 MENSAJES REPORTES SYNC] ☁️ PDF subido: ${r.rutaRemota}');
@@ -124,8 +125,7 @@ class ReportesSync {
         '[🧾 MENSAJES REPORTES SYNC] 🔽 Bajando ${toFetch.length} por diff',
       );
 
-      // 5) Fetch selectivo
-      //    (trocea si esperas listas muy grandes)
+      // 5) Fetch selectivo por UIDs (trocea si esperas muchos)
       final remotos = await _service.obtenerPorUidsOnline(toFetch);
       if (remotos.isEmpty) {
         print('[🧾 MENSAJES REPORTES SYNC] ℹ️ Fetch selectivo devolvió 0');

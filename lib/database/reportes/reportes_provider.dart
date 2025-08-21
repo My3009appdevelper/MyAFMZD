@@ -16,7 +16,7 @@ import 'package:pdfrx/pdfrx.dart';
 import 'package:uuid/uuid.dart';
 
 // -----------------------------------------------------------------------------
-// Provider global (igual que Productos: pasamos ref y db)
+// Provider global
 // -----------------------------------------------------------------------------
 final reporteProvider =
     StateNotifierProvider<ReporteNotifier, List<ReportesDb>>((ref) {
@@ -460,7 +460,7 @@ class ReporteNotifier extends StateNotifier<List<ReportesDb>> {
   }
 
   // ---------------------------------------------------------------------------
-  // Crear / Editar (paridad con Productos; companions + flags de sync)
+  // Crear / Editar
   // ---------------------------------------------------------------------------
   Future<ReportesDb> crearReporteLocal({
     required String nombre,

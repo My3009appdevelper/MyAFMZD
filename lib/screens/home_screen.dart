@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
-import 'package:myafmzd/screens/login/perfil_provider.dart';
+import 'package:myafmzd/database/modelos/modelos_provider.dart';
+import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
+import 'package:myafmzd/screens/modelos/modelos_screen.dart';
 import 'package:myafmzd/screens/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
@@ -26,6 +28,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     UsuariosScreen(),
     ReportesScreen(),
     DistribuidoresScreen(),
+    ModelosScreen(),
 
     // Agrega aquí más pantallas si tienes
   ];
@@ -42,6 +45,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
 
       await ref.read(perfilProvider.notifier).cargarUsuario();
+
+      await ref.read(modelosProvider.notifier).cargarOfflineFirst();
     });
   }
 
@@ -116,6 +121,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             backgroundColor: colorScheme.primary,
             icon: Icon(Icons.location_on),
             label: 'Distribuidores',
+          ),
+          BottomNavigationBarItem(
+            backgroundColor: colorScheme.primary,
+            icon: Icon(Icons.directions_car),
+            label: 'Modelos',
           ),
           // Más items si es necesario
         ],

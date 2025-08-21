@@ -8,11 +8,9 @@ import 'package:path_provider/path_provider.dart';
 
 class ReportesService {
   final SupabaseClient supabase;
+  static const _bucket = 'reportes-pdf';
 
   ReportesService(AppDatabase db) : supabase = Supabase.instance.client;
-
-  static const _bucket =
-      'reportes-pdf'; // 🔑 Ajusta el nombre de tu bucket en Supabase
 
   // ---------------------------------------------------------------------------
   // 📌 COMPROBAR ACTUALIZACIONES ONLINE
@@ -31,9 +29,7 @@ class ReportesService {
         return null;
       }
 
-      final fecha = DateTime.parse(response.first['updated_at']).toUtc();
-
-      return fecha;
+      return DateTime.parse(response.first['updated_at']).toUtc();
     } catch (e) {
       print(
         '[🧾 MENSAJES REPORTES SERVICE] ❌ Error comprobando actualizaciones: $e',
@@ -87,8 +83,10 @@ class ReportesService {
   /// 1) Heads: solo `uid` y `updated_at` (barato para diff).
   Future<List<Map<String, dynamic>>> obtenerCabecerasOnline() async {
     try {
-      final res = await supabase.from('reportes').select('uid, updated_at');
-      return res;
+      final response = await supabase
+          .from('reportes')
+          .select('uid, updated_at');
+      return response;
     } catch (e) {
       print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error en cabezeras: $e');
       rethrow;
@@ -101,11 +99,11 @@ class ReportesService {
   ) async {
     if (uids.isEmpty) return [];
     try {
-      final res = await supabase
+      final response = await supabase
           .from('reportes')
           .select()
           .inFilter('uid', uids);
-      return res;
+      return response;
     } catch (e) {
       print('[🧾 MENSAJES REPORTES SERVICE] ❌ Error fetch por UIDs: $e');
       rethrow;
@@ -199,14 +197,12 @@ class ReportesService {
   // ---------------------------------------------------------------------------
 
   // Nos aseguramos de que no exista
-  Future<bool> exists(String remotePath) async {
+  Future<bool> existsReporte(String remotePath) async {
     final dir = p.dirname(remotePath); // e.g. "reportes/2025-02"
     final fileName = p.basename(remotePath); // e.g. "archivo.pdf"
-
     final items = await supabase.storage
         .from(_bucket)
         .list(path: dir); // sin 'search' en Dart
-
     return items.any((it) => it.name == fileName);
   }
 
@@ -223,8 +219,9 @@ class ReportesService {
             remotePath,
             file,
             fileOptions: FileOptions(
-              upsert: overwrite, // si quieres sobreescribir explícitamente
-              contentType: 'application/pdf',
+              upsert: overwrite,
+              contentType:
+                  'application/pdf', // si quieres sobreescribir explícitamente
             ),
           );
     } on StorageException catch (e) {

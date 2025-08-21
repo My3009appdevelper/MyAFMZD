@@ -5,7 +5,7 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:myafmzd/screens/login/perfil_provider.dart';
+import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:myafmzd/screens/home_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {

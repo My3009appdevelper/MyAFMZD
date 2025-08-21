@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_form_page.dart';
-import 'package:myafmzd/screens/reportes/reportes_visor_pdf.dart';
+import 'package:myafmzd/widgets/visor_pdf.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_tile.dart';
 

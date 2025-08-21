@@ -66,7 +66,7 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
           orElse: () => widget.reporte,
         );
 
-    final existeLocal =
+    final existePDFLocal =
         reporteActual.rutaLocal.isNotEmpty &&
         File(reporteActual.rutaLocal).existsSync();
 
@@ -88,7 +88,7 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : existeLocal
+              : existePDFLocal
               ? IconButton(
                   icon: const Icon(Icons.delete_outline),
                   tooltip: 'Eliminar este reporte',
@@ -178,7 +178,7 @@ class _ReporteItemTileState extends ConsumerState<ReporteItemTile> {
     );
 
     if (resultado == true && widget.onActualizado != null) {
-      widget.onActualizado!(); // para actualizar miniatura o estado
+      widget.onActualizado!();
     }
   }
 }

@@ -262,16 +262,15 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
         _fecha = nuevaFecha;
 
         if (_archivoPDFSeleccionado != null) {
-          final nombreOriginal = _archivoPDFSeleccionado!.path
-              .split(Platform.pathSeparator)
-              .last;
-          final nombreSanitizado = nombreOriginal.trim().replaceAll(' ', '_');
-          final nombreArchivo = nombreSanitizado.replaceAll('.PDF', '.pdf');
+          final base = p.basenameWithoutExtension(
+            _archivoPDFSeleccionado!.path,
+          );
+          final fileName =
+              '${slugify(base.trim().isEmpty ? "reporte" : base.trim())}.pdf';
 
           final mes =
               '${nuevaFecha.year.toString().padLeft(4, '0')}-${nuevaFecha.month.toString().padLeft(2, '0')}';
-          final rutaRemota = 'reportes/$mes/$nombreArchivo';
-
+          final rutaRemota = 'reportes/$mes/$fileName';
           _rutaRemotaController.text = rutaRemota;
         }
       });
