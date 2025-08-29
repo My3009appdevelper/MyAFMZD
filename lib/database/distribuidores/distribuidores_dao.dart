@@ -21,6 +21,7 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsertDistribuidoresDrift(
     List<DistribuidoresCompanion> lista,
   ) async {
+    if (lista.isEmpty) return;
     await batch((batch) {
       batch.insertAllOnConflictUpdate(distribuidores, lista);
     });
@@ -28,6 +29,7 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
 
   // Soft delete: marcar distribuidores como eliminados.
   Future<void> marcarComoEliminadosDrift(List<String> uids) async {
+    if (uids.isEmpty) return;
     await (update(distribuidores)..where((u) => u.uid.isIn(uids))).write(
       DistribuidoresCompanion(
         deleted: const Value(true),
@@ -72,7 +74,7 @@ class DistribuidoresDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Marcar como sincronizados
-  Future<void> marcarComoSincronizadoDrift(String uid, DateTime fecha) async {
+  Future<void> marcarComoSincronizadoDrift(String uid) async {
     await (update(distribuidores)..where((r) => r.uid.equals(uid))).write(
       DistribuidoresCompanion(
         isSynced: const Value(true),

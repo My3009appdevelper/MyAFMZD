@@ -49,24 +49,33 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
   ];
   static const List<String> _defaultTransmisiones = ['Automática', 'Manual'];
   static const List<String> _defaultDescripciones = [
-    'i Sport',
-    'Touring',
+    '2WD',
+    'Sport',
+    'Sport TM',
+    'Sport TA',
+    'Sport 2WD',
     'Grand Touring',
+    'Grand Touring TM',
+    'Grand Touring TA',
+    'Grand Touring 2WD',
     'Signature',
+    'Signature TM',
+    'Signature TA',
+    'Signature AWD',
+    'Signature 2WD',
+    'Signature 4X4',
     'Carbon Edition',
-    'Turbo',
-    'Base',
   ];
   // Muy comunes de Mazda, para primer uso sin datos:
   static const List<String> _defaultModelosMazda = [
     'Mazda 2',
     'Mazda 3',
-    'Mazda 6',
     'CX-3',
     'CX-30',
     'CX-5',
     'CX-50',
-    'CX-9',
+    'CX-70',
+    'CX-90',
     'MX-5',
     'BT-50',
   ];
@@ -256,7 +265,7 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
         activo: Value(actualizado.activo),
         precioBase: Value(actualizado.precioBase),
         fichaRutaRemota: Value(actualizado.fichaRutaRemota),
-        fichaRutaLocal: Value(actualizado.fichaRutaLocal),
+        fichaRutaLocal: const Value.absent(),
         createdAt: const Value.absent(),
         updatedAt: Value(DateTime.now().toUtc()),
         deleted: Value(actualizado.deleted),
@@ -347,7 +356,30 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
     required String nuevoPath,
   }) async {
     try {
-      // 1) Copiar a almacenamiento de la app
+      // 🔍 0) Checar si ya existe en Supabase ANTES de copiar local
+      final yaExisteRemoto = await _servicio.existsFicha(nuevoPath);
+      if (yaExisteRemoto) {
+        print(
+          '[🚗 MENSAJES MODELOS PROVIDER] ⏭️ Remoto ya existe, NO copio local: $nuevoPath',
+        );
+
+        // Solo si cambió el path remoto, sincroniza metadata
+        if (modelo.fichaRutaRemota != nuevoPath) {
+          await _dao.actualizarParcialPorUid(
+            modelo.uid,
+            ModelosCompanion(
+              fichaRutaRemota: Value(nuevoPath),
+              fichaRutaLocal: const Value(''),
+              updatedAt: Value(DateTime.now().toUtc()),
+              isSynced: const Value(false), // empuja solo metadata
+            ),
+          );
+          state = await _dao.obtenerTodosDrift();
+        }
+        return;
+      }
+
+      // 1) Copiar a almacenamiento de la app (SOLO si no existe en remoto)
       final dir = await getApplicationSupportDirectory();
       final fichasDir = Directory(p.join(dir.path, 'fichas'));
       if (!await fichasDir.exists()) {
@@ -357,7 +389,7 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
       final destino = File(p.join(fichasDir.path, safeName));
       await archivo.copy(destino.path);
 
-      // 2) Actualizar local (no sync aún)
+      // 2) Actualizar local (marcamos para sync)
       await _dao.actualizarParcialPorUid(
         modelo.uid,
         ModelosCompanion(
@@ -368,7 +400,6 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
         ),
       );
 
-      // Refrescar
       state = await _dao.obtenerTodosDrift();
 
       // 3) Intentar sync si hay internet
@@ -391,16 +422,21 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
   bool existeDuplicado({
     required String uidActual,
     required String claveCatalogo,
-    required String modelo,
     required int anio,
+    bool incluirEliminados = false,
   }) {
     final cat = claveCatalogo.trim().toLowerCase();
-    final mod = modelo.trim().toLowerCase();
+    if (cat.isEmpty)
+      return false; // si el formulario ya lo exige, esto casi nunca ocurrirá
+
     return state.any((m) {
-      if (m.uid == uidActual) return false;
-      final catOk = m.claveCatalogo.trim().toLowerCase() == cat;
-      final modOk = m.modelo.trim().toLowerCase() == mod && m.anio == anio;
-      return catOk || modOk;
+      if (m.uid == uidActual) return false; // ignorar yo mismo
+      if (!incluirEliminados && m.deleted) return false; // ignorar soft-deleted
+
+      final sameYear = m.anio == anio;
+      final sameCat = m.claveCatalogo.trim().toLowerCase() == cat;
+
+      return sameYear && sameCat; // ← ÚNICO por (anio, clave)
     });
   }
 

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
+import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/screens/colaboradores/colaboradores_screen.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
 import 'package:myafmzd/screens/modelos/modelos_screen.dart';
 import 'package:myafmzd/screens/perfil_screen.dart';
@@ -29,7 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ReportesScreen(),
     DistribuidoresScreen(),
     ModelosScreen(),
-
+    ColaboradoresScreen(),
     // Agrega aquí más pantallas si tienes
   ];
 
@@ -47,6 +51,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(perfilProvider.notifier).cargarUsuario();
 
       await ref.read(modelosProvider.notifier).cargarOfflineFirst();
+
+      await ref.read(modeloImagenesProvider.notifier).cargarOfflineFirst();
+
+      await ref.read(productosProvider.notifier).cargarOfflineFirst();
+
+      await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
     });
   }
 
@@ -107,27 +117,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: Icon(Icons.person),
             label: 'Perfil',
           ),
+
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
             icon: Icon(Icons.person),
             label: 'Usuarios',
           ),
+
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
             icon: Icon(Icons.picture_as_pdf),
             label: 'Reportes',
           ),
+
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
             icon: Icon(Icons.location_on),
             label: 'Distribuidores',
           ),
+
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
             icon: Icon(Icons.directions_car),
             label: 'Modelos',
           ),
-          // Más items si es necesario
+
+          BottomNavigationBarItem(
+            backgroundColor: colorScheme.primary,
+            icon: Icon(Icons.group),
+            label: 'Colaboradores',
+          ),
         ],
       ),
     );

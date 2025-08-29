@@ -22,13 +22,13 @@ class ModeloImagenesSync {
   // ---------------------------------------------------------------------------
   Future<void> pushModeloImagenesOffline() async {
     print(
-      '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ⬆️ PUSH: buscando pendientes...',
+      '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ⬆️ PUSH: buscando pendientes...',
     );
     final pendientes = await _dao.obtenerPendientesSyncDrift();
 
     if (pendientes.isEmpty) {
       print(
-        '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ✅ No hay pendientes de subida',
+        '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ✅ No hay pendientes de subida',
       );
       return;
     }
@@ -47,16 +47,16 @@ class ModeloImagenesSync {
               img.rutaRemota,
             );
             print(
-              '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ☁️ Imagen subida: ${img.rutaRemota}',
+              '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ☁️ Imagen subida: ${img.rutaRemota}',
             );
           } else {
             print(
-              '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ⏭️ Remoto ya existe, no subo: ${img.rutaRemota}',
+              '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ⏭️ Remoto ya existe, no subo: ${img.rutaRemota}',
             );
           }
         } else {
           print(
-            '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ⚠️ Sin imagen local o rutaRemota vacía para ${img.uid}',
+            '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ⚠️ Sin imagen local o rutaRemota vacía para ${img.uid}',
           );
         }
 
@@ -66,10 +66,12 @@ class ModeloImagenesSync {
 
         // 3) Marcar local como sincronizada
         await _dao.marcarComoSincronizadoDrift(img.uid);
-        print('[🖼️ MENSAJES MODELO_IMAGENES SYNC] ✅ Sincronizada: ${img.uid}');
+        print(
+          '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ✅ Sincronizada: ${img.uid}',
+        );
       } catch (e) {
         print(
-          '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ❌ Error subiendo ${img.uid}: $e',
+          '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ❌ Error subiendo ${img.uid}: $e',
         );
       }
     }
@@ -84,12 +86,12 @@ class ModeloImagenesSync {
   //   - (No descarga imágenes aquí; solo metadata)
   // ---------------------------------------------------------------------------
   Future<void> pullModeloImagenesOnline() async {
-    print('[🖼️ MENSAJES MODELO_IMAGENES SYNC] 📥 PULL: heads→diff→bulk');
+    print('[🚗👀 MENSAJES MODELO_IMAGENES SYNC] 📥 PULL: heads→diff→bulk');
     try {
       // 1) Heads remotos
       final heads = await _service.obtenerCabecerasOnline();
       if (heads.isEmpty) {
-        print('[🖼️ MENSAJES MODELO_IMAGENES SYNC] ℹ️ Sin filas remotas');
+        print('[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ℹ️ Sin filas remotas');
         return;
       }
 
@@ -129,19 +131,19 @@ class ModeloImagenesSync {
 
       if (toFetch.isEmpty) {
         print(
-          '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ✅ Diff vacío: nada que bajar',
+          '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ✅ Diff vacío: nada que bajar',
         );
         return;
       }
       print(
-        '[🖼️ MENSAJES MODELO_IMAGENES SYNC] 🔽 Bajando ${toFetch.length} por diff',
+        '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] 🔽 Bajando ${toFetch.length} por diff',
       );
 
       // 5) Fetch selectivo por UIDs
       final remotos = await _service.obtenerPorUidsOnline(toFetch);
       if (remotos.isEmpty) {
         print(
-          '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ℹ️ Fetch selectivo devolvió 0',
+          '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ℹ️ Fetch selectivo devolvió 0',
         );
         return;
       }
@@ -156,21 +158,21 @@ class ModeloImagenesSync {
           uid: Value(m['uid'] as String),
           modeloUid: Value((m['modelo_uid'] as String?) ?? ''),
           rutaRemota: Value((m['ruta_remota'] as String?) ?? ''),
-          rutaLocal: m['ruta_local'] == null
-              ? const Value.absent()
-              : Value(m['ruta_local'] as String? ?? ''),
+          rutaLocal: const Value.absent(),
+          sha256: Value((m['sha256'] as String?) ?? ''),
+          isCover: Value((m['is_cover'] as bool?) ?? false),
           updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
         );
       }).toList();
 
-      await _dao.upsertImagenesDrift(companions);
+      await _dao.upsertImagenesRemotasPreservandoLocal(companions);
       print(
-        '[🖼️ MENSAJES MODELO_IMAGENES SYNC] ✅ Upsert remoto selectivo: ${companions.length}',
+        '[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ✅ Upsert remoto selectivo: ${companions.length}',
       );
     } catch (e) {
-      print('[🖼️ MENSAJES MODELO_IMAGENES SYNC] ❌ Error en PULL: $e');
+      print('[🚗👀 MENSAJES MODELO_IMAGENES SYNC] ❌ Error en PULL: $e');
       rethrow;
     }
   }
@@ -184,6 +186,9 @@ class ModeloImagenesSync {
       'uid': i.uid,
       'modelo_uid': i.modeloUid,
       'ruta_remota': i.rutaRemota,
+      // Nota: NO enviamos ruta_local al servidor
+      'sha256': i.sha256,
+      'is_cover': i.isCover,
       'updated_at': _iso(i.updatedAt),
       'deleted': i.deleted,
     };

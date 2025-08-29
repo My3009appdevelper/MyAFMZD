@@ -2,6 +2,8 @@ import 'dart:io' show File, Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class VisorPDF extends StatefulWidget {
   final String assetPath;
@@ -21,6 +23,24 @@ class _VisorPDFState extends State<VisorPDF> {
 
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+
+  bool get _isMobile => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+  final _shareBtnKey = GlobalKey();
+
+  Rect? shareOrigin() {
+    final box = _shareBtnKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box != null) {
+      final offset = box.localToGlobal(Offset.zero);
+      return offset & box.size; // Rect para iPad/macOS
+    }
+    final root = context.findRenderObject() as RenderBox?;
+    if (root != null) {
+      final offset = root.localToGlobal(Offset.zero);
+      return offset & root.size;
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -63,34 +83,40 @@ class _VisorPDFState extends State<VisorPDF> {
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
-        actions: _isDesktop
-            ? [
-                IconButton(
-                  tooltip: 'Ajustar a página',
-                  icon: const Icon(Icons.fit_screen),
-                  onPressed: () async {
-                    if (!_controller.isReady) return;
-                    final m = _controller.calcMatrixForFit(
-                      pageNumber: _controller.pageNumber ?? 1,
-                    );
-                    if (m != null) {
-                      await _controller.goTo(m);
-                    }
-                  },
-                ),
-                IconButton(
-                  tooltip: 'Alejar',
-                  icon: const Icon(Icons.zoom_out),
-                  onPressed: () => _controller.zoomDown(), // API oficial
-                ),
-                IconButton(
-                  tooltip: 'Acercar',
-                  icon: const Icon(Icons.zoom_in),
-                  onPressed: () => _controller.zoomUp(), // API oficial
-                ),
-                const SizedBox(width: 4),
-              ]
-            : null,
+        actions: [
+          if (_isMobile)
+            IconButton(
+              key: _shareBtnKey,
+              tooltip: 'Compartir',
+              icon: Icon(Platform.isIOS ? Icons.ios_share : Icons.share),
+              onPressed: _sharePdf, // tu método existente con share_plus
+            ),
+          if (_isDesktop) ...[
+            IconButton(
+              tooltip: 'Ajustar a página',
+              icon: const Icon(Icons.fit_screen),
+              onPressed: () async {
+                if (!_controller.isReady) return;
+                final m = _controller.calcMatrixForFit(
+                  pageNumber: _controller.pageNumber ?? 1,
+                );
+                if (m != null) await _controller.goTo(m);
+              },
+            ),
+            IconButton(
+              tooltip: 'Alejar',
+              icon: const Icon(Icons.zoom_out),
+              onPressed: () => _controller.zoomDown(),
+            ),
+            IconButton(
+              tooltip: 'Acercar',
+              icon: const Icon(Icons.zoom_in),
+              onPressed: () => _controller.zoomUp(),
+            ),
+          ],
+          const SizedBox(width: 4),
+        ],
+
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
@@ -269,5 +295,48 @@ class _VisorPDFState extends State<VisorPDF> {
       // limitRenderingCache: true,
       // maxImageBytesCachedOnMemory: 60 * 1024 * 1024, // 60MB
     );
+  }
+
+  Future<void> _sharePdf() async {
+    try {
+      final subject = widget.titulo.isEmpty ? 'Cotización' : widget.titulo;
+      final safeName = (widget.titulo.isEmpty ? 'documento' : widget.titulo)
+          .replaceAll(RegExp(r'[^A-Za-z0-9_\-]'), '_');
+      final origin = shareOrigin();
+
+      if (_esArchivoLocal) {
+        // Compartir archivo físico
+        final f = File(widget.assetPath);
+        if (!await f.exists()) throw 'El PDF no existe en el dispositivo.';
+        await Share.shareXFiles(
+          [XFile(f.path, mimeType: 'application/pdf', name: '$safeName.pdf')],
+          subject: subject,
+          text: subject,
+          sharePositionOrigin: origin,
+        );
+      } else {
+        // Compartir asset: cargar bytes y compartir como XFile "en memoria"
+        final data = await rootBundle.load(widget.assetPath);
+        final bytes = data.buffer.asUint8List();
+        await Share.shareXFiles(
+          [
+            XFile.fromData(
+              bytes,
+              mimeType: 'application/pdf',
+              name: '$safeName.pdf',
+            ),
+          ],
+          subject: subject,
+          text: subject,
+          sharePositionOrigin: origin,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo compartir el PDF. $e')),
+      );
+      print('No se pudo compartir el PDF. $e');
+    }
   }
 }

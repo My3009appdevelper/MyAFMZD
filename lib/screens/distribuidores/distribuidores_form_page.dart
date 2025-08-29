@@ -62,7 +62,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     final grupos = ref.watch(distribuidoresProvider.notifier).gruposUnicos;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final textStyle = theme.textTheme.bodyLarge;
+    final textTheme = theme.textTheme.bodyLarge;
 
     return Scaffold(
       appBar: AppBar(
@@ -75,6 +75,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
             padding: const EdgeInsets.all(20),
             child: Form(
               key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               child: ListView(
                 children: [
                   // Nombre
@@ -114,7 +115,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                     decoratorProps: DropDownDecoratorProps(
                       decoration: InputDecoration(
                         labelText: "Grupo",
-                        labelStyle: textStyle?.copyWith(
+                        labelStyle: textTheme?.copyWith(
                           color: colorScheme.onSurface,
                         ),
                         filled: true,

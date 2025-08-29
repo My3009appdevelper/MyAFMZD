@@ -25,6 +25,7 @@ class PerfilNotifier extends StateNotifier<UsuarioDb?> {
 
   /// ✅ Cargar perfil (offline-first)
   Future<void> cargarUsuario() async {
+    if (!mounted) return;
     print(
       '[🫵🏼 MENSAJES PERFIL PROVIDER] 👀 Entrando a cargarUsuario (offline-first con timestamps)...',
     );

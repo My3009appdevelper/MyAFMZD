@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/screens/modelos/modelos_form_page.dart';
 import 'package:myafmzd/widgets/sheet_action.dart';
@@ -24,11 +25,8 @@ class ModeloItemTile extends ConsumerStatefulWidget {
 }
 
 class _ModeloItemTileState extends ConsumerState<ModeloItemTile> {
-  bool _descargando = false;
-
   @override
   Widget build(BuildContext context) {
-    // Versión “viva” del modelo desde el provider (por si cambió al sincronizar)
     final modeloActual = ref
         .watch(modelosProvider)
         .firstWhere(
@@ -36,81 +34,92 @@ class _ModeloItemTileState extends ConsumerState<ModeloItemTile> {
           orElse: () => widget.modelo,
         );
 
-    final existeFichaLocal =
-        modeloActual.fichaRutaLocal.isNotEmpty &&
-        File(modeloActual.fichaRutaLocal).existsSync();
+    // obtener cover
+    final cover = ref
+        .read(modeloImagenesProvider.notifier)
+        .coverOrFallback(modeloActual.uid);
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return ListTile(
-      key: ValueKey(modeloActual.uid),
-      leading: const Icon(Icons.directions_car),
-      title: Text(
-        '${modeloActual.modelo} ${modeloActual.anio}',
-        style: textTheme.bodyLarge?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: colorScheme.onSurface,
-        ),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${modeloActual.tipo} · ${modeloActual.transmision} · ${modeloActual.descripcion.isNotEmpty ? modeloActual.descripcion : '—'}',
-            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            'Precio lista: \$${_fmtPrecio(modeloActual.precioBase)} · Clave: ${modeloActual.claveCatalogo.isNotEmpty ? modeloActual.claveCatalogo : '—'}',
-            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-      isThreeLine: true,
-      trailing: SizedBox(
-        width: 40,
-        height: 40,
-        child: Center(
-          child: _descargando
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : existeFichaLocal
-              ? IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Eliminar ficha local',
-                  onPressed: () async {
-                    setState(() => _descargando = true);
-                    await ref
-                        .read(modelosProvider.notifier)
-                        .eliminarFichaLocal(modeloActual);
-                    setState(() => _descargando = false);
-                  },
-                )
-              : IconButton(
-                  icon: const Icon(Icons.cloud_download),
-                  tooltip: 'Descargar ficha técnica',
-                  onPressed: () async {
-                    setState(() => _descargando = true);
-                    final actualizado = await ref
-                        .read(modelosProvider.notifier)
-                        .descargarFicha(modeloActual);
-                    setState(() => _descargando = false);
-                    if (actualizado != null && widget.onActualizado != null) {
-                      widget.onActualizado!();
-                    }
-                  },
-                ),
-        ),
-      ),
+    return InkWell(
       onTap: widget.onTap,
       onLongPress: () => _mostrarOpcionesModelo(context, modeloActual),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        height: 140,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: colorScheme.surfaceVariant,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          image: cover != null && cover.rutaLocal.isNotEmpty
+              ? DecorationImage(
+                  image: FileImage(File(cover.rutaLocal)),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.35),
+                    BlendMode.darken,
+                  ),
+                )
+              : null,
+        ),
+        child: Stack(
+          children: [
+            // Texto principal
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${modeloActual.modelo} · ${modeloActual.descripcion}',
+                      style: textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.7),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${modeloActual.tipo} · ${modeloActual.transmision}',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: Colors.white70,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Precio lista: \$${_fmtPrecio(modeloActual.precioBase)}',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

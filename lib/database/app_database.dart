@@ -1,12 +1,16 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_dao.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_table.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_table.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_dao.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_table.dart';
 import 'package:myafmzd/database/modelos/modelos_dao.dart';
 import 'package:myafmzd/database/modelos/modelos_table.dart';
+import 'package:myafmzd/database/productos/productos_dao.dart';
+import 'package:myafmzd/database/productos/productos_table.dart';
 import 'package:myafmzd/database/reportes/reportes_dao.dart';
 import 'package:myafmzd/database/reportes/reportes_table.dart';
 import 'package:myafmzd/database/usuarios/usuarios_dao.dart';
@@ -17,13 +21,23 @@ import 'package:path_provider/path_provider.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Usuarios, Distribuidores, Reportes, Modelos, ModeloImagenes],
+  tables: [
+    Usuarios,
+    Distribuidores,
+    Reportes,
+    Modelos,
+    ModeloImagenes,
+    Productos,
+    Colaboradores,
+  ],
   daos: [
     UsuariosDao,
     DistribuidoresDao,
     ReportesDao,
     ModelosDao,
     ModeloImagenesDao,
+    ProductosDao,
+    ColaboradoresDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {

@@ -100,7 +100,7 @@ class ModelosService {
           .from('modelos')
           .select()
           .inFilter('uid', uids);
-      return List<Map<String, dynamic>>.from(response);
+      return response;
     } catch (e) {
       print('[🚗 MENSAJES MODELOS SERVICE] ❌ Error fetch por UIDs: $e');
       rethrow;

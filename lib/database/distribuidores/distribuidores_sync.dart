@@ -33,7 +33,7 @@ class DistribuidoresSync {
         await _service.upsertDistribuidorOnline(data);
 
         // marcar como sincronizado (no sobrescribimos updatedAt)
-        await _dao.marcarComoSincronizadoDrift(d.uid, DateTime.now().toUtc());
+        await _dao.marcarComoSincronizadoDrift(d.uid);
         print('[🏢 MENSAJES DISTRIBUIDORES SYNC] ✅ Sincronizado: ${d.uid}');
       } catch (e) {
         print(

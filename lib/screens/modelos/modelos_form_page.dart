@@ -8,6 +8,9 @@ import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/widgets/chip_picker.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
+import 'package:crypto/crypto.dart' show sha256;
+import 'package:path/path.dart' as p;
+import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 
 class ModelosFormPage extends ConsumerStatefulWidget {
   final ModeloDb? modeloEditar;
@@ -19,6 +22,15 @@ class ModelosFormPage extends ConsumerStatefulWidget {
 
 class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
   final _formKey = GlobalKey<FormState>();
+
+  // Imagenes
+  final List<File> _imagenesPendientes = [];
+  final Set<String> _imagenesPorEliminar = {};
+  final Set<String> _imagenesParaRestaurar = {};
+  bool _subiendoImgs = false;
+
+  // NUEVO: portada pendiente (solo se persiste al Guardar)
+  String? _coverSelUid;
 
   // Text fields (solo los que no deben “homologarse” con catálogo)
   late TextEditingController _claveController;
@@ -84,11 +96,12 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final notifier = ref.watch(modelosProvider.notifier);
+    final _ = ref.watch(modelosProvider);
+    final notifier = ref.read(modelosProvider.notifier);
 
     // Listas desde DB + añadidos locales (para permitir “Agregar…”)
     final marcas = _mergeStr(notifier.marcasDisponibles, _addMarcas);
-    final modelos = _mergeStr(
+    final modelosDisp = _mergeStr(
       notifier.modelosDisponibles(marca: _marcaSel),
       _addModelos,
     );
@@ -120,7 +133,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
     }
 
     _marcaSel = _ensureStr(_marcaSel, marcas, 'Mazda');
-    _modeloSel = _ensureStr(_modeloSel, modelos, '');
+    _modeloSel = _ensureStr(_modeloSel, modelosDisp, '');
     _anioSel = _ensureInt(_anioSel, anios, DateTime.now().year);
     _tipoSel = _ensureStr(_tipoSel, tipos, tipos.isNotEmpty ? tipos.first : '');
     _transmisionSel = _ensureStr(
@@ -187,7 +200,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   // Modelo
                   ChipPickerSingle(
                     label: 'Modelo',
-                    options: modelos,
+                    options: modelosDisp,
                     selected: _modeloSel,
                     validator: (v) =>
                         v!.trim().isEmpty ? 'Campo obligatorio' : null,
@@ -355,6 +368,202 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                     onPressed: _seleccionarPDF,
                   ),
 
+                  const SizedBox(height: 12),
+
+                  // --------------------- IMÁGENES DEL MODELO ---------------------
+                  const SizedBox(height: 24),
+                  Text(
+                    'Imágenes del modelo',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      MyElevatedButton(
+                        icon: Icons.photo_library_outlined,
+                        label: 'Agregar imágenes',
+                        onPressed: _pickImagenes,
+                      ),
+                      if (_subiendoImgs)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Grid: si es edición mostramos las del provider; si es creación mostramos las pendientes
+                  Builder(
+                    builder: (_) {
+                      final _ = ref.watch(
+                        modeloImagenesProvider,
+                      ); // mantiene el rebuild
+                      final imgNotifier = ref.read(
+                        modeloImagenesProvider.notifier,
+                      );
+
+                      final imgs = widget.modeloEditar == null
+                          ? <ModeloImagenDb>[]
+                          : imgNotifier.imagenesDeModelo(
+                              widget.modeloEditar!.uid,
+                              incluirEliminadas:
+                                  true, // 👈 importante para ver ambos bloques
+                            );
+
+                      final activas = imgs.where((i) => !i.deleted).toList();
+                      final eliminadas = imgs.where((i) => i.deleted).toList();
+
+                      // Portada actual (del provider) y portada efectiva (pendiente o actual)
+                      ModeloImagenDb? currentCover;
+                      for (final i in activas) {
+                        if (i.isCover) {
+                          currentCover = i;
+                          break;
+                        }
+                      }
+                      final effectiveCoverUid =
+                          _coverSelUid ?? currentCover?.uid;
+
+                      final sectionTitleStyle = Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w600);
+
+                      final bloques = <Widget>[];
+
+                      // (Opcional) mostrar thumbnails pendientes
+                      if (_imagenesPendientes.isNotEmpty) {
+                        bloques.add(
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6, top: 8),
+                            child: Text(
+                              'Pendientes (${_imagenesPendientes.length})',
+                              style: sectionTitleStyle,
+                            ),
+                          ),
+                        );
+
+                        bloques.add(
+                          GridView.extent(
+                            maxCrossAxisExtent: 180,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 1,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: _imagenesPendientes.map((f) {
+                              return AspectRatio(
+                                aspectRatio: 1,
+                                child: _ThumbPendiente(
+                                  file: f,
+                                  onRemove: () => setState(
+                                    () => _imagenesPendientes.remove(f),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      }
+
+                      // Bloque: Activas
+                      if (activas.isNotEmpty) {
+                        bloques.add(
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6, top: 8),
+                            child: Text(
+                              'Activas (${activas.length})',
+                              style: sectionTitleStyle,
+                            ),
+                          ),
+                        );
+                        bloques.add(
+                          GridView.extent(
+                            maxCrossAxisExtent: 180,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 1,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: activas.map((i) {
+                              final marcadaEliminar = _imagenesPorEliminar
+                                  .contains(i.uid);
+                              final isCoverUi = i.uid == effectiveCoverUid;
+                              return _ThumbImagen(
+                                img: i,
+                                estaSoftDeleted: false,
+                                marcadaParaEliminar: marcadaEliminar,
+                                marcadaParaRestaurar: false,
+                                onToggleDelete: () => _toggleEliminar(i),
+                                onToggleRestore: () {}, // no aplica en activas
+                                isCover: isCoverUi,
+                                onSetCover: () => _toggleCover(i),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      }
+
+                      // Bloque: Eliminadas (si existen)
+                      if (eliminadas.isNotEmpty) {
+                        bloques.add(
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6, top: 12),
+                            child: Text(
+                              'Eliminadas (${eliminadas.length})',
+                              style: sectionTitleStyle,
+                            ),
+                          ),
+                        );
+                        bloques.add(
+                          GridView.extent(
+                            maxCrossAxisExtent: 180,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 1,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: eliminadas.map((i) {
+                              final marcadaRestaurar = _imagenesParaRestaurar
+                                  .contains(i.uid);
+                              final isCoverUi = i.uid == effectiveCoverUid;
+                              return _ThumbImagen(
+                                img: i,
+                                estaSoftDeleted: true,
+                                marcadaParaEliminar: false,
+                                marcadaParaRestaurar: marcadaRestaurar,
+                                onToggleDelete:
+                                    () {}, // no aplica en eliminadas
+                                onToggleRestore: () => _toggleRestaurar(i),
+                                isCover: isCoverUi,
+                                onSetCover: () {}, // no aplica en eliminadas
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      }
+
+                      if (bloques.isEmpty) {
+                        return const Text('Sin imágenes aún');
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: bloques,
+                      );
+                    },
+                  ),
+
                   const SizedBox(height: 24),
 
                   // Guardar
@@ -370,6 +579,17 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _limpiarFichaLocalSiRutaCambio(String nuevaRutaRemota) async {
+    if (!_esEdicion) return;
+    final anterior = widget.modeloEditar!;
+    final cambioRuta = anterior.fichaRutaRemota != nuevaRutaRemota;
+
+    if (cambioRuta && anterior.fichaRutaLocal.isNotEmpty) {
+      // Usa el método del provider para borrar el archivo y limpiar Drift
+      await ref.read(modelosProvider.notifier).eliminarFichaLocal(anterior);
+    }
   }
 
   Future<void> _guardar() async {
@@ -401,13 +621,14 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
     final duplicado = modelosNotifier.existeDuplicado(
       uidActual: widget.modeloEditar?.uid ?? '',
       claveCatalogo: clave,
-      modelo: modelo,
       anio: anio,
     );
     if (duplicado) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('❌ Ya existe un modelo con esa clave o (modelo + año)'),
+          content: Text(
+            '❌ Duplicado: clave de catálogo o (modelo + año) ya existen',
+          ),
         ),
       );
       return;
@@ -442,6 +663,65 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
             nuevoPath: rutaRemota,
           );
         }
+
+        // subimos las imágenes pendientes...
+        if (_imagenesPendientes.isNotEmpty) {
+          await _subirImagenesParaModelo(nuevo.uid, _imagenesPendientes);
+          setState(() => _imagenesPendientes.clear());
+        }
+
+        // 1) aplicar eliminaciones pendientes
+        if (_imagenesPorEliminar.isNotEmpty) {
+          final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+          for (final uid in _imagenesPorEliminar.toList()) {
+            final img = imgNotifier.obtenerPorUid(uid);
+            if (img != null) {
+              await imgNotifier.eliminarImagen(img); // soft delete real
+            }
+          }
+          if (!mounted) return;
+          setState(() => _imagenesPorEliminar.clear());
+        }
+
+        // 2) aplicar restauraciones pendientes
+        if (_imagenesParaRestaurar.isNotEmpty) {
+          final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+          for (final uid in _imagenesParaRestaurar.toList()) {
+            final img = imgNotifier.obtenerPorUid(uid);
+            if (img != null) {
+              final restaurada = await imgNotifier.editarImagen(
+                actualizada: img.copyWith(
+                  deleted: false,
+                  isSynced: false,
+                  updatedAt: DateTime.now().toUtc(),
+                ),
+              );
+              if (restaurada.rutaLocal.isEmpty ||
+                  !File(restaurada.rutaLocal).existsSync()) {
+                await imgNotifier.descargarImagen(
+                  restaurada,
+                ); // opcional, pero nice-to-have
+              }
+            }
+          }
+          setState(() => _imagenesParaRestaurar.clear());
+        }
+
+        // 3) NUEVO: aplicar portada pendiente (si hay)
+        if (_coverSelUid != null) {
+          final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+          await imgNotifier.setCover(
+            modeloUid: nuevo.uid,
+            imagenUid: _coverSelUid!,
+          );
+        }
+
+        // 🔒 Siempre asegurar que quede al menos una portada
+        final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+        await imgNotifier.ensureCover(nuevo.uid);
+
+        await _limpiarFichaLocalSiRutaCambio(rutaRemota);
+
         if (mounted) Navigator.pop(context, true);
       } else {
         final nuevo = await modelosNotifier.crearModelo(
@@ -465,6 +745,64 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
             nuevoPath: rutaRemota,
           );
         }
+
+        // subimos las imágenes pendientes...
+        if (_imagenesPendientes.isNotEmpty) {
+          await _subirImagenesParaModelo(nuevo.uid, _imagenesPendientes);
+          setState(() => _imagenesPendientes.clear());
+        }
+
+        // 1) aplicar eliminaciones pendientes
+        if (_imagenesPorEliminar.isNotEmpty) {
+          final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+          for (final uid in _imagenesPorEliminar.toList()) {
+            final img = imgNotifier.obtenerPorUid(uid);
+            if (img != null) {
+              await imgNotifier.eliminarImagen(img); // soft delete real
+            }
+          }
+          if (!mounted) return;
+          setState(() => _imagenesPorEliminar.clear());
+        }
+
+        // 2) aplicar restauraciones pendientes
+        if (_imagenesParaRestaurar.isNotEmpty) {
+          final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+          for (final uid in _imagenesParaRestaurar.toList()) {
+            final img = imgNotifier.obtenerPorUid(uid);
+            if (img != null) {
+              final restaurada = await imgNotifier.editarImagen(
+                actualizada: img.copyWith(
+                  deleted: false,
+                  isSynced: false,
+                  updatedAt: DateTime.now().toUtc(),
+                ),
+              );
+              if (restaurada.rutaLocal.isEmpty ||
+                  !File(restaurada.rutaLocal).existsSync()) {
+                await imgNotifier.descargarImagen(
+                  restaurada,
+                ); // opcional, pero nice-to-have
+              }
+            }
+          }
+          setState(() => _imagenesParaRestaurar.clear());
+        }
+
+        // 3) NUEVO: aplicar portada pendiente (si hay)
+        // 3) NUEVO: aplicar portada pendiente (si hay)
+        if (_coverSelUid != null) {
+          final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+          await imgNotifier.setCover(
+            modeloUid: nuevo.uid,
+            imagenUid: _coverSelUid!,
+          );
+        }
+
+        // 🔒 Siempre asegurar que quede al menos una portada
+        final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+        await imgNotifier.ensureCover(nuevo.uid);
+
         if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
@@ -475,21 +813,31 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
   }
 
   Future<void> _seleccionarPDF() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-    if (result == null || result.files.single.path == null) return;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (result == null || result.files.single.path == null) return;
 
-    _archivoPDFSeleccionado = File(result.files.single.path!);
+      _archivoPDFSeleccionado = File(result.files.single.path!);
+      setState(() => _rutaRemotaController.text = _buildRutaRemota());
 
-    setState(() {
-      _rutaRemotaController.text = _buildRutaRemota();
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('PDF preparado para subir')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF preparado para subir')));
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ No se pudo abrir el selector: ${e.code}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Error seleccionando PDF: $e')));
+    }
   }
 
   // Utilidades pequeñas locales
@@ -541,5 +889,388 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
     final file = '$base$sufijo.pdf';
 
     return 'fichas/$anio/$marca/$file';
+  }
+
+  // Imágenes
+  Future<String> _sha256DeArchivo(File f) async {
+    final digest = await sha256.bind(f.openRead()).first;
+    return digest.toString();
+  }
+
+  // Sanitiza clave: MAYÚSCULAS, espacios→ '-', solo A-Z0-9_-
+  String _sanitizarClave(String s) {
+    final up = s.trim().toUpperCase().replaceAll(' ', '-');
+    final basic = up.replaceAll(RegExp(r'[^A-Z0-9_-]'), '');
+    return basic.replaceAll(RegExp(r'-{2,}'), '-');
+  }
+
+  // Construye ruta remota de la imagen (NO incluye el nombre del bucket)
+  String _buildRutaRemotaImagen({
+    required int anio,
+    required String claveCatalogo,
+    required String shaHex,
+    required String originalPath,
+  }) {
+    var ext = p.extension(originalPath).toLowerCase();
+    if (ext.startsWith('.')) ext = ext.substring(1); // "jpg" | "png" | ...
+    final clave = _sanitizarClave(claveCatalogo);
+    // Estructura que definiste: <año>/<clave>/<sha>.<ext>
+    return '$anio/$clave/$shaHex.$ext';
+  }
+
+  // Validar extensión imagen
+  bool _esImagenSoportada(File f) {
+    final e = p.extension(f.path).toLowerCase();
+    return ['.jpg', '.jpeg', '.png', '.webp'].contains(e);
+  }
+
+  Future<void> _pickImagenes() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowMultiple: true,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final archivos = result.files
+        .map((f) => f.path)
+        .whereType<String>()
+        .map((p) => File(p))
+        .where(_esImagenSoportada)
+        .toList();
+
+    if (archivos.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se seleccionaron imágenes válidas')),
+      );
+      return;
+    }
+
+    // 👉 SIEMPRE pendientiza (tanto en nuevo como en edición).
+    setState(() {
+      _imagenesPendientes.addAll(archivos);
+    });
+  }
+
+  Future<void> _subirImagenesParaModelo(
+    String modeloUid,
+    List<File> files,
+  ) async {
+    if (!mounted) return;
+    setState(() => _subiendoImgs = true);
+    int errores = 0, duplicadas = 0;
+
+    try {
+      final imgNotifier = ref.read(modeloImagenesProvider.notifier);
+
+      bool yaHayPortada = imgNotifier
+          .imagenesDeModelo(modeloUid, incluirEliminadas: false)
+          .any((x) => x.isCover);
+
+      for (final file in files) {
+        try {
+          final sha = await _sha256DeArchivo(file);
+          final yaExiste = await imgNotifier.buscarPorShaEnModelo(
+            modeloUid,
+            sha,
+          );
+          if (yaExiste != null) {
+            duplicadas++;
+            debugPrint('[IMG] Duplicada por sha: ${file.path}');
+            continue;
+          }
+
+          final reg = await imgNotifier.crearImagenLocal(modeloUid: modeloUid);
+          final rutaRemotaImg = _buildRutaRemotaImagen(
+            anio: _anioSel ?? DateTime.now().year,
+            claveCatalogo: _claveController.text,
+            shaHex: sha,
+            originalPath: file.path,
+          );
+          debugPrint('[IMG] Crear+Subir uid=${reg.uid} → $rutaRemotaImg');
+
+          await imgNotifier.subirNuevaImagen(
+            imagen: reg,
+            archivo: file,
+            nuevoPath: rutaRemotaImg,
+            sha256Override: sha,
+          );
+
+          // Auto-portada si no existe aún (sin cambios)
+          if (!yaHayPortada) {
+            await imgNotifier.setCover(
+              modeloUid: modeloUid,
+              imagenUid: reg.uid,
+            );
+            yaHayPortada = true;
+          }
+        } catch (e, st) {
+          errores++;
+          debugPrint('[IMG] ERROR subiendo ${file.path}: $e\n$st');
+        }
+      }
+    } finally {
+      if (!mounted) return;
+      setState(() => _subiendoImgs = false);
+      if (errores > 0 || duplicadas > 0) {
+        final msg = [
+          if (duplicadas > 0) 'ℹ️ $duplicadas duplicada(s) omitida(s)',
+          if (errores > 0) '⚠️ $errores con error',
+        ].join(' · ');
+        if (msg.isNotEmpty) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(msg)));
+        }
+      }
+    }
+  }
+
+  void _toggleEliminar(ModeloImagenDb img) {
+    final id = img.uid;
+    // Si estaba seleccionada como portada pendiente, la deseleccionamos
+    if (_coverSelUid == id) {
+      _coverSelUid = null;
+    }
+
+    if (_imagenesPorEliminar.contains(id)) {
+      setState(() => _imagenesPorEliminar.remove(id)); // deshacer
+    } else {
+      setState(() {
+        _imagenesParaRestaurar.remove(id); // no pueden coexistir
+        _imagenesPorEliminar.add(id); // marcar para borrar
+      });
+    }
+  }
+
+  void _toggleRestaurar(ModeloImagenDb img) {
+    final id = img.uid;
+    if (_imagenesParaRestaurar.contains(id)) {
+      setState(() => _imagenesParaRestaurar.remove(id)); // deshacer
+    } else {
+      setState(() {
+        _imagenesPorEliminar.remove(id); // no pueden coexistir
+        _imagenesParaRestaurar.add(id); // marcar para restaurar
+      });
+    }
+  }
+
+  // NUEVO: seleccionar/deseleccionar portada pendiente (solo imágenes activas)
+  void _toggleCover(ModeloImagenDb img) {
+    if (img.deleted) return; // seguridad
+    setState(() {
+      if (_coverSelUid == img.uid) {
+        _coverSelUid = null; // quitar selección pendiente
+      } else {
+        _coverSelUid = img.uid; // seleccionar esta como portada pendiente
+      }
+      // por coherencia, si estaba marcada para borrar/restaurar, las limpiamos
+      _imagenesPorEliminar.remove(img.uid);
+      _imagenesParaRestaurar.remove(img.uid);
+    });
+  }
+}
+
+class _ThumbPendiente extends StatelessWidget {
+  final File file;
+  final VoidCallback onRemove;
+  const _ThumbPendiente({required this.file, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      height: 120,
+      child: Stack(
+        fit: StackFit.expand, // ahora OK, hay tamaño fijo
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(file, fit: BoxFit.cover),
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: InkWell(
+              onTap: onRemove,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.close, size: 16, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThumbImagen extends StatelessWidget {
+  final ModeloImagenDb img;
+  final bool estaSoftDeleted;
+  final bool marcadaParaEliminar;
+  final bool marcadaParaRestaurar;
+  final VoidCallback onToggleDelete;
+  final VoidCallback onToggleRestore;
+  final bool isCover;
+  final VoidCallback onSetCover;
+
+  const _ThumbImagen({
+    required this.img,
+    required this.estaSoftDeleted,
+    required this.marcadaParaEliminar,
+    required this.marcadaParaRestaurar,
+    required this.onToggleDelete,
+    required this.onToggleRestore,
+    // 👇 nuevo
+    required this.isCover,
+    required this.onSetCover,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final haveLocal =
+        img.rutaLocal.isNotEmpty && File(img.rutaLocal).existsSync();
+
+    Widget _badge(String text, Color color) => Positioned(
+      left: 6,
+      top: 6,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontSize: 11),
+        ),
+      ),
+    );
+
+    return Container(
+      decoration: estaSoftDeleted
+          ? BoxDecoration(
+              border: Border.all(color: Colors.redAccent, width: 2),
+              borderRadius: BorderRadius.circular(8),
+            )
+          : null,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: haveLocal
+                ? Image.file(File(img.rutaLocal), fit: BoxFit.cover)
+                : Container(
+                    color: Colors.black12,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.image_not_supported_outlined),
+                  ),
+          ),
+
+          // Overlays por estado
+          if (marcadaParaEliminar)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(color: Colors.redAccent.withOpacity(0.35)),
+            ),
+          if (marcadaParaRestaurar)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(color: Colors.green.withOpacity(0.35)),
+            ),
+          if (estaSoftDeleted && !marcadaParaRestaurar)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(color: Colors.black45.withOpacity(0.35)),
+            ),
+
+          // Badges
+          if (isCover) _badge('Portada', Colors.indigo),
+          if (marcadaParaEliminar) _badge('A borrar', Colors.redAccent),
+          if (marcadaParaRestaurar) _badge('A restaurar', Colors.green),
+          if (estaSoftDeleted && !marcadaParaRestaurar)
+            _badge('Eliminada', Colors.black54),
+
+          // Botonera (incluye estrella para portada)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ⭐ Marcar portada (solo si no está eliminada)
+                if (!estaSoftDeleted)
+                  _IconBtn(
+                    icon: isCover ? Icons.star : Icons.star_border,
+                    tooltip: isCover
+                        ? 'Portada (pendiente)'
+                        : 'Marcar como portada',
+                    onTap: onSetCover,
+                  ),
+                if (!estaSoftDeleted)
+                  _IconBtn(
+                    icon: marcadaParaEliminar
+                        ? Icons.undo
+                        : Icons.delete_forever,
+                    tooltip: marcadaParaEliminar
+                        ? 'Deshacer'
+                        : 'Marcar para eliminar',
+                    onTap: onToggleDelete,
+                  ),
+                if (estaSoftDeleted)
+                  _IconBtn(
+                    icon: marcadaParaRestaurar
+                        ? Icons.undo
+                        : Icons.restore_from_trash,
+                    tooltip: marcadaParaRestaurar
+                        ? 'Deshacer'
+                        : 'Marcar para restaurar',
+                    onTap: onToggleRestore,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IconBtn extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  const _IconBtn({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: InkWell(
+        onTap: onTap,
+        child: Tooltip(
+          message: tooltip,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, size: 16, color: Colors.white),
+          ),
+        ),
+      ),
+    );
   }
 }

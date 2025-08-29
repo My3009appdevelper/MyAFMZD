@@ -2650,6 +2650,31 @@ class $ModeloImagenesTable extends ModeloImagenes
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _sha256Meta = const VerificationMeta('sha256');
+  @override
+  late final GeneratedColumn<String> sha256 = GeneratedColumn<String>(
+    'sha256',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _isCoverMeta = const VerificationMeta(
+    'isCover',
+  );
+  @override
+  late final GeneratedColumn<bool> isCover = GeneratedColumn<bool>(
+    'is_cover',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_cover" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -2698,6 +2723,8 @@ class $ModeloImagenesTable extends ModeloImagenes
     modeloUid,
     rutaRemota,
     rutaLocal,
+    sha256,
+    isCover,
     updatedAt,
     deleted,
     isSynced,
@@ -2740,6 +2767,18 @@ class $ModeloImagenesTable extends ModeloImagenes
       context.handle(
         _rutaLocalMeta,
         rutaLocal.isAcceptableOrUnknown(data['ruta_local']!, _rutaLocalMeta),
+      );
+    }
+    if (data.containsKey('sha256')) {
+      context.handle(
+        _sha256Meta,
+        sha256.isAcceptableOrUnknown(data['sha256']!, _sha256Meta),
+      );
+    }
+    if (data.containsKey('is_cover')) {
+      context.handle(
+        _isCoverMeta,
+        isCover.isAcceptableOrUnknown(data['is_cover']!, _isCoverMeta),
       );
     }
     if (data.containsKey('updated_at')) {
@@ -2785,6 +2824,14 @@ class $ModeloImagenesTable extends ModeloImagenes
         DriftSqlType.string,
         data['${effectivePrefix}ruta_local'],
       )!,
+      sha256: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sha256'],
+      )!,
+      isCover: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_cover'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -2811,6 +2858,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
   final String modeloUid;
   final String rutaRemota;
   final String rutaLocal;
+  final String sha256;
+  final bool isCover;
   final DateTime updatedAt;
   final bool deleted;
   final bool isSynced;
@@ -2819,6 +2868,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
     required this.modeloUid,
     required this.rutaRemota,
     required this.rutaLocal,
+    required this.sha256,
+    required this.isCover,
     required this.updatedAt,
     required this.deleted,
     required this.isSynced,
@@ -2830,6 +2881,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
     map['modelo_uid'] = Variable<String>(modeloUid);
     map['ruta_remota'] = Variable<String>(rutaRemota);
     map['ruta_local'] = Variable<String>(rutaLocal);
+    map['sha256'] = Variable<String>(sha256);
+    map['is_cover'] = Variable<bool>(isCover);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['deleted'] = Variable<bool>(deleted);
     map['is_synced'] = Variable<bool>(isSynced);
@@ -2842,6 +2895,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
       modeloUid: Value(modeloUid),
       rutaRemota: Value(rutaRemota),
       rutaLocal: Value(rutaLocal),
+      sha256: Value(sha256),
+      isCover: Value(isCover),
       updatedAt: Value(updatedAt),
       deleted: Value(deleted),
       isSynced: Value(isSynced),
@@ -2858,6 +2913,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
       modeloUid: serializer.fromJson<String>(json['modeloUid']),
       rutaRemota: serializer.fromJson<String>(json['rutaRemota']),
       rutaLocal: serializer.fromJson<String>(json['rutaLocal']),
+      sha256: serializer.fromJson<String>(json['sha256']),
+      isCover: serializer.fromJson<bool>(json['isCover']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -2871,6 +2928,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
       'modeloUid': serializer.toJson<String>(modeloUid),
       'rutaRemota': serializer.toJson<String>(rutaRemota),
       'rutaLocal': serializer.toJson<String>(rutaLocal),
+      'sha256': serializer.toJson<String>(sha256),
+      'isCover': serializer.toJson<bool>(isCover),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deleted': serializer.toJson<bool>(deleted),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -2882,6 +2941,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
     String? modeloUid,
     String? rutaRemota,
     String? rutaLocal,
+    String? sha256,
+    bool? isCover,
     DateTime? updatedAt,
     bool? deleted,
     bool? isSynced,
@@ -2890,6 +2951,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
     modeloUid: modeloUid ?? this.modeloUid,
     rutaRemota: rutaRemota ?? this.rutaRemota,
     rutaLocal: rutaLocal ?? this.rutaLocal,
+    sha256: sha256 ?? this.sha256,
+    isCover: isCover ?? this.isCover,
     updatedAt: updatedAt ?? this.updatedAt,
     deleted: deleted ?? this.deleted,
     isSynced: isSynced ?? this.isSynced,
@@ -2902,6 +2965,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
           ? data.rutaRemota.value
           : this.rutaRemota,
       rutaLocal: data.rutaLocal.present ? data.rutaLocal.value : this.rutaLocal,
+      sha256: data.sha256.present ? data.sha256.value : this.sha256,
+      isCover: data.isCover.present ? data.isCover.value : this.isCover,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
@@ -2915,6 +2980,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
           ..write('modeloUid: $modeloUid, ')
           ..write('rutaRemota: $rutaRemota, ')
           ..write('rutaLocal: $rutaLocal, ')
+          ..write('sha256: $sha256, ')
+          ..write('isCover: $isCover, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
           ..write('isSynced: $isSynced')
@@ -2928,6 +2995,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
     modeloUid,
     rutaRemota,
     rutaLocal,
+    sha256,
+    isCover,
     updatedAt,
     deleted,
     isSynced,
@@ -2940,6 +3009,8 @@ class ModeloImagenDb extends DataClass implements Insertable<ModeloImagenDb> {
           other.modeloUid == this.modeloUid &&
           other.rutaRemota == this.rutaRemota &&
           other.rutaLocal == this.rutaLocal &&
+          other.sha256 == this.sha256 &&
+          other.isCover == this.isCover &&
           other.updatedAt == this.updatedAt &&
           other.deleted == this.deleted &&
           other.isSynced == this.isSynced);
@@ -2950,6 +3021,8 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
   final Value<String> modeloUid;
   final Value<String> rutaRemota;
   final Value<String> rutaLocal;
+  final Value<String> sha256;
+  final Value<bool> isCover;
   final Value<DateTime> updatedAt;
   final Value<bool> deleted;
   final Value<bool> isSynced;
@@ -2959,6 +3032,8 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
     this.modeloUid = const Value.absent(),
     this.rutaRemota = const Value.absent(),
     this.rutaLocal = const Value.absent(),
+    this.sha256 = const Value.absent(),
+    this.isCover = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -2969,6 +3044,8 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
     required String modeloUid,
     this.rutaRemota = const Value.absent(),
     this.rutaLocal = const Value.absent(),
+    this.sha256 = const Value.absent(),
+    this.isCover = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -2980,6 +3057,8 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
     Expression<String>? modeloUid,
     Expression<String>? rutaRemota,
     Expression<String>? rutaLocal,
+    Expression<String>? sha256,
+    Expression<bool>? isCover,
     Expression<DateTime>? updatedAt,
     Expression<bool>? deleted,
     Expression<bool>? isSynced,
@@ -2990,6 +3069,8 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
       if (modeloUid != null) 'modelo_uid': modeloUid,
       if (rutaRemota != null) 'ruta_remota': rutaRemota,
       if (rutaLocal != null) 'ruta_local': rutaLocal,
+      if (sha256 != null) 'sha256': sha256,
+      if (isCover != null) 'is_cover': isCover,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deleted != null) 'deleted': deleted,
       if (isSynced != null) 'is_synced': isSynced,
@@ -3002,6 +3083,8 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
     Value<String>? modeloUid,
     Value<String>? rutaRemota,
     Value<String>? rutaLocal,
+    Value<String>? sha256,
+    Value<bool>? isCover,
     Value<DateTime>? updatedAt,
     Value<bool>? deleted,
     Value<bool>? isSynced,
@@ -3012,6 +3095,8 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
       modeloUid: modeloUid ?? this.modeloUid,
       rutaRemota: rutaRemota ?? this.rutaRemota,
       rutaLocal: rutaLocal ?? this.rutaLocal,
+      sha256: sha256 ?? this.sha256,
+      isCover: isCover ?? this.isCover,
       updatedAt: updatedAt ?? this.updatedAt,
       deleted: deleted ?? this.deleted,
       isSynced: isSynced ?? this.isSynced,
@@ -3033,6 +3118,12 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
     }
     if (rutaLocal.present) {
       map['ruta_local'] = Variable<String>(rutaLocal.value);
+    }
+    if (sha256.present) {
+      map['sha256'] = Variable<String>(sha256.value);
+    }
+    if (isCover.present) {
+      map['is_cover'] = Variable<bool>(isCover.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
@@ -3056,6 +3147,2215 @@ class ModeloImagenesCompanion extends UpdateCompanion<ModeloImagenDb> {
           ..write('modeloUid: $modeloUid, ')
           ..write('rutaRemota: $rutaRemota, ')
           ..write('rutaLocal: $rutaLocal, ')
+          ..write('sha256: $sha256, ')
+          ..write('isCover: $isCover, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ProductosTable extends Productos
+    with TableInfo<$ProductosTable, ProductoDb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProductosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
+  @override
+  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
+    'nombre',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Autofinanciamiento Puro'),
+  );
+  static const VerificationMeta _activoMeta = const VerificationMeta('activo');
+  @override
+  late final GeneratedColumn<bool> activo = GeneratedColumn<bool>(
+    'activo',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("activo" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _plazoMesesMeta = const VerificationMeta(
+    'plazoMeses',
+  );
+  @override
+  late final GeneratedColumn<int> plazoMeses = GeneratedColumn<int>(
+    'plazo_meses',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(60),
+  );
+  static const VerificationMeta _factorIntegranteMeta = const VerificationMeta(
+    'factorIntegrante',
+  );
+  @override
+  late final GeneratedColumn<double> factorIntegrante = GeneratedColumn<double>(
+    'factor_integrante',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.01667),
+  );
+  static const VerificationMeta _factorPropietarioMeta = const VerificationMeta(
+    'factorPropietario',
+  );
+  @override
+  late final GeneratedColumn<double> factorPropietario =
+      GeneratedColumn<double>(
+        'factor_propietario',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.0206),
+      );
+  static const VerificationMeta _cuotaInscripcionPctMeta =
+      const VerificationMeta('cuotaInscripcionPct');
+  @override
+  late final GeneratedColumn<double> cuotaInscripcionPct =
+      GeneratedColumn<double>(
+        'cuota_inscripcion_pct',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.005),
+      );
+  static const VerificationMeta _cuotaAdministracionPctMeta =
+      const VerificationMeta('cuotaAdministracionPct');
+  @override
+  late final GeneratedColumn<double> cuotaAdministracionPct =
+      GeneratedColumn<double>(
+        'cuota_administracion_pct',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.002),
+      );
+  static const VerificationMeta _ivaCuotaAdministracionPctMeta =
+      const VerificationMeta('ivaCuotaAdministracionPct');
+  @override
+  late final GeneratedColumn<double> ivaCuotaAdministracionPct =
+      GeneratedColumn<double>(
+        'iva_cuota_administracion_pct',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.16),
+      );
+  static const VerificationMeta _cuotaSeguroVidaPctMeta =
+      const VerificationMeta('cuotaSeguroVidaPct');
+  @override
+  late final GeneratedColumn<double> cuotaSeguroVidaPct =
+      GeneratedColumn<double>(
+        'cuota_seguro_vida_pct',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.00065),
+      );
+  static const VerificationMeta _adelantoMinMensMeta = const VerificationMeta(
+    'adelantoMinMens',
+  );
+  @override
+  late final GeneratedColumn<int> adelantoMinMens = GeneratedColumn<int>(
+    'adelanto_min_mens',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _adelantoMaxMensMeta = const VerificationMeta(
+    'adelantoMaxMens',
+  );
+  @override
+  late final GeneratedColumn<int> adelantoMaxMens = GeneratedColumn<int>(
+    'adelanto_max_mens',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(59),
+  );
+  static const VerificationMeta _mesEntregaMinMeta = const VerificationMeta(
+    'mesEntregaMin',
+  );
+  @override
+  late final GeneratedColumn<int> mesEntregaMin = GeneratedColumn<int>(
+    'mes_entrega_min',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _mesEntregaMaxMeta = const VerificationMeta(
+    'mesEntregaMax',
+  );
+  @override
+  late final GeneratedColumn<int> mesEntregaMax = GeneratedColumn<int>(
+    'mes_entrega_max',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(60),
+  );
+  static const VerificationMeta _prioridadMeta = const VerificationMeta(
+    'prioridad',
+  );
+  @override
+  late final GeneratedColumn<int> prioridad = GeneratedColumn<int>(
+    'prioridad',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _notasMeta = const VerificationMeta('notas');
+  @override
+  late final GeneratedColumn<String> notas = GeneratedColumn<String>(
+    'notas',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _vigenteDesdeMeta = const VerificationMeta(
+    'vigenteDesde',
+  );
+  @override
+  late final GeneratedColumn<DateTime> vigenteDesde = GeneratedColumn<DateTime>(
+    'vigente_desde',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _vigenteHastaMeta = const VerificationMeta(
+    'vigenteHasta',
+  );
+  @override
+  late final GeneratedColumn<DateTime> vigenteHasta = GeneratedColumn<DateTime>(
+    'vigente_hasta',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uid,
+    nombre,
+    activo,
+    plazoMeses,
+    factorIntegrante,
+    factorPropietario,
+    cuotaInscripcionPct,
+    cuotaAdministracionPct,
+    ivaCuotaAdministracionPct,
+    cuotaSeguroVidaPct,
+    adelantoMinMens,
+    adelantoMaxMens,
+    mesEntregaMin,
+    mesEntregaMax,
+    prioridad,
+    notas,
+    vigenteDesde,
+    vigenteHasta,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'productos';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProductoDb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('nombre')) {
+      context.handle(
+        _nombreMeta,
+        nombre.isAcceptableOrUnknown(data['nombre']!, _nombreMeta),
+      );
+    }
+    if (data.containsKey('activo')) {
+      context.handle(
+        _activoMeta,
+        activo.isAcceptableOrUnknown(data['activo']!, _activoMeta),
+      );
+    }
+    if (data.containsKey('plazo_meses')) {
+      context.handle(
+        _plazoMesesMeta,
+        plazoMeses.isAcceptableOrUnknown(data['plazo_meses']!, _plazoMesesMeta),
+      );
+    }
+    if (data.containsKey('factor_integrante')) {
+      context.handle(
+        _factorIntegranteMeta,
+        factorIntegrante.isAcceptableOrUnknown(
+          data['factor_integrante']!,
+          _factorIntegranteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('factor_propietario')) {
+      context.handle(
+        _factorPropietarioMeta,
+        factorPropietario.isAcceptableOrUnknown(
+          data['factor_propietario']!,
+          _factorPropietarioMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cuota_inscripcion_pct')) {
+      context.handle(
+        _cuotaInscripcionPctMeta,
+        cuotaInscripcionPct.isAcceptableOrUnknown(
+          data['cuota_inscripcion_pct']!,
+          _cuotaInscripcionPctMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cuota_administracion_pct')) {
+      context.handle(
+        _cuotaAdministracionPctMeta,
+        cuotaAdministracionPct.isAcceptableOrUnknown(
+          data['cuota_administracion_pct']!,
+          _cuotaAdministracionPctMeta,
+        ),
+      );
+    }
+    if (data.containsKey('iva_cuota_administracion_pct')) {
+      context.handle(
+        _ivaCuotaAdministracionPctMeta,
+        ivaCuotaAdministracionPct.isAcceptableOrUnknown(
+          data['iva_cuota_administracion_pct']!,
+          _ivaCuotaAdministracionPctMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cuota_seguro_vida_pct')) {
+      context.handle(
+        _cuotaSeguroVidaPctMeta,
+        cuotaSeguroVidaPct.isAcceptableOrUnknown(
+          data['cuota_seguro_vida_pct']!,
+          _cuotaSeguroVidaPctMeta,
+        ),
+      );
+    }
+    if (data.containsKey('adelanto_min_mens')) {
+      context.handle(
+        _adelantoMinMensMeta,
+        adelantoMinMens.isAcceptableOrUnknown(
+          data['adelanto_min_mens']!,
+          _adelantoMinMensMeta,
+        ),
+      );
+    }
+    if (data.containsKey('adelanto_max_mens')) {
+      context.handle(
+        _adelantoMaxMensMeta,
+        adelantoMaxMens.isAcceptableOrUnknown(
+          data['adelanto_max_mens']!,
+          _adelantoMaxMensMeta,
+        ),
+      );
+    }
+    if (data.containsKey('mes_entrega_min')) {
+      context.handle(
+        _mesEntregaMinMeta,
+        mesEntregaMin.isAcceptableOrUnknown(
+          data['mes_entrega_min']!,
+          _mesEntregaMinMeta,
+        ),
+      );
+    }
+    if (data.containsKey('mes_entrega_max')) {
+      context.handle(
+        _mesEntregaMaxMeta,
+        mesEntregaMax.isAcceptableOrUnknown(
+          data['mes_entrega_max']!,
+          _mesEntregaMaxMeta,
+        ),
+      );
+    }
+    if (data.containsKey('prioridad')) {
+      context.handle(
+        _prioridadMeta,
+        prioridad.isAcceptableOrUnknown(data['prioridad']!, _prioridadMeta),
+      );
+    }
+    if (data.containsKey('notas')) {
+      context.handle(
+        _notasMeta,
+        notas.isAcceptableOrUnknown(data['notas']!, _notasMeta),
+      );
+    }
+    if (data.containsKey('vigente_desde')) {
+      context.handle(
+        _vigenteDesdeMeta,
+        vigenteDesde.isAcceptableOrUnknown(
+          data['vigente_desde']!,
+          _vigenteDesdeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('vigente_hasta')) {
+      context.handle(
+        _vigenteHastaMeta,
+        vigenteHasta.isAcceptableOrUnknown(
+          data['vigente_hasta']!,
+          _vigenteHastaMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  ProductoDb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProductoDb(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      nombre: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nombre'],
+      )!,
+      activo: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}activo'],
+      )!,
+      plazoMeses: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}plazo_meses'],
+      )!,
+      factorIntegrante: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}factor_integrante'],
+      )!,
+      factorPropietario: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}factor_propietario'],
+      )!,
+      cuotaInscripcionPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cuota_inscripcion_pct'],
+      )!,
+      cuotaAdministracionPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cuota_administracion_pct'],
+      )!,
+      ivaCuotaAdministracionPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}iva_cuota_administracion_pct'],
+      )!,
+      cuotaSeguroVidaPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cuota_seguro_vida_pct'],
+      )!,
+      adelantoMinMens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}adelanto_min_mens'],
+      )!,
+      adelantoMaxMens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}adelanto_max_mens'],
+      )!,
+      mesEntregaMin: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mes_entrega_min'],
+      )!,
+      mesEntregaMax: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mes_entrega_max'],
+      )!,
+      prioridad: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}prioridad'],
+      )!,
+      notas: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notas'],
+      )!,
+      vigenteDesde: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}vigente_desde'],
+      ),
+      vigenteHasta: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}vigente_hasta'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $ProductosTable createAlias(String alias) {
+    return $ProductosTable(attachedDatabase, alias);
+  }
+}
+
+class ProductoDb extends DataClass implements Insertable<ProductoDb> {
+  final String uid;
+  final String nombre;
+  final bool activo;
+  final int plazoMeses;
+  final double factorIntegrante;
+  final double factorPropietario;
+  final double cuotaInscripcionPct;
+  final double cuotaAdministracionPct;
+  final double ivaCuotaAdministracionPct;
+  final double cuotaSeguroVidaPct;
+  final int adelantoMinMens;
+  final int adelantoMaxMens;
+  final int mesEntregaMin;
+  final int mesEntregaMax;
+  final int prioridad;
+  final String notas;
+  final DateTime? vigenteDesde;
+  final DateTime? vigenteHasta;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool deleted;
+  final bool isSynced;
+  const ProductoDb({
+    required this.uid,
+    required this.nombre,
+    required this.activo,
+    required this.plazoMeses,
+    required this.factorIntegrante,
+    required this.factorPropietario,
+    required this.cuotaInscripcionPct,
+    required this.cuotaAdministracionPct,
+    required this.ivaCuotaAdministracionPct,
+    required this.cuotaSeguroVidaPct,
+    required this.adelantoMinMens,
+    required this.adelantoMaxMens,
+    required this.mesEntregaMin,
+    required this.mesEntregaMax,
+    required this.prioridad,
+    required this.notas,
+    this.vigenteDesde,
+    this.vigenteHasta,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['nombre'] = Variable<String>(nombre);
+    map['activo'] = Variable<bool>(activo);
+    map['plazo_meses'] = Variable<int>(plazoMeses);
+    map['factor_integrante'] = Variable<double>(factorIntegrante);
+    map['factor_propietario'] = Variable<double>(factorPropietario);
+    map['cuota_inscripcion_pct'] = Variable<double>(cuotaInscripcionPct);
+    map['cuota_administracion_pct'] = Variable<double>(cuotaAdministracionPct);
+    map['iva_cuota_administracion_pct'] = Variable<double>(
+      ivaCuotaAdministracionPct,
+    );
+    map['cuota_seguro_vida_pct'] = Variable<double>(cuotaSeguroVidaPct);
+    map['adelanto_min_mens'] = Variable<int>(adelantoMinMens);
+    map['adelanto_max_mens'] = Variable<int>(adelantoMaxMens);
+    map['mes_entrega_min'] = Variable<int>(mesEntregaMin);
+    map['mes_entrega_max'] = Variable<int>(mesEntregaMax);
+    map['prioridad'] = Variable<int>(prioridad);
+    map['notas'] = Variable<String>(notas);
+    if (!nullToAbsent || vigenteDesde != null) {
+      map['vigente_desde'] = Variable<DateTime>(vigenteDesde);
+    }
+    if (!nullToAbsent || vigenteHasta != null) {
+      map['vigente_hasta'] = Variable<DateTime>(vigenteHasta);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  ProductosCompanion toCompanion(bool nullToAbsent) {
+    return ProductosCompanion(
+      uid: Value(uid),
+      nombre: Value(nombre),
+      activo: Value(activo),
+      plazoMeses: Value(plazoMeses),
+      factorIntegrante: Value(factorIntegrante),
+      factorPropietario: Value(factorPropietario),
+      cuotaInscripcionPct: Value(cuotaInscripcionPct),
+      cuotaAdministracionPct: Value(cuotaAdministracionPct),
+      ivaCuotaAdministracionPct: Value(ivaCuotaAdministracionPct),
+      cuotaSeguroVidaPct: Value(cuotaSeguroVidaPct),
+      adelantoMinMens: Value(adelantoMinMens),
+      adelantoMaxMens: Value(adelantoMaxMens),
+      mesEntregaMin: Value(mesEntregaMin),
+      mesEntregaMax: Value(mesEntregaMax),
+      prioridad: Value(prioridad),
+      notas: Value(notas),
+      vigenteDesde: vigenteDesde == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vigenteDesde),
+      vigenteHasta: vigenteHasta == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vigenteHasta),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory ProductoDb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProductoDb(
+      uid: serializer.fromJson<String>(json['uid']),
+      nombre: serializer.fromJson<String>(json['nombre']),
+      activo: serializer.fromJson<bool>(json['activo']),
+      plazoMeses: serializer.fromJson<int>(json['plazoMeses']),
+      factorIntegrante: serializer.fromJson<double>(json['factorIntegrante']),
+      factorPropietario: serializer.fromJson<double>(json['factorPropietario']),
+      cuotaInscripcionPct: serializer.fromJson<double>(
+        json['cuotaInscripcionPct'],
+      ),
+      cuotaAdministracionPct: serializer.fromJson<double>(
+        json['cuotaAdministracionPct'],
+      ),
+      ivaCuotaAdministracionPct: serializer.fromJson<double>(
+        json['ivaCuotaAdministracionPct'],
+      ),
+      cuotaSeguroVidaPct: serializer.fromJson<double>(
+        json['cuotaSeguroVidaPct'],
+      ),
+      adelantoMinMens: serializer.fromJson<int>(json['adelantoMinMens']),
+      adelantoMaxMens: serializer.fromJson<int>(json['adelantoMaxMens']),
+      mesEntregaMin: serializer.fromJson<int>(json['mesEntregaMin']),
+      mesEntregaMax: serializer.fromJson<int>(json['mesEntregaMax']),
+      prioridad: serializer.fromJson<int>(json['prioridad']),
+      notas: serializer.fromJson<String>(json['notas']),
+      vigenteDesde: serializer.fromJson<DateTime?>(json['vigenteDesde']),
+      vigenteHasta: serializer.fromJson<DateTime?>(json['vigenteHasta']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'nombre': serializer.toJson<String>(nombre),
+      'activo': serializer.toJson<bool>(activo),
+      'plazoMeses': serializer.toJson<int>(plazoMeses),
+      'factorIntegrante': serializer.toJson<double>(factorIntegrante),
+      'factorPropietario': serializer.toJson<double>(factorPropietario),
+      'cuotaInscripcionPct': serializer.toJson<double>(cuotaInscripcionPct),
+      'cuotaAdministracionPct': serializer.toJson<double>(
+        cuotaAdministracionPct,
+      ),
+      'ivaCuotaAdministracionPct': serializer.toJson<double>(
+        ivaCuotaAdministracionPct,
+      ),
+      'cuotaSeguroVidaPct': serializer.toJson<double>(cuotaSeguroVidaPct),
+      'adelantoMinMens': serializer.toJson<int>(adelantoMinMens),
+      'adelantoMaxMens': serializer.toJson<int>(adelantoMaxMens),
+      'mesEntregaMin': serializer.toJson<int>(mesEntregaMin),
+      'mesEntregaMax': serializer.toJson<int>(mesEntregaMax),
+      'prioridad': serializer.toJson<int>(prioridad),
+      'notas': serializer.toJson<String>(notas),
+      'vigenteDesde': serializer.toJson<DateTime?>(vigenteDesde),
+      'vigenteHasta': serializer.toJson<DateTime?>(vigenteHasta),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  ProductoDb copyWith({
+    String? uid,
+    String? nombre,
+    bool? activo,
+    int? plazoMeses,
+    double? factorIntegrante,
+    double? factorPropietario,
+    double? cuotaInscripcionPct,
+    double? cuotaAdministracionPct,
+    double? ivaCuotaAdministracionPct,
+    double? cuotaSeguroVidaPct,
+    int? adelantoMinMens,
+    int? adelantoMaxMens,
+    int? mesEntregaMin,
+    int? mesEntregaMax,
+    int? prioridad,
+    String? notas,
+    Value<DateTime?> vigenteDesde = const Value.absent(),
+    Value<DateTime?> vigenteHasta = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? deleted,
+    bool? isSynced,
+  }) => ProductoDb(
+    uid: uid ?? this.uid,
+    nombre: nombre ?? this.nombre,
+    activo: activo ?? this.activo,
+    plazoMeses: plazoMeses ?? this.plazoMeses,
+    factorIntegrante: factorIntegrante ?? this.factorIntegrante,
+    factorPropietario: factorPropietario ?? this.factorPropietario,
+    cuotaInscripcionPct: cuotaInscripcionPct ?? this.cuotaInscripcionPct,
+    cuotaAdministracionPct:
+        cuotaAdministracionPct ?? this.cuotaAdministracionPct,
+    ivaCuotaAdministracionPct:
+        ivaCuotaAdministracionPct ?? this.ivaCuotaAdministracionPct,
+    cuotaSeguroVidaPct: cuotaSeguroVidaPct ?? this.cuotaSeguroVidaPct,
+    adelantoMinMens: adelantoMinMens ?? this.adelantoMinMens,
+    adelantoMaxMens: adelantoMaxMens ?? this.adelantoMaxMens,
+    mesEntregaMin: mesEntregaMin ?? this.mesEntregaMin,
+    mesEntregaMax: mesEntregaMax ?? this.mesEntregaMax,
+    prioridad: prioridad ?? this.prioridad,
+    notas: notas ?? this.notas,
+    vigenteDesde: vigenteDesde.present ? vigenteDesde.value : this.vigenteDesde,
+    vigenteHasta: vigenteHasta.present ? vigenteHasta.value : this.vigenteHasta,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  ProductoDb copyWithCompanion(ProductosCompanion data) {
+    return ProductoDb(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      nombre: data.nombre.present ? data.nombre.value : this.nombre,
+      activo: data.activo.present ? data.activo.value : this.activo,
+      plazoMeses: data.plazoMeses.present
+          ? data.plazoMeses.value
+          : this.plazoMeses,
+      factorIntegrante: data.factorIntegrante.present
+          ? data.factorIntegrante.value
+          : this.factorIntegrante,
+      factorPropietario: data.factorPropietario.present
+          ? data.factorPropietario.value
+          : this.factorPropietario,
+      cuotaInscripcionPct: data.cuotaInscripcionPct.present
+          ? data.cuotaInscripcionPct.value
+          : this.cuotaInscripcionPct,
+      cuotaAdministracionPct: data.cuotaAdministracionPct.present
+          ? data.cuotaAdministracionPct.value
+          : this.cuotaAdministracionPct,
+      ivaCuotaAdministracionPct: data.ivaCuotaAdministracionPct.present
+          ? data.ivaCuotaAdministracionPct.value
+          : this.ivaCuotaAdministracionPct,
+      cuotaSeguroVidaPct: data.cuotaSeguroVidaPct.present
+          ? data.cuotaSeguroVidaPct.value
+          : this.cuotaSeguroVidaPct,
+      adelantoMinMens: data.adelantoMinMens.present
+          ? data.adelantoMinMens.value
+          : this.adelantoMinMens,
+      adelantoMaxMens: data.adelantoMaxMens.present
+          ? data.adelantoMaxMens.value
+          : this.adelantoMaxMens,
+      mesEntregaMin: data.mesEntregaMin.present
+          ? data.mesEntregaMin.value
+          : this.mesEntregaMin,
+      mesEntregaMax: data.mesEntregaMax.present
+          ? data.mesEntregaMax.value
+          : this.mesEntregaMax,
+      prioridad: data.prioridad.present ? data.prioridad.value : this.prioridad,
+      notas: data.notas.present ? data.notas.value : this.notas,
+      vigenteDesde: data.vigenteDesde.present
+          ? data.vigenteDesde.value
+          : this.vigenteDesde,
+      vigenteHasta: data.vigenteHasta.present
+          ? data.vigenteHasta.value
+          : this.vigenteHasta,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductoDb(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('activo: $activo, ')
+          ..write('plazoMeses: $plazoMeses, ')
+          ..write('factorIntegrante: $factorIntegrante, ')
+          ..write('factorPropietario: $factorPropietario, ')
+          ..write('cuotaInscripcionPct: $cuotaInscripcionPct, ')
+          ..write('cuotaAdministracionPct: $cuotaAdministracionPct, ')
+          ..write('ivaCuotaAdministracionPct: $ivaCuotaAdministracionPct, ')
+          ..write('cuotaSeguroVidaPct: $cuotaSeguroVidaPct, ')
+          ..write('adelantoMinMens: $adelantoMinMens, ')
+          ..write('adelantoMaxMens: $adelantoMaxMens, ')
+          ..write('mesEntregaMin: $mesEntregaMin, ')
+          ..write('mesEntregaMax: $mesEntregaMax, ')
+          ..write('prioridad: $prioridad, ')
+          ..write('notas: $notas, ')
+          ..write('vigenteDesde: $vigenteDesde, ')
+          ..write('vigenteHasta: $vigenteHasta, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    uid,
+    nombre,
+    activo,
+    plazoMeses,
+    factorIntegrante,
+    factorPropietario,
+    cuotaInscripcionPct,
+    cuotaAdministracionPct,
+    ivaCuotaAdministracionPct,
+    cuotaSeguroVidaPct,
+    adelantoMinMens,
+    adelantoMaxMens,
+    mesEntregaMin,
+    mesEntregaMax,
+    prioridad,
+    notas,
+    vigenteDesde,
+    vigenteHasta,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProductoDb &&
+          other.uid == this.uid &&
+          other.nombre == this.nombre &&
+          other.activo == this.activo &&
+          other.plazoMeses == this.plazoMeses &&
+          other.factorIntegrante == this.factorIntegrante &&
+          other.factorPropietario == this.factorPropietario &&
+          other.cuotaInscripcionPct == this.cuotaInscripcionPct &&
+          other.cuotaAdministracionPct == this.cuotaAdministracionPct &&
+          other.ivaCuotaAdministracionPct == this.ivaCuotaAdministracionPct &&
+          other.cuotaSeguroVidaPct == this.cuotaSeguroVidaPct &&
+          other.adelantoMinMens == this.adelantoMinMens &&
+          other.adelantoMaxMens == this.adelantoMaxMens &&
+          other.mesEntregaMin == this.mesEntregaMin &&
+          other.mesEntregaMax == this.mesEntregaMax &&
+          other.prioridad == this.prioridad &&
+          other.notas == this.notas &&
+          other.vigenteDesde == this.vigenteDesde &&
+          other.vigenteHasta == this.vigenteHasta &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted &&
+          other.isSynced == this.isSynced);
+}
+
+class ProductosCompanion extends UpdateCompanion<ProductoDb> {
+  final Value<String> uid;
+  final Value<String> nombre;
+  final Value<bool> activo;
+  final Value<int> plazoMeses;
+  final Value<double> factorIntegrante;
+  final Value<double> factorPropietario;
+  final Value<double> cuotaInscripcionPct;
+  final Value<double> cuotaAdministracionPct;
+  final Value<double> ivaCuotaAdministracionPct;
+  final Value<double> cuotaSeguroVidaPct;
+  final Value<int> adelantoMinMens;
+  final Value<int> adelantoMaxMens;
+  final Value<int> mesEntregaMin;
+  final Value<int> mesEntregaMax;
+  final Value<int> prioridad;
+  final Value<String> notas;
+  final Value<DateTime?> vigenteDesde;
+  final Value<DateTime?> vigenteHasta;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> deleted;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const ProductosCompanion({
+    this.uid = const Value.absent(),
+    this.nombre = const Value.absent(),
+    this.activo = const Value.absent(),
+    this.plazoMeses = const Value.absent(),
+    this.factorIntegrante = const Value.absent(),
+    this.factorPropietario = const Value.absent(),
+    this.cuotaInscripcionPct = const Value.absent(),
+    this.cuotaAdministracionPct = const Value.absent(),
+    this.ivaCuotaAdministracionPct = const Value.absent(),
+    this.cuotaSeguroVidaPct = const Value.absent(),
+    this.adelantoMinMens = const Value.absent(),
+    this.adelantoMaxMens = const Value.absent(),
+    this.mesEntregaMin = const Value.absent(),
+    this.mesEntregaMax = const Value.absent(),
+    this.prioridad = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.vigenteDesde = const Value.absent(),
+    this.vigenteHasta = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProductosCompanion.insert({
+    required String uid,
+    this.nombre = const Value.absent(),
+    this.activo = const Value.absent(),
+    this.plazoMeses = const Value.absent(),
+    this.factorIntegrante = const Value.absent(),
+    this.factorPropietario = const Value.absent(),
+    this.cuotaInscripcionPct = const Value.absent(),
+    this.cuotaAdministracionPct = const Value.absent(),
+    this.ivaCuotaAdministracionPct = const Value.absent(),
+    this.cuotaSeguroVidaPct = const Value.absent(),
+    this.adelantoMinMens = const Value.absent(),
+    this.adelantoMaxMens = const Value.absent(),
+    this.mesEntregaMin = const Value.absent(),
+    this.mesEntregaMax = const Value.absent(),
+    this.prioridad = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.vigenteDesde = const Value.absent(),
+    this.vigenteHasta = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid);
+  static Insertable<ProductoDb> custom({
+    Expression<String>? uid,
+    Expression<String>? nombre,
+    Expression<bool>? activo,
+    Expression<int>? plazoMeses,
+    Expression<double>? factorIntegrante,
+    Expression<double>? factorPropietario,
+    Expression<double>? cuotaInscripcionPct,
+    Expression<double>? cuotaAdministracionPct,
+    Expression<double>? ivaCuotaAdministracionPct,
+    Expression<double>? cuotaSeguroVidaPct,
+    Expression<int>? adelantoMinMens,
+    Expression<int>? adelantoMaxMens,
+    Expression<int>? mesEntregaMin,
+    Expression<int>? mesEntregaMax,
+    Expression<int>? prioridad,
+    Expression<String>? notas,
+    Expression<DateTime>? vigenteDesde,
+    Expression<DateTime>? vigenteHasta,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? deleted,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (nombre != null) 'nombre': nombre,
+      if (activo != null) 'activo': activo,
+      if (plazoMeses != null) 'plazo_meses': plazoMeses,
+      if (factorIntegrante != null) 'factor_integrante': factorIntegrante,
+      if (factorPropietario != null) 'factor_propietario': factorPropietario,
+      if (cuotaInscripcionPct != null)
+        'cuota_inscripcion_pct': cuotaInscripcionPct,
+      if (cuotaAdministracionPct != null)
+        'cuota_administracion_pct': cuotaAdministracionPct,
+      if (ivaCuotaAdministracionPct != null)
+        'iva_cuota_administracion_pct': ivaCuotaAdministracionPct,
+      if (cuotaSeguroVidaPct != null)
+        'cuota_seguro_vida_pct': cuotaSeguroVidaPct,
+      if (adelantoMinMens != null) 'adelanto_min_mens': adelantoMinMens,
+      if (adelantoMaxMens != null) 'adelanto_max_mens': adelantoMaxMens,
+      if (mesEntregaMin != null) 'mes_entrega_min': mesEntregaMin,
+      if (mesEntregaMax != null) 'mes_entrega_max': mesEntregaMax,
+      if (prioridad != null) 'prioridad': prioridad,
+      if (notas != null) 'notas': notas,
+      if (vigenteDesde != null) 'vigente_desde': vigenteDesde,
+      if (vigenteHasta != null) 'vigente_hasta': vigenteHasta,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProductosCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? nombre,
+    Value<bool>? activo,
+    Value<int>? plazoMeses,
+    Value<double>? factorIntegrante,
+    Value<double>? factorPropietario,
+    Value<double>? cuotaInscripcionPct,
+    Value<double>? cuotaAdministracionPct,
+    Value<double>? ivaCuotaAdministracionPct,
+    Value<double>? cuotaSeguroVidaPct,
+    Value<int>? adelantoMinMens,
+    Value<int>? adelantoMaxMens,
+    Value<int>? mesEntregaMin,
+    Value<int>? mesEntregaMax,
+    Value<int>? prioridad,
+    Value<String>? notas,
+    Value<DateTime?>? vigenteDesde,
+    Value<DateTime?>? vigenteHasta,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? deleted,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return ProductosCompanion(
+      uid: uid ?? this.uid,
+      nombre: nombre ?? this.nombre,
+      activo: activo ?? this.activo,
+      plazoMeses: plazoMeses ?? this.plazoMeses,
+      factorIntegrante: factorIntegrante ?? this.factorIntegrante,
+      factorPropietario: factorPropietario ?? this.factorPropietario,
+      cuotaInscripcionPct: cuotaInscripcionPct ?? this.cuotaInscripcionPct,
+      cuotaAdministracionPct:
+          cuotaAdministracionPct ?? this.cuotaAdministracionPct,
+      ivaCuotaAdministracionPct:
+          ivaCuotaAdministracionPct ?? this.ivaCuotaAdministracionPct,
+      cuotaSeguroVidaPct: cuotaSeguroVidaPct ?? this.cuotaSeguroVidaPct,
+      adelantoMinMens: adelantoMinMens ?? this.adelantoMinMens,
+      adelantoMaxMens: adelantoMaxMens ?? this.adelantoMaxMens,
+      mesEntregaMin: mesEntregaMin ?? this.mesEntregaMin,
+      mesEntregaMax: mesEntregaMax ?? this.mesEntregaMax,
+      prioridad: prioridad ?? this.prioridad,
+      notas: notas ?? this.notas,
+      vigenteDesde: vigenteDesde ?? this.vigenteDesde,
+      vigenteHasta: vigenteHasta ?? this.vigenteHasta,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (nombre.present) {
+      map['nombre'] = Variable<String>(nombre.value);
+    }
+    if (activo.present) {
+      map['activo'] = Variable<bool>(activo.value);
+    }
+    if (plazoMeses.present) {
+      map['plazo_meses'] = Variable<int>(plazoMeses.value);
+    }
+    if (factorIntegrante.present) {
+      map['factor_integrante'] = Variable<double>(factorIntegrante.value);
+    }
+    if (factorPropietario.present) {
+      map['factor_propietario'] = Variable<double>(factorPropietario.value);
+    }
+    if (cuotaInscripcionPct.present) {
+      map['cuota_inscripcion_pct'] = Variable<double>(
+        cuotaInscripcionPct.value,
+      );
+    }
+    if (cuotaAdministracionPct.present) {
+      map['cuota_administracion_pct'] = Variable<double>(
+        cuotaAdministracionPct.value,
+      );
+    }
+    if (ivaCuotaAdministracionPct.present) {
+      map['iva_cuota_administracion_pct'] = Variable<double>(
+        ivaCuotaAdministracionPct.value,
+      );
+    }
+    if (cuotaSeguroVidaPct.present) {
+      map['cuota_seguro_vida_pct'] = Variable<double>(cuotaSeguroVidaPct.value);
+    }
+    if (adelantoMinMens.present) {
+      map['adelanto_min_mens'] = Variable<int>(adelantoMinMens.value);
+    }
+    if (adelantoMaxMens.present) {
+      map['adelanto_max_mens'] = Variable<int>(adelantoMaxMens.value);
+    }
+    if (mesEntregaMin.present) {
+      map['mes_entrega_min'] = Variable<int>(mesEntregaMin.value);
+    }
+    if (mesEntregaMax.present) {
+      map['mes_entrega_max'] = Variable<int>(mesEntregaMax.value);
+    }
+    if (prioridad.present) {
+      map['prioridad'] = Variable<int>(prioridad.value);
+    }
+    if (notas.present) {
+      map['notas'] = Variable<String>(notas.value);
+    }
+    if (vigenteDesde.present) {
+      map['vigente_desde'] = Variable<DateTime>(vigenteDesde.value);
+    }
+    if (vigenteHasta.present) {
+      map['vigente_hasta'] = Variable<DateTime>(vigenteHasta.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProductosCompanion(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('activo: $activo, ')
+          ..write('plazoMeses: $plazoMeses, ')
+          ..write('factorIntegrante: $factorIntegrante, ')
+          ..write('factorPropietario: $factorPropietario, ')
+          ..write('cuotaInscripcionPct: $cuotaInscripcionPct, ')
+          ..write('cuotaAdministracionPct: $cuotaAdministracionPct, ')
+          ..write('ivaCuotaAdministracionPct: $ivaCuotaAdministracionPct, ')
+          ..write('cuotaSeguroVidaPct: $cuotaSeguroVidaPct, ')
+          ..write('adelantoMinMens: $adelantoMinMens, ')
+          ..write('adelantoMaxMens: $adelantoMaxMens, ')
+          ..write('mesEntregaMin: $mesEntregaMin, ')
+          ..write('mesEntregaMax: $mesEntregaMax, ')
+          ..write('prioridad: $prioridad, ')
+          ..write('notas: $notas, ')
+          ..write('vigenteDesde: $vigenteDesde, ')
+          ..write('vigenteHasta: $vigenteHasta, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ColaboradoresTable extends Colaboradores
+    with TableInfo<$ColaboradoresTable, ColaboradorDb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ColaboradoresTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nombresMeta = const VerificationMeta(
+    'nombres',
+  );
+  @override
+  late final GeneratedColumn<String> nombres = GeneratedColumn<String>(
+    'nombres',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _apellidoPaternoMeta = const VerificationMeta(
+    'apellidoPaterno',
+  );
+  @override
+  late final GeneratedColumn<String> apellidoPaterno = GeneratedColumn<String>(
+    'apellido_paterno',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _apellidoMaternoMeta = const VerificationMeta(
+    'apellidoMaterno',
+  );
+  @override
+  late final GeneratedColumn<String> apellidoMaterno = GeneratedColumn<String>(
+    'apellido_materno',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _fechaNacimientoMeta = const VerificationMeta(
+    'fechaNacimiento',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fechaNacimiento =
+      GeneratedColumn<DateTime>(
+        'fecha_nacimiento',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _curpMeta = const VerificationMeta('curp');
+  @override
+  late final GeneratedColumn<String> curp = GeneratedColumn<String>(
+    'curp',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rfcMeta = const VerificationMeta('rfc');
+  @override
+  late final GeneratedColumn<String> rfc = GeneratedColumn<String>(
+    'rfc',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _telefonoMovilMeta = const VerificationMeta(
+    'telefonoMovil',
+  );
+  @override
+  late final GeneratedColumn<String> telefonoMovil = GeneratedColumn<String>(
+    'telefono_movil',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _emailPersonalMeta = const VerificationMeta(
+    'emailPersonal',
+  );
+  @override
+  late final GeneratedColumn<String> emailPersonal = GeneratedColumn<String>(
+    'email_personal',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _fotoRutaLocalMeta = const VerificationMeta(
+    'fotoRutaLocal',
+  );
+  @override
+  late final GeneratedColumn<String> fotoRutaLocal = GeneratedColumn<String>(
+    'foto_ruta_local',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _fotoRutaRemotaMeta = const VerificationMeta(
+    'fotoRutaRemota',
+  );
+  @override
+  late final GeneratedColumn<String> fotoRutaRemota = GeneratedColumn<String>(
+    'foto_ruta_remota',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _generoMeta = const VerificationMeta('genero');
+  @override
+  late final GeneratedColumn<String> genero = GeneratedColumn<String>(
+    'genero',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _notasMeta = const VerificationMeta('notas');
+  @override
+  late final GeneratedColumn<String> notas = GeneratedColumn<String>(
+    'notas',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uid,
+    nombres,
+    apellidoPaterno,
+    apellidoMaterno,
+    fechaNacimiento,
+    curp,
+    rfc,
+    telefonoMovil,
+    emailPersonal,
+    fotoRutaLocal,
+    fotoRutaRemota,
+    genero,
+    notas,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'colaboradores';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ColaboradorDb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('nombres')) {
+      context.handle(
+        _nombresMeta,
+        nombres.isAcceptableOrUnknown(data['nombres']!, _nombresMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nombresMeta);
+    }
+    if (data.containsKey('apellido_paterno')) {
+      context.handle(
+        _apellidoPaternoMeta,
+        apellidoPaterno.isAcceptableOrUnknown(
+          data['apellido_paterno']!,
+          _apellidoPaternoMeta,
+        ),
+      );
+    }
+    if (data.containsKey('apellido_materno')) {
+      context.handle(
+        _apellidoMaternoMeta,
+        apellidoMaterno.isAcceptableOrUnknown(
+          data['apellido_materno']!,
+          _apellidoMaternoMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fecha_nacimiento')) {
+      context.handle(
+        _fechaNacimientoMeta,
+        fechaNacimiento.isAcceptableOrUnknown(
+          data['fecha_nacimiento']!,
+          _fechaNacimientoMeta,
+        ),
+      );
+    }
+    if (data.containsKey('curp')) {
+      context.handle(
+        _curpMeta,
+        curp.isAcceptableOrUnknown(data['curp']!, _curpMeta),
+      );
+    }
+    if (data.containsKey('rfc')) {
+      context.handle(
+        _rfcMeta,
+        rfc.isAcceptableOrUnknown(data['rfc']!, _rfcMeta),
+      );
+    }
+    if (data.containsKey('telefono_movil')) {
+      context.handle(
+        _telefonoMovilMeta,
+        telefonoMovil.isAcceptableOrUnknown(
+          data['telefono_movil']!,
+          _telefonoMovilMeta,
+        ),
+      );
+    }
+    if (data.containsKey('email_personal')) {
+      context.handle(
+        _emailPersonalMeta,
+        emailPersonal.isAcceptableOrUnknown(
+          data['email_personal']!,
+          _emailPersonalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('foto_ruta_local')) {
+      context.handle(
+        _fotoRutaLocalMeta,
+        fotoRutaLocal.isAcceptableOrUnknown(
+          data['foto_ruta_local']!,
+          _fotoRutaLocalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('foto_ruta_remota')) {
+      context.handle(
+        _fotoRutaRemotaMeta,
+        fotoRutaRemota.isAcceptableOrUnknown(
+          data['foto_ruta_remota']!,
+          _fotoRutaRemotaMeta,
+        ),
+      );
+    }
+    if (data.containsKey('genero')) {
+      context.handle(
+        _generoMeta,
+        genero.isAcceptableOrUnknown(data['genero']!, _generoMeta),
+      );
+    }
+    if (data.containsKey('notas')) {
+      context.handle(
+        _notasMeta,
+        notas.isAcceptableOrUnknown(data['notas']!, _notasMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  ColaboradorDb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ColaboradorDb(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      nombres: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nombres'],
+      )!,
+      apellidoPaterno: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}apellido_paterno'],
+      )!,
+      apellidoMaterno: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}apellido_materno'],
+      )!,
+      fechaNacimiento: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fecha_nacimiento'],
+      ),
+      curp: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}curp'],
+      ),
+      rfc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rfc'],
+      ),
+      telefonoMovil: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}telefono_movil'],
+      )!,
+      emailPersonal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email_personal'],
+      )!,
+      fotoRutaLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}foto_ruta_local'],
+      )!,
+      fotoRutaRemota: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}foto_ruta_remota'],
+      )!,
+      genero: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genero'],
+      ),
+      notas: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notas'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $ColaboradoresTable createAlias(String alias) {
+    return $ColaboradoresTable(attachedDatabase, alias);
+  }
+}
+
+class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
+  final String uid;
+  final String nombres;
+  final String apellidoPaterno;
+  final String apellidoMaterno;
+  final DateTime? fechaNacimiento;
+  final String? curp;
+  final String? rfc;
+  final String telefonoMovil;
+  final String emailPersonal;
+  final String fotoRutaLocal;
+  final String fotoRutaRemota;
+  final String? genero;
+  final String notas;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool deleted;
+  final bool isSynced;
+  const ColaboradorDb({
+    required this.uid,
+    required this.nombres,
+    required this.apellidoPaterno,
+    required this.apellidoMaterno,
+    this.fechaNacimiento,
+    this.curp,
+    this.rfc,
+    required this.telefonoMovil,
+    required this.emailPersonal,
+    required this.fotoRutaLocal,
+    required this.fotoRutaRemota,
+    this.genero,
+    required this.notas,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['nombres'] = Variable<String>(nombres);
+    map['apellido_paterno'] = Variable<String>(apellidoPaterno);
+    map['apellido_materno'] = Variable<String>(apellidoMaterno);
+    if (!nullToAbsent || fechaNacimiento != null) {
+      map['fecha_nacimiento'] = Variable<DateTime>(fechaNacimiento);
+    }
+    if (!nullToAbsent || curp != null) {
+      map['curp'] = Variable<String>(curp);
+    }
+    if (!nullToAbsent || rfc != null) {
+      map['rfc'] = Variable<String>(rfc);
+    }
+    map['telefono_movil'] = Variable<String>(telefonoMovil);
+    map['email_personal'] = Variable<String>(emailPersonal);
+    map['foto_ruta_local'] = Variable<String>(fotoRutaLocal);
+    map['foto_ruta_remota'] = Variable<String>(fotoRutaRemota);
+    if (!nullToAbsent || genero != null) {
+      map['genero'] = Variable<String>(genero);
+    }
+    map['notas'] = Variable<String>(notas);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  ColaboradoresCompanion toCompanion(bool nullToAbsent) {
+    return ColaboradoresCompanion(
+      uid: Value(uid),
+      nombres: Value(nombres),
+      apellidoPaterno: Value(apellidoPaterno),
+      apellidoMaterno: Value(apellidoMaterno),
+      fechaNacimiento: fechaNacimiento == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fechaNacimiento),
+      curp: curp == null && nullToAbsent ? const Value.absent() : Value(curp),
+      rfc: rfc == null && nullToAbsent ? const Value.absent() : Value(rfc),
+      telefonoMovil: Value(telefonoMovil),
+      emailPersonal: Value(emailPersonal),
+      fotoRutaLocal: Value(fotoRutaLocal),
+      fotoRutaRemota: Value(fotoRutaRemota),
+      genero: genero == null && nullToAbsent
+          ? const Value.absent()
+          : Value(genero),
+      notas: Value(notas),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory ColaboradorDb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ColaboradorDb(
+      uid: serializer.fromJson<String>(json['uid']),
+      nombres: serializer.fromJson<String>(json['nombres']),
+      apellidoPaterno: serializer.fromJson<String>(json['apellidoPaterno']),
+      apellidoMaterno: serializer.fromJson<String>(json['apellidoMaterno']),
+      fechaNacimiento: serializer.fromJson<DateTime?>(json['fechaNacimiento']),
+      curp: serializer.fromJson<String?>(json['curp']),
+      rfc: serializer.fromJson<String?>(json['rfc']),
+      telefonoMovil: serializer.fromJson<String>(json['telefonoMovil']),
+      emailPersonal: serializer.fromJson<String>(json['emailPersonal']),
+      fotoRutaLocal: serializer.fromJson<String>(json['fotoRutaLocal']),
+      fotoRutaRemota: serializer.fromJson<String>(json['fotoRutaRemota']),
+      genero: serializer.fromJson<String?>(json['genero']),
+      notas: serializer.fromJson<String>(json['notas']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'nombres': serializer.toJson<String>(nombres),
+      'apellidoPaterno': serializer.toJson<String>(apellidoPaterno),
+      'apellidoMaterno': serializer.toJson<String>(apellidoMaterno),
+      'fechaNacimiento': serializer.toJson<DateTime?>(fechaNacimiento),
+      'curp': serializer.toJson<String?>(curp),
+      'rfc': serializer.toJson<String?>(rfc),
+      'telefonoMovil': serializer.toJson<String>(telefonoMovil),
+      'emailPersonal': serializer.toJson<String>(emailPersonal),
+      'fotoRutaLocal': serializer.toJson<String>(fotoRutaLocal),
+      'fotoRutaRemota': serializer.toJson<String>(fotoRutaRemota),
+      'genero': serializer.toJson<String?>(genero),
+      'notas': serializer.toJson<String>(notas),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  ColaboradorDb copyWith({
+    String? uid,
+    String? nombres,
+    String? apellidoPaterno,
+    String? apellidoMaterno,
+    Value<DateTime?> fechaNacimiento = const Value.absent(),
+    Value<String?> curp = const Value.absent(),
+    Value<String?> rfc = const Value.absent(),
+    String? telefonoMovil,
+    String? emailPersonal,
+    String? fotoRutaLocal,
+    String? fotoRutaRemota,
+    Value<String?> genero = const Value.absent(),
+    String? notas,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? deleted,
+    bool? isSynced,
+  }) => ColaboradorDb(
+    uid: uid ?? this.uid,
+    nombres: nombres ?? this.nombres,
+    apellidoPaterno: apellidoPaterno ?? this.apellidoPaterno,
+    apellidoMaterno: apellidoMaterno ?? this.apellidoMaterno,
+    fechaNacimiento: fechaNacimiento.present
+        ? fechaNacimiento.value
+        : this.fechaNacimiento,
+    curp: curp.present ? curp.value : this.curp,
+    rfc: rfc.present ? rfc.value : this.rfc,
+    telefonoMovil: telefonoMovil ?? this.telefonoMovil,
+    emailPersonal: emailPersonal ?? this.emailPersonal,
+    fotoRutaLocal: fotoRutaLocal ?? this.fotoRutaLocal,
+    fotoRutaRemota: fotoRutaRemota ?? this.fotoRutaRemota,
+    genero: genero.present ? genero.value : this.genero,
+    notas: notas ?? this.notas,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  ColaboradorDb copyWithCompanion(ColaboradoresCompanion data) {
+    return ColaboradorDb(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      nombres: data.nombres.present ? data.nombres.value : this.nombres,
+      apellidoPaterno: data.apellidoPaterno.present
+          ? data.apellidoPaterno.value
+          : this.apellidoPaterno,
+      apellidoMaterno: data.apellidoMaterno.present
+          ? data.apellidoMaterno.value
+          : this.apellidoMaterno,
+      fechaNacimiento: data.fechaNacimiento.present
+          ? data.fechaNacimiento.value
+          : this.fechaNacimiento,
+      curp: data.curp.present ? data.curp.value : this.curp,
+      rfc: data.rfc.present ? data.rfc.value : this.rfc,
+      telefonoMovil: data.telefonoMovil.present
+          ? data.telefonoMovil.value
+          : this.telefonoMovil,
+      emailPersonal: data.emailPersonal.present
+          ? data.emailPersonal.value
+          : this.emailPersonal,
+      fotoRutaLocal: data.fotoRutaLocal.present
+          ? data.fotoRutaLocal.value
+          : this.fotoRutaLocal,
+      fotoRutaRemota: data.fotoRutaRemota.present
+          ? data.fotoRutaRemota.value
+          : this.fotoRutaRemota,
+      genero: data.genero.present ? data.genero.value : this.genero,
+      notas: data.notas.present ? data.notas.value : this.notas,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ColaboradorDb(')
+          ..write('uid: $uid, ')
+          ..write('nombres: $nombres, ')
+          ..write('apellidoPaterno: $apellidoPaterno, ')
+          ..write('apellidoMaterno: $apellidoMaterno, ')
+          ..write('fechaNacimiento: $fechaNacimiento, ')
+          ..write('curp: $curp, ')
+          ..write('rfc: $rfc, ')
+          ..write('telefonoMovil: $telefonoMovil, ')
+          ..write('emailPersonal: $emailPersonal, ')
+          ..write('fotoRutaLocal: $fotoRutaLocal, ')
+          ..write('fotoRutaRemota: $fotoRutaRemota, ')
+          ..write('genero: $genero, ')
+          ..write('notas: $notas, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uid,
+    nombres,
+    apellidoPaterno,
+    apellidoMaterno,
+    fechaNacimiento,
+    curp,
+    rfc,
+    telefonoMovil,
+    emailPersonal,
+    fotoRutaLocal,
+    fotoRutaRemota,
+    genero,
+    notas,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ColaboradorDb &&
+          other.uid == this.uid &&
+          other.nombres == this.nombres &&
+          other.apellidoPaterno == this.apellidoPaterno &&
+          other.apellidoMaterno == this.apellidoMaterno &&
+          other.fechaNacimiento == this.fechaNacimiento &&
+          other.curp == this.curp &&
+          other.rfc == this.rfc &&
+          other.telefonoMovil == this.telefonoMovil &&
+          other.emailPersonal == this.emailPersonal &&
+          other.fotoRutaLocal == this.fotoRutaLocal &&
+          other.fotoRutaRemota == this.fotoRutaRemota &&
+          other.genero == this.genero &&
+          other.notas == this.notas &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted &&
+          other.isSynced == this.isSynced);
+}
+
+class ColaboradoresCompanion extends UpdateCompanion<ColaboradorDb> {
+  final Value<String> uid;
+  final Value<String> nombres;
+  final Value<String> apellidoPaterno;
+  final Value<String> apellidoMaterno;
+  final Value<DateTime?> fechaNacimiento;
+  final Value<String?> curp;
+  final Value<String?> rfc;
+  final Value<String> telefonoMovil;
+  final Value<String> emailPersonal;
+  final Value<String> fotoRutaLocal;
+  final Value<String> fotoRutaRemota;
+  final Value<String?> genero;
+  final Value<String> notas;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> deleted;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const ColaboradoresCompanion({
+    this.uid = const Value.absent(),
+    this.nombres = const Value.absent(),
+    this.apellidoPaterno = const Value.absent(),
+    this.apellidoMaterno = const Value.absent(),
+    this.fechaNacimiento = const Value.absent(),
+    this.curp = const Value.absent(),
+    this.rfc = const Value.absent(),
+    this.telefonoMovil = const Value.absent(),
+    this.emailPersonal = const Value.absent(),
+    this.fotoRutaLocal = const Value.absent(),
+    this.fotoRutaRemota = const Value.absent(),
+    this.genero = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ColaboradoresCompanion.insert({
+    required String uid,
+    required String nombres,
+    this.apellidoPaterno = const Value.absent(),
+    this.apellidoMaterno = const Value.absent(),
+    this.fechaNacimiento = const Value.absent(),
+    this.curp = const Value.absent(),
+    this.rfc = const Value.absent(),
+    this.telefonoMovil = const Value.absent(),
+    this.emailPersonal = const Value.absent(),
+    this.fotoRutaLocal = const Value.absent(),
+    this.fotoRutaRemota = const Value.absent(),
+    this.genero = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid),
+       nombres = Value(nombres);
+  static Insertable<ColaboradorDb> custom({
+    Expression<String>? uid,
+    Expression<String>? nombres,
+    Expression<String>? apellidoPaterno,
+    Expression<String>? apellidoMaterno,
+    Expression<DateTime>? fechaNacimiento,
+    Expression<String>? curp,
+    Expression<String>? rfc,
+    Expression<String>? telefonoMovil,
+    Expression<String>? emailPersonal,
+    Expression<String>? fotoRutaLocal,
+    Expression<String>? fotoRutaRemota,
+    Expression<String>? genero,
+    Expression<String>? notas,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? deleted,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (nombres != null) 'nombres': nombres,
+      if (apellidoPaterno != null) 'apellido_paterno': apellidoPaterno,
+      if (apellidoMaterno != null) 'apellido_materno': apellidoMaterno,
+      if (fechaNacimiento != null) 'fecha_nacimiento': fechaNacimiento,
+      if (curp != null) 'curp': curp,
+      if (rfc != null) 'rfc': rfc,
+      if (telefonoMovil != null) 'telefono_movil': telefonoMovil,
+      if (emailPersonal != null) 'email_personal': emailPersonal,
+      if (fotoRutaLocal != null) 'foto_ruta_local': fotoRutaLocal,
+      if (fotoRutaRemota != null) 'foto_ruta_remota': fotoRutaRemota,
+      if (genero != null) 'genero': genero,
+      if (notas != null) 'notas': notas,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ColaboradoresCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? nombres,
+    Value<String>? apellidoPaterno,
+    Value<String>? apellidoMaterno,
+    Value<DateTime?>? fechaNacimiento,
+    Value<String?>? curp,
+    Value<String?>? rfc,
+    Value<String>? telefonoMovil,
+    Value<String>? emailPersonal,
+    Value<String>? fotoRutaLocal,
+    Value<String>? fotoRutaRemota,
+    Value<String?>? genero,
+    Value<String>? notas,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? deleted,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return ColaboradoresCompanion(
+      uid: uid ?? this.uid,
+      nombres: nombres ?? this.nombres,
+      apellidoPaterno: apellidoPaterno ?? this.apellidoPaterno,
+      apellidoMaterno: apellidoMaterno ?? this.apellidoMaterno,
+      fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
+      curp: curp ?? this.curp,
+      rfc: rfc ?? this.rfc,
+      telefonoMovil: telefonoMovil ?? this.telefonoMovil,
+      emailPersonal: emailPersonal ?? this.emailPersonal,
+      fotoRutaLocal: fotoRutaLocal ?? this.fotoRutaLocal,
+      fotoRutaRemota: fotoRutaRemota ?? this.fotoRutaRemota,
+      genero: genero ?? this.genero,
+      notas: notas ?? this.notas,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (nombres.present) {
+      map['nombres'] = Variable<String>(nombres.value);
+    }
+    if (apellidoPaterno.present) {
+      map['apellido_paterno'] = Variable<String>(apellidoPaterno.value);
+    }
+    if (apellidoMaterno.present) {
+      map['apellido_materno'] = Variable<String>(apellidoMaterno.value);
+    }
+    if (fechaNacimiento.present) {
+      map['fecha_nacimiento'] = Variable<DateTime>(fechaNacimiento.value);
+    }
+    if (curp.present) {
+      map['curp'] = Variable<String>(curp.value);
+    }
+    if (rfc.present) {
+      map['rfc'] = Variable<String>(rfc.value);
+    }
+    if (telefonoMovil.present) {
+      map['telefono_movil'] = Variable<String>(telefonoMovil.value);
+    }
+    if (emailPersonal.present) {
+      map['email_personal'] = Variable<String>(emailPersonal.value);
+    }
+    if (fotoRutaLocal.present) {
+      map['foto_ruta_local'] = Variable<String>(fotoRutaLocal.value);
+    }
+    if (fotoRutaRemota.present) {
+      map['foto_ruta_remota'] = Variable<String>(fotoRutaRemota.value);
+    }
+    if (genero.present) {
+      map['genero'] = Variable<String>(genero.value);
+    }
+    if (notas.present) {
+      map['notas'] = Variable<String>(notas.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ColaboradoresCompanion(')
+          ..write('uid: $uid, ')
+          ..write('nombres: $nombres, ')
+          ..write('apellidoPaterno: $apellidoPaterno, ')
+          ..write('apellidoMaterno: $apellidoMaterno, ')
+          ..write('fechaNacimiento: $fechaNacimiento, ')
+          ..write('curp: $curp, ')
+          ..write('rfc: $rfc, ')
+          ..write('telefonoMovil: $telefonoMovil, ')
+          ..write('emailPersonal: $emailPersonal, ')
+          ..write('fotoRutaLocal: $fotoRutaLocal, ')
+          ..write('fotoRutaRemota: $fotoRutaRemota, ')
+          ..write('genero: $genero, ')
+          ..write('notas: $notas, ')
+          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
           ..write('isSynced: $isSynced, ')
@@ -3073,6 +5373,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ReportesTable reportes = $ReportesTable(this);
   late final $ModelosTable modelos = $ModelosTable(this);
   late final $ModeloImagenesTable modeloImagenes = $ModeloImagenesTable(this);
+  late final $ProductosTable productos = $ProductosTable(this);
+  late final $ColaboradoresTable colaboradores = $ColaboradoresTable(this);
   late final UsuariosDao usuariosDao = UsuariosDao(this as AppDatabase);
   late final DistribuidoresDao distribuidoresDao = DistribuidoresDao(
     this as AppDatabase,
@@ -3080,6 +5382,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final ReportesDao reportesDao = ReportesDao(this as AppDatabase);
   late final ModelosDao modelosDao = ModelosDao(this as AppDatabase);
   late final ModeloImagenesDao modeloImagenesDao = ModeloImagenesDao(
+    this as AppDatabase,
+  );
+  late final ProductosDao productosDao = ProductosDao(this as AppDatabase);
+  late final ColaboradoresDao colaboradoresDao = ColaboradoresDao(
     this as AppDatabase,
   );
   @override
@@ -3092,6 +5398,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     reportes,
     modelos,
     modeloImagenes,
+    productos,
+    colaboradores,
   ];
 }
 
@@ -4361,6 +6669,8 @@ typedef $$ModeloImagenesTableCreateCompanionBuilder =
       required String modeloUid,
       Value<String> rutaRemota,
       Value<String> rutaLocal,
+      Value<String> sha256,
+      Value<bool> isCover,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
       Value<bool> isSynced,
@@ -4372,6 +6682,8 @@ typedef $$ModeloImagenesTableUpdateCompanionBuilder =
       Value<String> modeloUid,
       Value<String> rutaRemota,
       Value<String> rutaLocal,
+      Value<String> sha256,
+      Value<bool> isCover,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
       Value<bool> isSynced,
@@ -4404,6 +6716,16 @@ class $$ModeloImagenesTableFilterComposer
 
   ColumnFilters<String> get rutaLocal => $composableBuilder(
     column: $table.rutaLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4452,6 +6774,16 @@ class $$ModeloImagenesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -4490,6 +6822,12 @@ class $$ModeloImagenesTableAnnotationComposer
 
   GeneratedColumn<String> get rutaLocal =>
       $composableBuilder(column: $table.rutaLocal, builder: (column) => column);
+
+  GeneratedColumn<String> get sha256 =>
+      $composableBuilder(column: $table.sha256, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCover =>
+      $composableBuilder(column: $table.isCover, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -4538,6 +6876,8 @@ class $$ModeloImagenesTableTableManager
                 Value<String> modeloUid = const Value.absent(),
                 Value<String> rutaRemota = const Value.absent(),
                 Value<String> rutaLocal = const Value.absent(),
+                Value<String> sha256 = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -4547,6 +6887,8 @@ class $$ModeloImagenesTableTableManager
                 modeloUid: modeloUid,
                 rutaRemota: rutaRemota,
                 rutaLocal: rutaLocal,
+                sha256: sha256,
+                isCover: isCover,
                 updatedAt: updatedAt,
                 deleted: deleted,
                 isSynced: isSynced,
@@ -4558,6 +6900,8 @@ class $$ModeloImagenesTableTableManager
                 required String modeloUid,
                 Value<String> rutaRemota = const Value.absent(),
                 Value<String> rutaLocal = const Value.absent(),
+                Value<String> sha256 = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -4567,6 +6911,8 @@ class $$ModeloImagenesTableTableManager
                 modeloUid: modeloUid,
                 rutaRemota: rutaRemota,
                 rutaLocal: rutaLocal,
+                sha256: sha256,
+                isCover: isCover,
                 updatedAt: updatedAt,
                 deleted: deleted,
                 isSynced: isSynced,
@@ -4597,6 +6943,994 @@ typedef $$ModeloImagenesTableProcessedTableManager =
       ModeloImagenDb,
       PrefetchHooks Function()
     >;
+typedef $$ProductosTableCreateCompanionBuilder =
+    ProductosCompanion Function({
+      required String uid,
+      Value<String> nombre,
+      Value<bool> activo,
+      Value<int> plazoMeses,
+      Value<double> factorIntegrante,
+      Value<double> factorPropietario,
+      Value<double> cuotaInscripcionPct,
+      Value<double> cuotaAdministracionPct,
+      Value<double> ivaCuotaAdministracionPct,
+      Value<double> cuotaSeguroVidaPct,
+      Value<int> adelantoMinMens,
+      Value<int> adelantoMaxMens,
+      Value<int> mesEntregaMin,
+      Value<int> mesEntregaMax,
+      Value<int> prioridad,
+      Value<String> notas,
+      Value<DateTime?> vigenteDesde,
+      Value<DateTime?> vigenteHasta,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$ProductosTableUpdateCompanionBuilder =
+    ProductosCompanion Function({
+      Value<String> uid,
+      Value<String> nombre,
+      Value<bool> activo,
+      Value<int> plazoMeses,
+      Value<double> factorIntegrante,
+      Value<double> factorPropietario,
+      Value<double> cuotaInscripcionPct,
+      Value<double> cuotaAdministracionPct,
+      Value<double> ivaCuotaAdministracionPct,
+      Value<double> cuotaSeguroVidaPct,
+      Value<int> adelantoMinMens,
+      Value<int> adelantoMaxMens,
+      Value<int> mesEntregaMin,
+      Value<int> mesEntregaMax,
+      Value<int> prioridad,
+      Value<String> notas,
+      Value<DateTime?> vigenteDesde,
+      Value<DateTime?> vigenteHasta,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$ProductosTableFilterComposer
+    extends Composer<_$AppDatabase, $ProductosTable> {
+  $$ProductosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get activo => $composableBuilder(
+    column: $table.activo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get plazoMeses => $composableBuilder(
+    column: $table.plazoMeses,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get factorIntegrante => $composableBuilder(
+    column: $table.factorIntegrante,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get factorPropietario => $composableBuilder(
+    column: $table.factorPropietario,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get cuotaInscripcionPct => $composableBuilder(
+    column: $table.cuotaInscripcionPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get cuotaAdministracionPct => $composableBuilder(
+    column: $table.cuotaAdministracionPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get ivaCuotaAdministracionPct => $composableBuilder(
+    column: $table.ivaCuotaAdministracionPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get cuotaSeguroVidaPct => $composableBuilder(
+    column: $table.cuotaSeguroVidaPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get adelantoMinMens => $composableBuilder(
+    column: $table.adelantoMinMens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get adelantoMaxMens => $composableBuilder(
+    column: $table.adelantoMaxMens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get mesEntregaMin => $composableBuilder(
+    column: $table.mesEntregaMin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get mesEntregaMax => $composableBuilder(
+    column: $table.mesEntregaMax,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get prioridad => $composableBuilder(
+    column: $table.prioridad,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get vigenteDesde => $composableBuilder(
+    column: $table.vigenteDesde,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get vigenteHasta => $composableBuilder(
+    column: $table.vigenteHasta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProductosTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProductosTable> {
+  $$ProductosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get activo => $composableBuilder(
+    column: $table.activo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get plazoMeses => $composableBuilder(
+    column: $table.plazoMeses,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get factorIntegrante => $composableBuilder(
+    column: $table.factorIntegrante,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get factorPropietario => $composableBuilder(
+    column: $table.factorPropietario,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get cuotaInscripcionPct => $composableBuilder(
+    column: $table.cuotaInscripcionPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get cuotaAdministracionPct => $composableBuilder(
+    column: $table.cuotaAdministracionPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get ivaCuotaAdministracionPct => $composableBuilder(
+    column: $table.ivaCuotaAdministracionPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get cuotaSeguroVidaPct => $composableBuilder(
+    column: $table.cuotaSeguroVidaPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get adelantoMinMens => $composableBuilder(
+    column: $table.adelantoMinMens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get adelantoMaxMens => $composableBuilder(
+    column: $table.adelantoMaxMens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get mesEntregaMin => $composableBuilder(
+    column: $table.mesEntregaMin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get mesEntregaMax => $composableBuilder(
+    column: $table.mesEntregaMax,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get prioridad => $composableBuilder(
+    column: $table.prioridad,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get vigenteDesde => $composableBuilder(
+    column: $table.vigenteDesde,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get vigenteHasta => $composableBuilder(
+    column: $table.vigenteHasta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProductosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProductosTable> {
+  $$ProductosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get nombre =>
+      $composableBuilder(column: $table.nombre, builder: (column) => column);
+
+  GeneratedColumn<bool> get activo =>
+      $composableBuilder(column: $table.activo, builder: (column) => column);
+
+  GeneratedColumn<int> get plazoMeses => $composableBuilder(
+    column: $table.plazoMeses,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get factorIntegrante => $composableBuilder(
+    column: $table.factorIntegrante,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get factorPropietario => $composableBuilder(
+    column: $table.factorPropietario,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get cuotaInscripcionPct => $composableBuilder(
+    column: $table.cuotaInscripcionPct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get cuotaAdministracionPct => $composableBuilder(
+    column: $table.cuotaAdministracionPct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get ivaCuotaAdministracionPct => $composableBuilder(
+    column: $table.ivaCuotaAdministracionPct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get cuotaSeguroVidaPct => $composableBuilder(
+    column: $table.cuotaSeguroVidaPct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get adelantoMinMens => $composableBuilder(
+    column: $table.adelantoMinMens,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get adelantoMaxMens => $composableBuilder(
+    column: $table.adelantoMaxMens,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get mesEntregaMin => $composableBuilder(
+    column: $table.mesEntregaMin,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get mesEntregaMax => $composableBuilder(
+    column: $table.mesEntregaMax,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get prioridad =>
+      $composableBuilder(column: $table.prioridad, builder: (column) => column);
+
+  GeneratedColumn<String> get notas =>
+      $composableBuilder(column: $table.notas, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get vigenteDesde => $composableBuilder(
+    column: $table.vigenteDesde,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get vigenteHasta => $composableBuilder(
+    column: $table.vigenteHasta,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$ProductosTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProductosTable,
+          ProductoDb,
+          $$ProductosTableFilterComposer,
+          $$ProductosTableOrderingComposer,
+          $$ProductosTableAnnotationComposer,
+          $$ProductosTableCreateCompanionBuilder,
+          $$ProductosTableUpdateCompanionBuilder,
+          (
+            ProductoDb,
+            BaseReferences<_$AppDatabase, $ProductosTable, ProductoDb>,
+          ),
+          ProductoDb,
+          PrefetchHooks Function()
+        > {
+  $$ProductosTableTableManager(_$AppDatabase db, $ProductosTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProductosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProductosTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProductosTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> nombre = const Value.absent(),
+                Value<bool> activo = const Value.absent(),
+                Value<int> plazoMeses = const Value.absent(),
+                Value<double> factorIntegrante = const Value.absent(),
+                Value<double> factorPropietario = const Value.absent(),
+                Value<double> cuotaInscripcionPct = const Value.absent(),
+                Value<double> cuotaAdministracionPct = const Value.absent(),
+                Value<double> ivaCuotaAdministracionPct = const Value.absent(),
+                Value<double> cuotaSeguroVidaPct = const Value.absent(),
+                Value<int> adelantoMinMens = const Value.absent(),
+                Value<int> adelantoMaxMens = const Value.absent(),
+                Value<int> mesEntregaMin = const Value.absent(),
+                Value<int> mesEntregaMax = const Value.absent(),
+                Value<int> prioridad = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime?> vigenteDesde = const Value.absent(),
+                Value<DateTime?> vigenteHasta = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductosCompanion(
+                uid: uid,
+                nombre: nombre,
+                activo: activo,
+                plazoMeses: plazoMeses,
+                factorIntegrante: factorIntegrante,
+                factorPropietario: factorPropietario,
+                cuotaInscripcionPct: cuotaInscripcionPct,
+                cuotaAdministracionPct: cuotaAdministracionPct,
+                ivaCuotaAdministracionPct: ivaCuotaAdministracionPct,
+                cuotaSeguroVidaPct: cuotaSeguroVidaPct,
+                adelantoMinMens: adelantoMinMens,
+                adelantoMaxMens: adelantoMaxMens,
+                mesEntregaMin: mesEntregaMin,
+                mesEntregaMax: mesEntregaMax,
+                prioridad: prioridad,
+                notas: notas,
+                vigenteDesde: vigenteDesde,
+                vigenteHasta: vigenteHasta,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                Value<String> nombre = const Value.absent(),
+                Value<bool> activo = const Value.absent(),
+                Value<int> plazoMeses = const Value.absent(),
+                Value<double> factorIntegrante = const Value.absent(),
+                Value<double> factorPropietario = const Value.absent(),
+                Value<double> cuotaInscripcionPct = const Value.absent(),
+                Value<double> cuotaAdministracionPct = const Value.absent(),
+                Value<double> ivaCuotaAdministracionPct = const Value.absent(),
+                Value<double> cuotaSeguroVidaPct = const Value.absent(),
+                Value<int> adelantoMinMens = const Value.absent(),
+                Value<int> adelantoMaxMens = const Value.absent(),
+                Value<int> mesEntregaMin = const Value.absent(),
+                Value<int> mesEntregaMax = const Value.absent(),
+                Value<int> prioridad = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime?> vigenteDesde = const Value.absent(),
+                Value<DateTime?> vigenteHasta = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProductosCompanion.insert(
+                uid: uid,
+                nombre: nombre,
+                activo: activo,
+                plazoMeses: plazoMeses,
+                factorIntegrante: factorIntegrante,
+                factorPropietario: factorPropietario,
+                cuotaInscripcionPct: cuotaInscripcionPct,
+                cuotaAdministracionPct: cuotaAdministracionPct,
+                ivaCuotaAdministracionPct: ivaCuotaAdministracionPct,
+                cuotaSeguroVidaPct: cuotaSeguroVidaPct,
+                adelantoMinMens: adelantoMinMens,
+                adelantoMaxMens: adelantoMaxMens,
+                mesEntregaMin: mesEntregaMin,
+                mesEntregaMax: mesEntregaMax,
+                prioridad: prioridad,
+                notas: notas,
+                vigenteDesde: vigenteDesde,
+                vigenteHasta: vigenteHasta,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProductosTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProductosTable,
+      ProductoDb,
+      $$ProductosTableFilterComposer,
+      $$ProductosTableOrderingComposer,
+      $$ProductosTableAnnotationComposer,
+      $$ProductosTableCreateCompanionBuilder,
+      $$ProductosTableUpdateCompanionBuilder,
+      (ProductoDb, BaseReferences<_$AppDatabase, $ProductosTable, ProductoDb>),
+      ProductoDb,
+      PrefetchHooks Function()
+    >;
+typedef $$ColaboradoresTableCreateCompanionBuilder =
+    ColaboradoresCompanion Function({
+      required String uid,
+      required String nombres,
+      Value<String> apellidoPaterno,
+      Value<String> apellidoMaterno,
+      Value<DateTime?> fechaNacimiento,
+      Value<String?> curp,
+      Value<String?> rfc,
+      Value<String> telefonoMovil,
+      Value<String> emailPersonal,
+      Value<String> fotoRutaLocal,
+      Value<String> fotoRutaRemota,
+      Value<String?> genero,
+      Value<String> notas,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$ColaboradoresTableUpdateCompanionBuilder =
+    ColaboradoresCompanion Function({
+      Value<String> uid,
+      Value<String> nombres,
+      Value<String> apellidoPaterno,
+      Value<String> apellidoMaterno,
+      Value<DateTime?> fechaNacimiento,
+      Value<String?> curp,
+      Value<String?> rfc,
+      Value<String> telefonoMovil,
+      Value<String> emailPersonal,
+      Value<String> fotoRutaLocal,
+      Value<String> fotoRutaRemota,
+      Value<String?> genero,
+      Value<String> notas,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$ColaboradoresTableFilterComposer
+    extends Composer<_$AppDatabase, $ColaboradoresTable> {
+  $$ColaboradoresTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nombres => $composableBuilder(
+    column: $table.nombres,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get apellidoPaterno => $composableBuilder(
+    column: $table.apellidoPaterno,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get apellidoMaterno => $composableBuilder(
+    column: $table.apellidoMaterno,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fechaNacimiento => $composableBuilder(
+    column: $table.fechaNacimiento,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get curp => $composableBuilder(
+    column: $table.curp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rfc => $composableBuilder(
+    column: $table.rfc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get telefonoMovil => $composableBuilder(
+    column: $table.telefonoMovil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emailPersonal => $composableBuilder(
+    column: $table.emailPersonal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fotoRutaLocal => $composableBuilder(
+    column: $table.fotoRutaLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fotoRutaRemota => $composableBuilder(
+    column: $table.fotoRutaRemota,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genero => $composableBuilder(
+    column: $table.genero,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ColaboradoresTableOrderingComposer
+    extends Composer<_$AppDatabase, $ColaboradoresTable> {
+  $$ColaboradoresTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nombres => $composableBuilder(
+    column: $table.nombres,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get apellidoPaterno => $composableBuilder(
+    column: $table.apellidoPaterno,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get apellidoMaterno => $composableBuilder(
+    column: $table.apellidoMaterno,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fechaNacimiento => $composableBuilder(
+    column: $table.fechaNacimiento,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get curp => $composableBuilder(
+    column: $table.curp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rfc => $composableBuilder(
+    column: $table.rfc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get telefonoMovil => $composableBuilder(
+    column: $table.telefonoMovil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emailPersonal => $composableBuilder(
+    column: $table.emailPersonal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fotoRutaLocal => $composableBuilder(
+    column: $table.fotoRutaLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fotoRutaRemota => $composableBuilder(
+    column: $table.fotoRutaRemota,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get genero => $composableBuilder(
+    column: $table.genero,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ColaboradoresTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ColaboradoresTable> {
+  $$ColaboradoresTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get nombres =>
+      $composableBuilder(column: $table.nombres, builder: (column) => column);
+
+  GeneratedColumn<String> get apellidoPaterno => $composableBuilder(
+    column: $table.apellidoPaterno,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get apellidoMaterno => $composableBuilder(
+    column: $table.apellidoMaterno,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get fechaNacimiento => $composableBuilder(
+    column: $table.fechaNacimiento,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get curp =>
+      $composableBuilder(column: $table.curp, builder: (column) => column);
+
+  GeneratedColumn<String> get rfc =>
+      $composableBuilder(column: $table.rfc, builder: (column) => column);
+
+  GeneratedColumn<String> get telefonoMovil => $composableBuilder(
+    column: $table.telefonoMovil,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emailPersonal => $composableBuilder(
+    column: $table.emailPersonal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fotoRutaLocal => $composableBuilder(
+    column: $table.fotoRutaLocal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fotoRutaRemota => $composableBuilder(
+    column: $table.fotoRutaRemota,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get genero =>
+      $composableBuilder(column: $table.genero, builder: (column) => column);
+
+  GeneratedColumn<String> get notas =>
+      $composableBuilder(column: $table.notas, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$ColaboradoresTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ColaboradoresTable,
+          ColaboradorDb,
+          $$ColaboradoresTableFilterComposer,
+          $$ColaboradoresTableOrderingComposer,
+          $$ColaboradoresTableAnnotationComposer,
+          $$ColaboradoresTableCreateCompanionBuilder,
+          $$ColaboradoresTableUpdateCompanionBuilder,
+          (
+            ColaboradorDb,
+            BaseReferences<_$AppDatabase, $ColaboradoresTable, ColaboradorDb>,
+          ),
+          ColaboradorDb,
+          PrefetchHooks Function()
+        > {
+  $$ColaboradoresTableTableManager(_$AppDatabase db, $ColaboradoresTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ColaboradoresTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ColaboradoresTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ColaboradoresTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> nombres = const Value.absent(),
+                Value<String> apellidoPaterno = const Value.absent(),
+                Value<String> apellidoMaterno = const Value.absent(),
+                Value<DateTime?> fechaNacimiento = const Value.absent(),
+                Value<String?> curp = const Value.absent(),
+                Value<String?> rfc = const Value.absent(),
+                Value<String> telefonoMovil = const Value.absent(),
+                Value<String> emailPersonal = const Value.absent(),
+                Value<String> fotoRutaLocal = const Value.absent(),
+                Value<String> fotoRutaRemota = const Value.absent(),
+                Value<String?> genero = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ColaboradoresCompanion(
+                uid: uid,
+                nombres: nombres,
+                apellidoPaterno: apellidoPaterno,
+                apellidoMaterno: apellidoMaterno,
+                fechaNacimiento: fechaNacimiento,
+                curp: curp,
+                rfc: rfc,
+                telefonoMovil: telefonoMovil,
+                emailPersonal: emailPersonal,
+                fotoRutaLocal: fotoRutaLocal,
+                fotoRutaRemota: fotoRutaRemota,
+                genero: genero,
+                notas: notas,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                required String nombres,
+                Value<String> apellidoPaterno = const Value.absent(),
+                Value<String> apellidoMaterno = const Value.absent(),
+                Value<DateTime?> fechaNacimiento = const Value.absent(),
+                Value<String?> curp = const Value.absent(),
+                Value<String?> rfc = const Value.absent(),
+                Value<String> telefonoMovil = const Value.absent(),
+                Value<String> emailPersonal = const Value.absent(),
+                Value<String> fotoRutaLocal = const Value.absent(),
+                Value<String> fotoRutaRemota = const Value.absent(),
+                Value<String?> genero = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ColaboradoresCompanion.insert(
+                uid: uid,
+                nombres: nombres,
+                apellidoPaterno: apellidoPaterno,
+                apellidoMaterno: apellidoMaterno,
+                fechaNacimiento: fechaNacimiento,
+                curp: curp,
+                rfc: rfc,
+                telefonoMovil: telefonoMovil,
+                emailPersonal: emailPersonal,
+                fotoRutaLocal: fotoRutaLocal,
+                fotoRutaRemota: fotoRutaRemota,
+                genero: genero,
+                notas: notas,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ColaboradoresTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ColaboradoresTable,
+      ColaboradorDb,
+      $$ColaboradoresTableFilterComposer,
+      $$ColaboradoresTableOrderingComposer,
+      $$ColaboradoresTableAnnotationComposer,
+      $$ColaboradoresTableCreateCompanionBuilder,
+      $$ColaboradoresTableUpdateCompanionBuilder,
+      (
+        ColaboradorDb,
+        BaseReferences<_$AppDatabase, $ColaboradoresTable, ColaboradorDb>,
+      ),
+      ColaboradorDb,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4611,4 +7945,8 @@ class $AppDatabaseManager {
       $$ModelosTableTableManager(_db, _db.modelos);
   $$ModeloImagenesTableTableManager get modeloImagenes =>
       $$ModeloImagenesTableTableManager(_db, _db.modeloImagenes);
+  $$ProductosTableTableManager get productos =>
+      $$ProductosTableTableManager(_db, _db.productos);
+  $$ColaboradoresTableTableManager get colaboradores =>
+      $$ColaboradoresTableTableManager(_db, _db.colaboradores);
 }

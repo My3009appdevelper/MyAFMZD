@@ -1,4 +1,3 @@
-// modelos_table.dart
 import 'package:drift/drift.dart';
 
 @DataClassName('ModeloDb')

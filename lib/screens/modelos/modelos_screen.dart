@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
+import 'package:myafmzd/screens/modelos/modelo_detalle_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_form_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_tile.dart';
-import 'package:myafmzd/widgets/visor_pdf.dart';
 
 class ModelosScreen extends ConsumerStatefulWidget {
   const ModelosScreen({super.key});
@@ -336,12 +337,15 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
           child: ModeloItemTile(
             key: ValueKey(m.uid),
             modelo: m,
-            onTap: () async {
-              if (_abriendoPdf) return;
-              setState(() => _abriendoPdf = true);
-              await _abrirFicha(m.uid);
-              if (mounted) setState(() => _abriendoPdf = false);
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ModeloDetallePage(modeloUid: m.uid),
+                ),
+              );
             },
+
             onActualizado: () async {
               await _cargarModelos();
             },
@@ -438,18 +442,29 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
     setState(() => _cargandoInicial = true);
     final inicio = DateTime.now();
 
+    // 👇 Captura TODO antes de await (no vuelvas a tocar ref luego)
     final hayInternet = ref.read(connectivityProvider);
-    await ref.read(modelosProvider.notifier).cargarOfflineFirst();
+    final modelosN = ref.read(modelosProvider.notifier);
+    final imgsN = ref.read(modeloImagenesProvider.notifier);
 
-    // spinner mínimo por UX consistente con tus pantallas
-    const minSpin = Duration(milliseconds: 1500);
-    final elapsed = DateTime.now().difference(inicio);
-    if (elapsed < minSpin) {
-      await Future.delayed(minSpin - elapsed);
-    }
+    try {
+      await modelosN.cargarOfflineFirst();
+      if (!mounted) return; // 👈 por si cambiaste de pestaña durante el await
 
-    if (mounted) {
+      await imgsN.cargarOfflineFirst();
+      if (!mounted) return;
+    } finally {
+      // spinner mínimo por UX consistente con tus pantallas
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      if (!mounted) return;
+
       setState(() => _cargandoInicial = false);
+
       if (!hayInternet) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -460,37 +475,6 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
           ),
         );
       }
-    }
-  }
-
-  Future<void> _abrirFicha(String uid) async {
-    final notifier = ref.read(modelosProvider.notifier);
-    final m = notifier.obtenerPorId(uid);
-    if (m == null) return;
-
-    File? archivo;
-
-    if (m.fichaRutaLocal.isNotEmpty && await File(m.fichaRutaLocal).exists()) {
-      archivo = File(m.fichaRutaLocal);
-    } else if (m.fichaRutaRemota.isNotEmpty) {
-      final actualizado = await notifier.descargarFicha(m);
-      if (actualizado != null &&
-          actualizado.fichaRutaLocal.isNotEmpty &&
-          await File(actualizado.fichaRutaLocal).exists()) {
-        archivo = File(actualizado.fichaRutaLocal);
-      }
-    }
-
-    if (archivo != null && mounted) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VisorPDF(
-            assetPath: archivo!.path,
-            titulo: '${m.modelo} ${m.anio}',
-          ),
-        ),
-      );
     }
   }
 }
