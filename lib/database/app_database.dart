@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_dao.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_table.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_dao.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_table.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
@@ -29,6 +31,7 @@ part 'app_database.g.dart';
     ModeloImagenes,
     Productos,
     Colaboradores,
+    AsignacionesLaborales,
   ],
   daos: [
     UsuariosDao,
@@ -38,6 +41,7 @@ part 'app_database.g.dart';
     ModeloImagenesDao,
     ProductosDao,
     ColaboradoresDao,
+    AsignacionesLaboralesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -61,45 +65,122 @@ class AppDatabase extends _$AppDatabase {
 /// 📂 Conexión a la base de datos local
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dir = await getApplicationDocumentsDirectory();
-    await dir.create(recursive: true);
-    final dbFile = File(p.join(dir.path, 'myafmzd.sqlite'));
+    // ───────────────────────────── paths ─────────────────────────────
+    final docsDir =
+        await getApplicationDocumentsDirectory(); // p.ej. /data/user/0/pack/files
+    final supportDir =
+        await getApplicationSupportDirectory(); // p.ej. /data/user/0/pack/files/.app_support
+    final tempDir =
+        await getTemporaryDirectory(); // p.ej. /data/user/0/pack/cache
 
-    // 🧹 OPCIÓN: Borrar base de datos para pruebas/migraciones
-    // ⚠️ Comenta esta sección en producción cuando no quieras borrar datos
-    const bool borrarDB =
-        true; // ⬅️ Cambia a true cuando quieras forzar recrear
-    if (borrarDB && await dbFile.exists()) {
+    await docsDir.create(recursive: true);
+    await supportDir.create(recursive: true);
+
+    final dbFile = File(p.join(docsDir.path, 'myafmzd.sqlite'));
+    final modelosImgDir = Directory(p.join(supportDir.path, 'modelos_img'));
+
+    // ───────────────────────── toggle de limpieza ────────────────────
+    const bool wipeOnColdStart = true; // ⬅️ ponlo en false para producción
+
+    // ─────────────────────── helpers de borrado ──────────────────────
+    Future<int> _deleteWhere(Directory dir, bool Function(File f) test) async {
+      var count = 0;
+      if (!(await dir.exists())) return 0;
+      try {
+        await for (final entity in dir.list(
+          recursive: false,
+          followLinks: false,
+        )) {
+          if (entity is File && test(entity)) {
+            try {
+              await entity.delete();
+              count++;
+            } catch (_) {
+              /* ignora errores puntuales */
+            }
+          }
+        }
+      } catch (_) {
+        /* ignora errores de permisos */
+      }
+      return count;
+    }
+
+    Future<int> _deleteAllInDir(Directory dir) async {
+      var count = 0;
+      if (!(await dir.exists())) return 0;
+      try {
+        await for (final entity in dir.list(
+          recursive: false,
+          followLinks: false,
+        )) {
+          try {
+            if (entity is File) {
+              await entity.delete();
+              count++;
+            } else if (entity is Directory) {
+              // Borrado recursivo seguro
+              await entity.delete(recursive: true);
+            }
+          } catch (_) {
+            /* ignora */
+          }
+        }
+      } catch (_) {
+        /* ignora */
+      }
+      return count;
+    }
+
+    String _name(File f) => p.basename(f.path).toLowerCase();
+
+    // ─────────────────────────── limpieza ────────────────────────────
+    if (wipeOnColdStart) {
       print(
         '[🗑️ MENSAJE APP DATABASE] Eliminando base de datos local para recrear...',
       );
-      await dbFile.delete();
-    }
-
-    if (borrarDB) {
-      final tempDir = await getTemporaryDirectory();
-      final appDir = await getApplicationDocumentsDirectory();
-
-      for (final file in tempDir.listSync()) {
-        if (file is File && file.path.endsWith('.pdf')) {
-          await file.delete();
-        }
-        if (file is File && file.path.contains('miniatura_')) {
-          await file.delete();
-        }
+      if (await dbFile.exists()) {
+        try {
+          await dbFile.delete();
+        } catch (_) {}
       }
 
-      for (final file in appDir.listSync()) {
-        if (file is File && file.path.contains('miniatura_')) {
-          await file.delete();
-        }
-      }
+      // PDFs y miniaturas en temp y documents
+      final deletedTempPdfs = await _deleteWhere(
+        tempDir,
+        (f) => _name(f).endsWith('.pdf'),
+      );
+      final deletedDocsPdfs = await _deleteWhere(
+        docsDir,
+        (f) => _name(f).endsWith('.pdf'),
+      );
+      final deletedTempTh = await _deleteWhere(
+        tempDir,
+        (f) => _name(f).contains('miniatura_'),
+      );
+      final deletedDocsTh = await _deleteWhere(
+        docsDir,
+        (f) => _name(f).contains('miniatura_'),
+      );
 
+      // Todas las imágenes gestionadas por la app (nuestro repositorio canónico)
+      await modelosImgDir.create(recursive: true);
+      final deletedImgs = await _deleteAllInDir(modelosImgDir);
+
+      print('[🗑️ MENSAJE APP DATABASE] 🧹 Limpieza completada:');
       print(
-        '[🗑️ MENSAJE APP DATABASE] 🧹 También se borraron PDFs temporales y miniaturas',
+        '  PDFs      → temp:$deletedTempPdfs  | documents:$deletedDocsPdfs',
+      );
+      print('  miniaturas→ temp:$deletedTempTh    | documents:$deletedDocsTh');
+      print('  imágenes  → modelos_img:$deletedImgs');
+    } else {
+      print(
+        '[🧷 MENSAJE APP DATABASE] Limpieza desactivada (no se borra nada).',
       );
     }
 
-    return NativeDatabase(dbFile);
+    // ─────────────────── abrir DB sin bloquear UI ────────────────────
+    // Usa isolate de fondo para operaciones iniciales de SQLite
+    return NativeDatabase.createInBackground(dbFile);
   });
 }

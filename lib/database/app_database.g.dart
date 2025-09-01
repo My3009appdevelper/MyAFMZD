@@ -5365,6 +5365,926 @@ class ColaboradoresCompanion extends UpdateCompanion<ColaboradorDb> {
   }
 }
 
+class $AsignacionesLaboralesTable extends AsignacionesLaborales
+    with TableInfo<$AsignacionesLaboralesTable, AsignacionLaboralDb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AsignacionesLaboralesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colaboradorUidMeta = const VerificationMeta(
+    'colaboradorUid',
+  );
+  @override
+  late final GeneratedColumn<String> colaboradorUid = GeneratedColumn<String>(
+    'colaborador_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _distribuidorUidMeta = const VerificationMeta(
+    'distribuidorUid',
+  );
+  @override
+  late final GeneratedColumn<String> distribuidorUid = GeneratedColumn<String>(
+    'distribuidor_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _managerColaboradorUidMeta =
+      const VerificationMeta('managerColaboradorUid');
+  @override
+  late final GeneratedColumn<String> managerColaboradorUid =
+      GeneratedColumn<String>(
+        'manager_colaborador_uid',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _rolMeta = const VerificationMeta('rol');
+  @override
+  late final GeneratedColumn<String> rol = GeneratedColumn<String>(
+    'rol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('vendedor'),
+  );
+  static const VerificationMeta _puestoMeta = const VerificationMeta('puesto');
+  @override
+  late final GeneratedColumn<String> puesto = GeneratedColumn<String>(
+    'puesto',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _nivelMeta = const VerificationMeta('nivel');
+  @override
+  late final GeneratedColumn<String> nivel = GeneratedColumn<String>(
+    'nivel',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _fechaInicioMeta = const VerificationMeta(
+    'fechaInicio',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fechaInicio = GeneratedColumn<DateTime>(
+    'fecha_inicio',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fechaFinMeta = const VerificationMeta(
+    'fechaFin',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fechaFin = GeneratedColumn<DateTime>(
+    'fecha_fin',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdByUsuarioUidMeta =
+      const VerificationMeta('createdByUsuarioUid');
+  @override
+  late final GeneratedColumn<String> createdByUsuarioUid =
+      GeneratedColumn<String>(
+        'created_by_usuario_uid',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _closedByUsuarioUidMeta =
+      const VerificationMeta('closedByUsuarioUid');
+  @override
+  late final GeneratedColumn<String> closedByUsuarioUid =
+      GeneratedColumn<String>(
+        'closed_by_usuario_uid',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _notasMeta = const VerificationMeta('notas');
+  @override
+  late final GeneratedColumn<String> notas = GeneratedColumn<String>(
+    'notas',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uid,
+    colaboradorUid,
+    distribuidorUid,
+    managerColaboradorUid,
+    rol,
+    puesto,
+    nivel,
+    fechaInicio,
+    fechaFin,
+    createdByUsuarioUid,
+    closedByUsuarioUid,
+    notas,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'asignaciones_laborales';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AsignacionLaboralDb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('colaborador_uid')) {
+      context.handle(
+        _colaboradorUidMeta,
+        colaboradorUid.isAcceptableOrUnknown(
+          data['colaborador_uid']!,
+          _colaboradorUidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_colaboradorUidMeta);
+    }
+    if (data.containsKey('distribuidor_uid')) {
+      context.handle(
+        _distribuidorUidMeta,
+        distribuidorUid.isAcceptableOrUnknown(
+          data['distribuidor_uid']!,
+          _distribuidorUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('manager_colaborador_uid')) {
+      context.handle(
+        _managerColaboradorUidMeta,
+        managerColaboradorUid.isAcceptableOrUnknown(
+          data['manager_colaborador_uid']!,
+          _managerColaboradorUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rol')) {
+      context.handle(
+        _rolMeta,
+        rol.isAcceptableOrUnknown(data['rol']!, _rolMeta),
+      );
+    }
+    if (data.containsKey('puesto')) {
+      context.handle(
+        _puestoMeta,
+        puesto.isAcceptableOrUnknown(data['puesto']!, _puestoMeta),
+      );
+    }
+    if (data.containsKey('nivel')) {
+      context.handle(
+        _nivelMeta,
+        nivel.isAcceptableOrUnknown(data['nivel']!, _nivelMeta),
+      );
+    }
+    if (data.containsKey('fecha_inicio')) {
+      context.handle(
+        _fechaInicioMeta,
+        fechaInicio.isAcceptableOrUnknown(
+          data['fecha_inicio']!,
+          _fechaInicioMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fechaInicioMeta);
+    }
+    if (data.containsKey('fecha_fin')) {
+      context.handle(
+        _fechaFinMeta,
+        fechaFin.isAcceptableOrUnknown(data['fecha_fin']!, _fechaFinMeta),
+      );
+    }
+    if (data.containsKey('created_by_usuario_uid')) {
+      context.handle(
+        _createdByUsuarioUidMeta,
+        createdByUsuarioUid.isAcceptableOrUnknown(
+          data['created_by_usuario_uid']!,
+          _createdByUsuarioUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('closed_by_usuario_uid')) {
+      context.handle(
+        _closedByUsuarioUidMeta,
+        closedByUsuarioUid.isAcceptableOrUnknown(
+          data['closed_by_usuario_uid']!,
+          _closedByUsuarioUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notas')) {
+      context.handle(
+        _notasMeta,
+        notas.isAcceptableOrUnknown(data['notas']!, _notasMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  AsignacionLaboralDb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AsignacionLaboralDb(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      colaboradorUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}colaborador_uid'],
+      )!,
+      distribuidorUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}distribuidor_uid'],
+      )!,
+      managerColaboradorUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}manager_colaborador_uid'],
+      )!,
+      rol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rol'],
+      )!,
+      puesto: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}puesto'],
+      )!,
+      nivel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nivel'],
+      )!,
+      fechaInicio: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fecha_inicio'],
+      )!,
+      fechaFin: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fecha_fin'],
+      ),
+      createdByUsuarioUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by_usuario_uid'],
+      )!,
+      closedByUsuarioUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}closed_by_usuario_uid'],
+      )!,
+      notas: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notas'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $AsignacionesLaboralesTable createAlias(String alias) {
+    return $AsignacionesLaboralesTable(attachedDatabase, alias);
+  }
+}
+
+class AsignacionLaboralDb extends DataClass
+    implements Insertable<AsignacionLaboralDb> {
+  final String uid;
+  final String colaboradorUid;
+  final String distribuidorUid;
+  final String managerColaboradorUid;
+  final String rol;
+  final String puesto;
+  final String nivel;
+  final DateTime fechaInicio;
+  final DateTime? fechaFin;
+  final String createdByUsuarioUid;
+  final String closedByUsuarioUid;
+  final String notas;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool deleted;
+  final bool isSynced;
+  const AsignacionLaboralDb({
+    required this.uid,
+    required this.colaboradorUid,
+    required this.distribuidorUid,
+    required this.managerColaboradorUid,
+    required this.rol,
+    required this.puesto,
+    required this.nivel,
+    required this.fechaInicio,
+    this.fechaFin,
+    required this.createdByUsuarioUid,
+    required this.closedByUsuarioUid,
+    required this.notas,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['colaborador_uid'] = Variable<String>(colaboradorUid);
+    map['distribuidor_uid'] = Variable<String>(distribuidorUid);
+    map['manager_colaborador_uid'] = Variable<String>(managerColaboradorUid);
+    map['rol'] = Variable<String>(rol);
+    map['puesto'] = Variable<String>(puesto);
+    map['nivel'] = Variable<String>(nivel);
+    map['fecha_inicio'] = Variable<DateTime>(fechaInicio);
+    if (!nullToAbsent || fechaFin != null) {
+      map['fecha_fin'] = Variable<DateTime>(fechaFin);
+    }
+    map['created_by_usuario_uid'] = Variable<String>(createdByUsuarioUid);
+    map['closed_by_usuario_uid'] = Variable<String>(closedByUsuarioUid);
+    map['notas'] = Variable<String>(notas);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  AsignacionesLaboralesCompanion toCompanion(bool nullToAbsent) {
+    return AsignacionesLaboralesCompanion(
+      uid: Value(uid),
+      colaboradorUid: Value(colaboradorUid),
+      distribuidorUid: Value(distribuidorUid),
+      managerColaboradorUid: Value(managerColaboradorUid),
+      rol: Value(rol),
+      puesto: Value(puesto),
+      nivel: Value(nivel),
+      fechaInicio: Value(fechaInicio),
+      fechaFin: fechaFin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fechaFin),
+      createdByUsuarioUid: Value(createdByUsuarioUid),
+      closedByUsuarioUid: Value(closedByUsuarioUid),
+      notas: Value(notas),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory AsignacionLaboralDb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AsignacionLaboralDb(
+      uid: serializer.fromJson<String>(json['uid']),
+      colaboradorUid: serializer.fromJson<String>(json['colaboradorUid']),
+      distribuidorUid: serializer.fromJson<String>(json['distribuidorUid']),
+      managerColaboradorUid: serializer.fromJson<String>(
+        json['managerColaboradorUid'],
+      ),
+      rol: serializer.fromJson<String>(json['rol']),
+      puesto: serializer.fromJson<String>(json['puesto']),
+      nivel: serializer.fromJson<String>(json['nivel']),
+      fechaInicio: serializer.fromJson<DateTime>(json['fechaInicio']),
+      fechaFin: serializer.fromJson<DateTime?>(json['fechaFin']),
+      createdByUsuarioUid: serializer.fromJson<String>(
+        json['createdByUsuarioUid'],
+      ),
+      closedByUsuarioUid: serializer.fromJson<String>(
+        json['closedByUsuarioUid'],
+      ),
+      notas: serializer.fromJson<String>(json['notas']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'colaboradorUid': serializer.toJson<String>(colaboradorUid),
+      'distribuidorUid': serializer.toJson<String>(distribuidorUid),
+      'managerColaboradorUid': serializer.toJson<String>(managerColaboradorUid),
+      'rol': serializer.toJson<String>(rol),
+      'puesto': serializer.toJson<String>(puesto),
+      'nivel': serializer.toJson<String>(nivel),
+      'fechaInicio': serializer.toJson<DateTime>(fechaInicio),
+      'fechaFin': serializer.toJson<DateTime?>(fechaFin),
+      'createdByUsuarioUid': serializer.toJson<String>(createdByUsuarioUid),
+      'closedByUsuarioUid': serializer.toJson<String>(closedByUsuarioUid),
+      'notas': serializer.toJson<String>(notas),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  AsignacionLaboralDb copyWith({
+    String? uid,
+    String? colaboradorUid,
+    String? distribuidorUid,
+    String? managerColaboradorUid,
+    String? rol,
+    String? puesto,
+    String? nivel,
+    DateTime? fechaInicio,
+    Value<DateTime?> fechaFin = const Value.absent(),
+    String? createdByUsuarioUid,
+    String? closedByUsuarioUid,
+    String? notas,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? deleted,
+    bool? isSynced,
+  }) => AsignacionLaboralDb(
+    uid: uid ?? this.uid,
+    colaboradorUid: colaboradorUid ?? this.colaboradorUid,
+    distribuidorUid: distribuidorUid ?? this.distribuidorUid,
+    managerColaboradorUid: managerColaboradorUid ?? this.managerColaboradorUid,
+    rol: rol ?? this.rol,
+    puesto: puesto ?? this.puesto,
+    nivel: nivel ?? this.nivel,
+    fechaInicio: fechaInicio ?? this.fechaInicio,
+    fechaFin: fechaFin.present ? fechaFin.value : this.fechaFin,
+    createdByUsuarioUid: createdByUsuarioUid ?? this.createdByUsuarioUid,
+    closedByUsuarioUid: closedByUsuarioUid ?? this.closedByUsuarioUid,
+    notas: notas ?? this.notas,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  AsignacionLaboralDb copyWithCompanion(AsignacionesLaboralesCompanion data) {
+    return AsignacionLaboralDb(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      colaboradorUid: data.colaboradorUid.present
+          ? data.colaboradorUid.value
+          : this.colaboradorUid,
+      distribuidorUid: data.distribuidorUid.present
+          ? data.distribuidorUid.value
+          : this.distribuidorUid,
+      managerColaboradorUid: data.managerColaboradorUid.present
+          ? data.managerColaboradorUid.value
+          : this.managerColaboradorUid,
+      rol: data.rol.present ? data.rol.value : this.rol,
+      puesto: data.puesto.present ? data.puesto.value : this.puesto,
+      nivel: data.nivel.present ? data.nivel.value : this.nivel,
+      fechaInicio: data.fechaInicio.present
+          ? data.fechaInicio.value
+          : this.fechaInicio,
+      fechaFin: data.fechaFin.present ? data.fechaFin.value : this.fechaFin,
+      createdByUsuarioUid: data.createdByUsuarioUid.present
+          ? data.createdByUsuarioUid.value
+          : this.createdByUsuarioUid,
+      closedByUsuarioUid: data.closedByUsuarioUid.present
+          ? data.closedByUsuarioUid.value
+          : this.closedByUsuarioUid,
+      notas: data.notas.present ? data.notas.value : this.notas,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AsignacionLaboralDb(')
+          ..write('uid: $uid, ')
+          ..write('colaboradorUid: $colaboradorUid, ')
+          ..write('distribuidorUid: $distribuidorUid, ')
+          ..write('managerColaboradorUid: $managerColaboradorUid, ')
+          ..write('rol: $rol, ')
+          ..write('puesto: $puesto, ')
+          ..write('nivel: $nivel, ')
+          ..write('fechaInicio: $fechaInicio, ')
+          ..write('fechaFin: $fechaFin, ')
+          ..write('createdByUsuarioUid: $createdByUsuarioUid, ')
+          ..write('closedByUsuarioUid: $closedByUsuarioUid, ')
+          ..write('notas: $notas, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uid,
+    colaboradorUid,
+    distribuidorUid,
+    managerColaboradorUid,
+    rol,
+    puesto,
+    nivel,
+    fechaInicio,
+    fechaFin,
+    createdByUsuarioUid,
+    closedByUsuarioUid,
+    notas,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AsignacionLaboralDb &&
+          other.uid == this.uid &&
+          other.colaboradorUid == this.colaboradorUid &&
+          other.distribuidorUid == this.distribuidorUid &&
+          other.managerColaboradorUid == this.managerColaboradorUid &&
+          other.rol == this.rol &&
+          other.puesto == this.puesto &&
+          other.nivel == this.nivel &&
+          other.fechaInicio == this.fechaInicio &&
+          other.fechaFin == this.fechaFin &&
+          other.createdByUsuarioUid == this.createdByUsuarioUid &&
+          other.closedByUsuarioUid == this.closedByUsuarioUid &&
+          other.notas == this.notas &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted &&
+          other.isSynced == this.isSynced);
+}
+
+class AsignacionesLaboralesCompanion
+    extends UpdateCompanion<AsignacionLaboralDb> {
+  final Value<String> uid;
+  final Value<String> colaboradorUid;
+  final Value<String> distribuidorUid;
+  final Value<String> managerColaboradorUid;
+  final Value<String> rol;
+  final Value<String> puesto;
+  final Value<String> nivel;
+  final Value<DateTime> fechaInicio;
+  final Value<DateTime?> fechaFin;
+  final Value<String> createdByUsuarioUid;
+  final Value<String> closedByUsuarioUid;
+  final Value<String> notas;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> deleted;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const AsignacionesLaboralesCompanion({
+    this.uid = const Value.absent(),
+    this.colaboradorUid = const Value.absent(),
+    this.distribuidorUid = const Value.absent(),
+    this.managerColaboradorUid = const Value.absent(),
+    this.rol = const Value.absent(),
+    this.puesto = const Value.absent(),
+    this.nivel = const Value.absent(),
+    this.fechaInicio = const Value.absent(),
+    this.fechaFin = const Value.absent(),
+    this.createdByUsuarioUid = const Value.absent(),
+    this.closedByUsuarioUid = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AsignacionesLaboralesCompanion.insert({
+    required String uid,
+    required String colaboradorUid,
+    this.distribuidorUid = const Value.absent(),
+    this.managerColaboradorUid = const Value.absent(),
+    this.rol = const Value.absent(),
+    this.puesto = const Value.absent(),
+    this.nivel = const Value.absent(),
+    required DateTime fechaInicio,
+    this.fechaFin = const Value.absent(),
+    this.createdByUsuarioUid = const Value.absent(),
+    this.closedByUsuarioUid = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid),
+       colaboradorUid = Value(colaboradorUid),
+       fechaInicio = Value(fechaInicio);
+  static Insertable<AsignacionLaboralDb> custom({
+    Expression<String>? uid,
+    Expression<String>? colaboradorUid,
+    Expression<String>? distribuidorUid,
+    Expression<String>? managerColaboradorUid,
+    Expression<String>? rol,
+    Expression<String>? puesto,
+    Expression<String>? nivel,
+    Expression<DateTime>? fechaInicio,
+    Expression<DateTime>? fechaFin,
+    Expression<String>? createdByUsuarioUid,
+    Expression<String>? closedByUsuarioUid,
+    Expression<String>? notas,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? deleted,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (colaboradorUid != null) 'colaborador_uid': colaboradorUid,
+      if (distribuidorUid != null) 'distribuidor_uid': distribuidorUid,
+      if (managerColaboradorUid != null)
+        'manager_colaborador_uid': managerColaboradorUid,
+      if (rol != null) 'rol': rol,
+      if (puesto != null) 'puesto': puesto,
+      if (nivel != null) 'nivel': nivel,
+      if (fechaInicio != null) 'fecha_inicio': fechaInicio,
+      if (fechaFin != null) 'fecha_fin': fechaFin,
+      if (createdByUsuarioUid != null)
+        'created_by_usuario_uid': createdByUsuarioUid,
+      if (closedByUsuarioUid != null)
+        'closed_by_usuario_uid': closedByUsuarioUid,
+      if (notas != null) 'notas': notas,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AsignacionesLaboralesCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? colaboradorUid,
+    Value<String>? distribuidorUid,
+    Value<String>? managerColaboradorUid,
+    Value<String>? rol,
+    Value<String>? puesto,
+    Value<String>? nivel,
+    Value<DateTime>? fechaInicio,
+    Value<DateTime?>? fechaFin,
+    Value<String>? createdByUsuarioUid,
+    Value<String>? closedByUsuarioUid,
+    Value<String>? notas,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? deleted,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return AsignacionesLaboralesCompanion(
+      uid: uid ?? this.uid,
+      colaboradorUid: colaboradorUid ?? this.colaboradorUid,
+      distribuidorUid: distribuidorUid ?? this.distribuidorUid,
+      managerColaboradorUid:
+          managerColaboradorUid ?? this.managerColaboradorUid,
+      rol: rol ?? this.rol,
+      puesto: puesto ?? this.puesto,
+      nivel: nivel ?? this.nivel,
+      fechaInicio: fechaInicio ?? this.fechaInicio,
+      fechaFin: fechaFin ?? this.fechaFin,
+      createdByUsuarioUid: createdByUsuarioUid ?? this.createdByUsuarioUid,
+      closedByUsuarioUid: closedByUsuarioUid ?? this.closedByUsuarioUid,
+      notas: notas ?? this.notas,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (colaboradorUid.present) {
+      map['colaborador_uid'] = Variable<String>(colaboradorUid.value);
+    }
+    if (distribuidorUid.present) {
+      map['distribuidor_uid'] = Variable<String>(distribuidorUid.value);
+    }
+    if (managerColaboradorUid.present) {
+      map['manager_colaborador_uid'] = Variable<String>(
+        managerColaboradorUid.value,
+      );
+    }
+    if (rol.present) {
+      map['rol'] = Variable<String>(rol.value);
+    }
+    if (puesto.present) {
+      map['puesto'] = Variable<String>(puesto.value);
+    }
+    if (nivel.present) {
+      map['nivel'] = Variable<String>(nivel.value);
+    }
+    if (fechaInicio.present) {
+      map['fecha_inicio'] = Variable<DateTime>(fechaInicio.value);
+    }
+    if (fechaFin.present) {
+      map['fecha_fin'] = Variable<DateTime>(fechaFin.value);
+    }
+    if (createdByUsuarioUid.present) {
+      map['created_by_usuario_uid'] = Variable<String>(
+        createdByUsuarioUid.value,
+      );
+    }
+    if (closedByUsuarioUid.present) {
+      map['closed_by_usuario_uid'] = Variable<String>(closedByUsuarioUid.value);
+    }
+    if (notas.present) {
+      map['notas'] = Variable<String>(notas.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AsignacionesLaboralesCompanion(')
+          ..write('uid: $uid, ')
+          ..write('colaboradorUid: $colaboradorUid, ')
+          ..write('distribuidorUid: $distribuidorUid, ')
+          ..write('managerColaboradorUid: $managerColaboradorUid, ')
+          ..write('rol: $rol, ')
+          ..write('puesto: $puesto, ')
+          ..write('nivel: $nivel, ')
+          ..write('fechaInicio: $fechaInicio, ')
+          ..write('fechaFin: $fechaFin, ')
+          ..write('createdByUsuarioUid: $createdByUsuarioUid, ')
+          ..write('closedByUsuarioUid: $closedByUsuarioUid, ')
+          ..write('notas: $notas, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5375,6 +6295,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ModeloImagenesTable modeloImagenes = $ModeloImagenesTable(this);
   late final $ProductosTable productos = $ProductosTable(this);
   late final $ColaboradoresTable colaboradores = $ColaboradoresTable(this);
+  late final $AsignacionesLaboralesTable asignacionesLaborales =
+      $AsignacionesLaboralesTable(this);
   late final UsuariosDao usuariosDao = UsuariosDao(this as AppDatabase);
   late final DistribuidoresDao distribuidoresDao = DistribuidoresDao(
     this as AppDatabase,
@@ -5388,6 +6310,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final ColaboradoresDao colaboradoresDao = ColaboradoresDao(
     this as AppDatabase,
   );
+  late final AsignacionesLaboralesDao asignacionesLaboralesDao =
+      AsignacionesLaboralesDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5400,6 +6324,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     modeloImagenes,
     productos,
     colaboradores,
+    asignacionesLaborales,
   ];
 }
 
@@ -7931,6 +8856,446 @@ typedef $$ColaboradoresTableProcessedTableManager =
       ColaboradorDb,
       PrefetchHooks Function()
     >;
+typedef $$AsignacionesLaboralesTableCreateCompanionBuilder =
+    AsignacionesLaboralesCompanion Function({
+      required String uid,
+      required String colaboradorUid,
+      Value<String> distribuidorUid,
+      Value<String> managerColaboradorUid,
+      Value<String> rol,
+      Value<String> puesto,
+      Value<String> nivel,
+      required DateTime fechaInicio,
+      Value<DateTime?> fechaFin,
+      Value<String> createdByUsuarioUid,
+      Value<String> closedByUsuarioUid,
+      Value<String> notas,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$AsignacionesLaboralesTableUpdateCompanionBuilder =
+    AsignacionesLaboralesCompanion Function({
+      Value<String> uid,
+      Value<String> colaboradorUid,
+      Value<String> distribuidorUid,
+      Value<String> managerColaboradorUid,
+      Value<String> rol,
+      Value<String> puesto,
+      Value<String> nivel,
+      Value<DateTime> fechaInicio,
+      Value<DateTime?> fechaFin,
+      Value<String> createdByUsuarioUid,
+      Value<String> closedByUsuarioUid,
+      Value<String> notas,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$AsignacionesLaboralesTableFilterComposer
+    extends Composer<_$AppDatabase, $AsignacionesLaboralesTable> {
+  $$AsignacionesLaboralesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get colaboradorUid => $composableBuilder(
+    column: $table.colaboradorUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get distribuidorUid => $composableBuilder(
+    column: $table.distribuidorUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get managerColaboradorUid => $composableBuilder(
+    column: $table.managerColaboradorUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rol => $composableBuilder(
+    column: $table.rol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get puesto => $composableBuilder(
+    column: $table.puesto,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nivel => $composableBuilder(
+    column: $table.nivel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fechaInicio => $composableBuilder(
+    column: $table.fechaInicio,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fechaFin => $composableBuilder(
+    column: $table.fechaFin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdByUsuarioUid => $composableBuilder(
+    column: $table.createdByUsuarioUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get closedByUsuarioUid => $composableBuilder(
+    column: $table.closedByUsuarioUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AsignacionesLaboralesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AsignacionesLaboralesTable> {
+  $$AsignacionesLaboralesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get colaboradorUid => $composableBuilder(
+    column: $table.colaboradorUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get distribuidorUid => $composableBuilder(
+    column: $table.distribuidorUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get managerColaboradorUid => $composableBuilder(
+    column: $table.managerColaboradorUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rol => $composableBuilder(
+    column: $table.rol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get puesto => $composableBuilder(
+    column: $table.puesto,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nivel => $composableBuilder(
+    column: $table.nivel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fechaInicio => $composableBuilder(
+    column: $table.fechaInicio,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fechaFin => $composableBuilder(
+    column: $table.fechaFin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdByUsuarioUid => $composableBuilder(
+    column: $table.createdByUsuarioUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get closedByUsuarioUid => $composableBuilder(
+    column: $table.closedByUsuarioUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AsignacionesLaboralesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AsignacionesLaboralesTable> {
+  $$AsignacionesLaboralesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get colaboradorUid => $composableBuilder(
+    column: $table.colaboradorUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get distribuidorUid => $composableBuilder(
+    column: $table.distribuidorUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get managerColaboradorUid => $composableBuilder(
+    column: $table.managerColaboradorUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rol =>
+      $composableBuilder(column: $table.rol, builder: (column) => column);
+
+  GeneratedColumn<String> get puesto =>
+      $composableBuilder(column: $table.puesto, builder: (column) => column);
+
+  GeneratedColumn<String> get nivel =>
+      $composableBuilder(column: $table.nivel, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fechaInicio => $composableBuilder(
+    column: $table.fechaInicio,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get fechaFin =>
+      $composableBuilder(column: $table.fechaFin, builder: (column) => column);
+
+  GeneratedColumn<String> get createdByUsuarioUid => $composableBuilder(
+    column: $table.createdByUsuarioUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get closedByUsuarioUid => $composableBuilder(
+    column: $table.closedByUsuarioUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notas =>
+      $composableBuilder(column: $table.notas, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$AsignacionesLaboralesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AsignacionesLaboralesTable,
+          AsignacionLaboralDb,
+          $$AsignacionesLaboralesTableFilterComposer,
+          $$AsignacionesLaboralesTableOrderingComposer,
+          $$AsignacionesLaboralesTableAnnotationComposer,
+          $$AsignacionesLaboralesTableCreateCompanionBuilder,
+          $$AsignacionesLaboralesTableUpdateCompanionBuilder,
+          (
+            AsignacionLaboralDb,
+            BaseReferences<
+              _$AppDatabase,
+              $AsignacionesLaboralesTable,
+              AsignacionLaboralDb
+            >,
+          ),
+          AsignacionLaboralDb,
+          PrefetchHooks Function()
+        > {
+  $$AsignacionesLaboralesTableTableManager(
+    _$AppDatabase db,
+    $AsignacionesLaboralesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AsignacionesLaboralesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AsignacionesLaboralesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AsignacionesLaboralesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> colaboradorUid = const Value.absent(),
+                Value<String> distribuidorUid = const Value.absent(),
+                Value<String> managerColaboradorUid = const Value.absent(),
+                Value<String> rol = const Value.absent(),
+                Value<String> puesto = const Value.absent(),
+                Value<String> nivel = const Value.absent(),
+                Value<DateTime> fechaInicio = const Value.absent(),
+                Value<DateTime?> fechaFin = const Value.absent(),
+                Value<String> createdByUsuarioUid = const Value.absent(),
+                Value<String> closedByUsuarioUid = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AsignacionesLaboralesCompanion(
+                uid: uid,
+                colaboradorUid: colaboradorUid,
+                distribuidorUid: distribuidorUid,
+                managerColaboradorUid: managerColaboradorUid,
+                rol: rol,
+                puesto: puesto,
+                nivel: nivel,
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin,
+                createdByUsuarioUid: createdByUsuarioUid,
+                closedByUsuarioUid: closedByUsuarioUid,
+                notas: notas,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                required String colaboradorUid,
+                Value<String> distribuidorUid = const Value.absent(),
+                Value<String> managerColaboradorUid = const Value.absent(),
+                Value<String> rol = const Value.absent(),
+                Value<String> puesto = const Value.absent(),
+                Value<String> nivel = const Value.absent(),
+                required DateTime fechaInicio,
+                Value<DateTime?> fechaFin = const Value.absent(),
+                Value<String> createdByUsuarioUid = const Value.absent(),
+                Value<String> closedByUsuarioUid = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AsignacionesLaboralesCompanion.insert(
+                uid: uid,
+                colaboradorUid: colaboradorUid,
+                distribuidorUid: distribuidorUid,
+                managerColaboradorUid: managerColaboradorUid,
+                rol: rol,
+                puesto: puesto,
+                nivel: nivel,
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin,
+                createdByUsuarioUid: createdByUsuarioUid,
+                closedByUsuarioUid: closedByUsuarioUid,
+                notas: notas,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AsignacionesLaboralesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AsignacionesLaboralesTable,
+      AsignacionLaboralDb,
+      $$AsignacionesLaboralesTableFilterComposer,
+      $$AsignacionesLaboralesTableOrderingComposer,
+      $$AsignacionesLaboralesTableAnnotationComposer,
+      $$AsignacionesLaboralesTableCreateCompanionBuilder,
+      $$AsignacionesLaboralesTableUpdateCompanionBuilder,
+      (
+        AsignacionLaboralDb,
+        BaseReferences<
+          _$AppDatabase,
+          $AsignacionesLaboralesTable,
+          AsignacionLaboralDb
+        >,
+      ),
+      AsignacionLaboralDb,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7949,4 +9314,6 @@ class $AppDatabaseManager {
       $$ProductosTableTableManager(_db, _db.productos);
   $$ColaboradoresTableTableManager get colaboradores =>
       $$ColaboradoresTableTableManager(_db, _db.colaboradores);
+  $$AsignacionesLaboralesTableTableManager get asignacionesLaborales =>
+      $$AsignacionesLaboralesTableTableManager(_db, _db.asignacionesLaborales);
 }

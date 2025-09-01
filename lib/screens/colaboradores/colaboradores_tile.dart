@@ -52,14 +52,6 @@ class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
             Text('Tel: ${c.telefonoMovil}'),
           if (c.emailPersonal.trim().isNotEmpty)
             Text('Email: ${c.emailPersonal}'),
-          if ((c.curp ?? '').trim().isNotEmpty ||
-              (c.rfc ?? '').trim().isNotEmpty)
-            Text(
-              [
-                if ((c.curp ?? '').trim().isNotEmpty) 'CURP: ${c.curp}',
-                if ((c.rfc ?? '').trim().isNotEmpty) 'RFC: ${c.rfc}',
-              ].join(' · '),
-            ),
         ],
       ),
       isThreeLine: true,

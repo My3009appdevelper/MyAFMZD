@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
@@ -9,6 +10,7 @@ import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_screen.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_screen.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
 import 'package:myafmzd/screens/modelos/modelos_screen.dart';
@@ -34,6 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     DistribuidoresScreen(),
     ModelosScreen(),
     ColaboradoresScreen(),
+    AsignacionesLaboralesScreen(),
     // Agrega aquí más pantallas si tienes
   ];
 
@@ -57,6 +60,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(productosProvider.notifier).cargarOfflineFirst();
 
       await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
+
+      await ref
+          .read(asignacionesLaboralesProvider.notifier)
+          .cargarOfflineFirst();
     });
   }
 
@@ -146,6 +153,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             backgroundColor: colorScheme.primary,
             icon: Icon(Icons.group),
             label: 'Colaboradores',
+          ),
+          BottomNavigationBarItem(
+            backgroundColor: colorScheme.primary,
+            icon: Icon(Icons.group),
+            label: 'Asignaciones Laborales',
           ),
         ],
       ),

@@ -26,6 +26,7 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
 
   // Foto
   File? _fotoSeleccionada;
+  String _generoSel = '';
 
   // Text controllers
   late TextEditingController _nombresController;
@@ -51,6 +52,7 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
     _apPatController = TextEditingController(text: c?.apellidoPaterno ?? '');
     _apMatCtrl = TextEditingController(text: c?.apellidoMaterno ?? '');
     _fechaNac = c?.fechaNacimiento;
+    _generoSel = (c?.genero ?? '').trim();
     _curpController = TextEditingController(text: c?.curp ?? '');
     _rfcController = TextEditingController(text: c?.rfc ?? '');
     _telController = TextEditingController(text: c?.telefonoMovil ?? '');
@@ -209,38 +211,39 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Género (texto con sugerencias simples)
-                  // Puedes cambiar por tu propio widget de dropdown si quieres
-                  InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Género (opcional)',
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 240,
-                          child: MyTextFormField(
-                            controller: _generoController,
-                            labelText: 'Género',
+                  // Género (chips de selección única con feedback visual)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final g in generos)
+                        ChoiceChip(
+                          label: Text(g),
+                          selected: _generoSel == g,
+                          onSelected: (bool sel) {
+                            setState(() {
+                              _generoSel = sel && _generoSel != g
+                                  ? g
+                                  : (sel ? g : ''); // toggle
+                              _generoController.text =
+                                  _generoSel; // sincroniza con tu lógica actual
+                            });
+                          },
+                          // (Opcional) estilos para que destaque más
+                          avatar: _generoSel == g
+                              ? const Icon(Icons.check, size: 16)
+                              : null,
+                          shape: StadiumBorder(
+                            side: BorderSide(
+                              color: _generoSel == g
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).dividerColor,
+                            ),
                           ),
                         ),
-                        Wrap(
-                          spacing: 6,
-                          children: generos.map((g) {
-                            return ActionChip(
-                              label: Text(g),
-                              onPressed: () =>
-                                  setState(() => _generoController.text = g),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
+
                   const SizedBox(height: 12),
 
                   // Notas
