@@ -136,12 +136,12 @@ class ModelosSync {
       }
 
       // 6) Map → Companions (remotos ⇒ isSynced=true)
-      DateTime? _dt(dynamic v) => (v == null || (v is String && v.isEmpty))
+      DateTime? dt(dynamic v) => (v == null || (v is String && v.isEmpty))
           ? null
           : DateTime.parse(v.toString()).toUtc();
-      double _toDouble(dynamic v) =>
+      double toDouble(dynamic v) =>
           (v is num) ? v.toDouble() : double.tryParse('$v') ?? 0.0;
-      int _toInt(dynamic v) => (v is int) ? v : int.tryParse('$v') ?? 0;
+      int toInt(dynamic v) => (v is int) ? v : int.tryParse('$v') ?? 0;
 
       final companions = remotos.map((m) {
         return ModelosCompanion(
@@ -149,18 +149,18 @@ class ModelosSync {
           claveCatalogo: Value((m['clave_catalogo'] as String?) ?? ''),
           marca: Value((m['marca'] as String?) ?? 'Mazda'),
           modelo: Value((m['modelo'] as String?) ?? ''),
-          anio: Value(_toInt(m['anio'])),
+          anio: Value(toInt(m['anio'])),
           tipo: Value((m['tipo'] as String?) ?? ''),
           transmision: Value((m['transmision'] as String?) ?? ''),
           descripcion: Value((m['descripcion'] as String?) ?? ''),
           activo: Value((m['activo'] as bool?) ?? true),
-          precioBase: Value(_toDouble(m['precio_base'])),
+          precioBase: Value(toDouble(m['precio_base'])),
           fichaRutaRemota: Value((m['ficha_ruta_remota'] as String?) ?? ''),
           fichaRutaLocal: m['ficha_ruta_local'] == null
               ? const Value.absent()
               : Value(m['ficha_ruta_local'] as String? ?? ''),
-          createdAt: Value(_dt(m['created_at']) ?? DateTime.now().toUtc()),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          createdAt: Value(dt(m['created_at']) ?? DateTime.now().toUtc()),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
         );
@@ -180,7 +180,7 @@ class ModelosSync {
   // 🔧 Helper: mapear ModeloDb (Drift) → JSON snake_case para Supabase
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _modeloToSupabase(ModeloDb m) {
-    String? _iso(DateTime? d) => d?.toUtc().toIso8601String();
+    String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': m.uid,
       'clave_catalogo': m.claveCatalogo,
@@ -194,8 +194,8 @@ class ModelosSync {
       'precio_base': m.precioBase,
       'ficha_ruta_remota': m.fichaRutaRemota,
       // Nota: NO enviamos ficha_ruta_local al servidor
-      'created_at': _iso(m.createdAt),
-      'updated_at': _iso(m.updatedAt),
+      'created_at': iso(m.createdAt),
+      'updated_at': iso(m.updatedAt),
       'deleted': m.deleted,
     };
   }

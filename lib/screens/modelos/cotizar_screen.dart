@@ -594,7 +594,7 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
     }
 
     // ---------- Utilidades ----------
-    String _fechaLargaEs(DateTime d) {
+    String fechaLargaEs(DateTime d) {
       const meses = [
         'enero',
         'febrero',
@@ -612,9 +612,9 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
       return '${d.day} de ${meses[d.month - 1]} de ${d.year}';
     }
 
-    String _mon(num v) => _fmtMon(v); // reutiliza tu formateador de la clase
+    String mon(num v) => _fmtMon(v); // reutiliza tu formateador de la clase
 
-    pdfw.Widget _h1Center(String s) => pdfw.Align(
+    pdfw.Widget h1Center(String s) => pdfw.Align(
       alignment: pdfw.Alignment.center,
       child: pdfw.Text(
         s,
@@ -622,7 +622,7 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
       ),
     );
 
-    pdfw.Widget _h2Center(String s) => pdfw.Align(
+    pdfw.Widget h2Center(String s) => pdfw.Align(
       alignment: pdfw.Alignment.center,
       child: pdfw.Text(
         s,
@@ -630,7 +630,7 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
       ),
     );
 
-    pdfw.Widget _h3Center(String s) => pdfw.Align(
+    pdfw.Widget h3Center(String s) => pdfw.Align(
       alignment: pdfw.Alignment.center,
       child: pdfw.Text(
         s,
@@ -639,7 +639,7 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
     );
 
     // Etiqueta + valor en una sola línea, alineado a la derecha
-    pdfw.Widget _rightLine(String k, String v) => pdfw.Align(
+    pdfw.Widget rightLine(String k, String v) => pdfw.Align(
       alignment: pdfw.Alignment.centerLeft,
       child: pdfw.RichText(
         text: pdfw.TextSpan(
@@ -655,7 +655,7 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
     );
 
     // Etiqueta + valor en una sola línea, alineado a la derecha
-    pdfw.Widget _leftLine(String k, String v) => pdfw.Align(
+    pdfw.Widget leftLine(String k, String v) => pdfw.Align(
       alignment: pdfw.Alignment.centerLeft,
       child: pdfw.RichText(
         text: pdfw.TextSpan(
@@ -705,9 +705,9 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
           ],
 
           // Título + Fecha (ES)
-          _h1Center('Cotización de Autofinanciamiento'),
+          h1Center('Cotización de Autofinanciamiento'),
           pdfw.SizedBox(height: 6),
-          _h3Center('Fecha de realización: ${_fechaLargaEs(DateTime.now())}'),
+          h3Center('Fecha de realización: ${fechaLargaEs(DateTime.now())}'),
           pdfw.SizedBox(height: 14),
 
           // 3 & 4) Bloque doble columna:
@@ -730,30 +730,27 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
                       ),
                     ),
                     pdfw.SizedBox(height: 6),
-                    _leftLine(
+                    leftLine(
                       'Aportación integrante',
-                      ' \$${_mon(r.aportacionIntegrante)}',
+                      ' \$${mon(r.aportacionIntegrante)}',
                     ),
-                    _leftLine(
+                    leftLine(
                       'Aportación propietario',
-                      '\$${_mon(r.aportacionPropietario)}',
+                      '\$${mon(r.aportacionPropietario)}',
                     ),
-                    _leftLine(
+                    leftLine(
                       'Cuota inscripción (única)',
-                      ' \$${_mon(r.montoInscripcion)}',
+                      ' \$${mon(r.montoInscripcion)}',
                     ),
-                    _leftLine(
+                    leftLine(
                       'Gastos administración',
-                      ' \$${_mon(r.montoAdministracion)}',
+                      ' \$${mon(r.montoAdministracion)}',
                     ),
-                    _leftLine(
+                    leftLine(
                       'IVA Gtos Adm',
-                      ' \$${_mon(r.montoIvaAdministracion)}',
+                      ' \$${mon(r.montoIvaAdministracion)}',
                     ),
-                    _leftLine(
-                      'Seguro de vida',
-                      ' \$${_mon(r.montoSeguroVida)}',
-                    ),
+                    leftLine('Seguro de vida', ' \$${mon(r.montoSeguroVida)}'),
 
                     pdfw.SizedBox(height: 10),
                     pdfw.Text(
@@ -764,13 +761,13 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
                       ),
                     ),
                     pdfw.SizedBox(height: 6),
-                    _leftLine(
+                    leftLine(
                       'Integrante',
-                      ' \$${_mon(r.mensualidadIntegrante)}',
+                      ' \$${mon(r.mensualidadIntegrante)}',
                     ),
-                    _leftLine(
+                    leftLine(
                       'Propietario',
-                      ' \$${_mon(r.mensualidadPropietario)}',
+                      ' \$${mon(r.mensualidadPropietario)}',
                     ),
                   ],
                 ),
@@ -792,14 +789,14 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
                       ),
                     ),
                     pdfw.SizedBox(height: 6),
-                    _rightLine(
+                    rightLine(
                       'Modelo',
                       '${widget.modelo.modelo} ${widget.modelo.descripcion}',
                     ),
-                    _rightLine('Precio', '\$${_mon(widget.modelo.precioBase)}'),
-                    _rightLine('Producto', _productoSel?.nombre ?? ''),
-                    _rightLine('Mes adjudicación', '${params.mesEntrega}'),
-                    _rightLine('Adelanto', '${params.adelanto} mensualidades'),
+                    rightLine('Precio', '\$${mon(widget.modelo.precioBase)}'),
+                    rightLine('Producto', _productoSel?.nombre ?? ''),
+                    rightLine('Mes adjudicación', '${params.mesEntrega}'),
+                    rightLine('Adelanto', '${params.adelanto} mensualidades'),
                   ],
                 ),
               ),
@@ -809,9 +806,9 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
           pdfw.SizedBox(height: 16),
 
           // 5) Título centrado + aviso justo debajo
-          _h2Center('Tabla de pagos'),
+          h2Center('Tabla de pagos'),
           pdfw.SizedBox(height: 6),
-          _h3Center(
+          h3Center(
             'Este ejercicio es una simulación de pagos y no constituye una oferta formal. '
             'No incluye seguro automotriz.',
           ),
@@ -834,11 +831,11 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
                   (f) => [
                     f.numero,
                     f.estatus,
-                    _mon(f.aportacion),
-                    _mon(f.gastosAdm),
-                    _mon(f.ivaAdm),
-                    _mon(f.seguroVida),
-                    _mon(f.mensualidad),
+                    mon(f.aportacion),
+                    mon(f.gastosAdm),
+                    mon(f.ivaAdm),
+                    mon(f.seguroVida),
+                    mon(f.mensualidad),
                   ],
                 )
                 .toList(),

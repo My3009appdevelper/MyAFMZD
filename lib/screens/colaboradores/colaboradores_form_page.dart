@@ -204,8 +204,9 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
                     validator: (v) {
                       final s = (v ?? '').trim();
                       if (s.isEmpty) return null; // opcional
-                      if (!s.contains('@') || !s.contains('.'))
+                      if (!s.contains('@') || !s.contains('.')) {
                         return 'Correo inválido';
+                      }
                       return null;
                     },
                   ),

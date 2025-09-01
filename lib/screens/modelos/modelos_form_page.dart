@@ -117,31 +117,32 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
     );
 
     // Asegurar selección válida
-    String _ensureStr(String current, List<String> list, String fallback) {
-      if (current.trim().isEmpty)
+    String ensureStr(String current, List<String> list, String fallback) {
+      if (current.trim().isEmpty) {
         return list.isNotEmpty ? list.first : fallback;
+      }
       return list.contains(current)
           ? current
           : (list.isNotEmpty ? list.first : fallback);
     }
 
-    int? _ensureInt(int? current, List<int> list, int fallback) {
+    int? ensureInt(int? current, List<int> list, int fallback) {
       if (current == null) return list.isNotEmpty ? list.last : fallback;
       return list.contains(current)
           ? current
           : (list.isNotEmpty ? list.last : fallback);
     }
 
-    _marcaSel = _ensureStr(_marcaSel, marcas, 'Mazda');
-    _modeloSel = _ensureStr(_modeloSel, modelosDisp, '');
-    _anioSel = _ensureInt(_anioSel, anios, DateTime.now().year);
-    _tipoSel = _ensureStr(_tipoSel, tipos, tipos.isNotEmpty ? tipos.first : '');
-    _transmisionSel = _ensureStr(
+    _marcaSel = ensureStr(_marcaSel, marcas, 'Mazda');
+    _modeloSel = ensureStr(_modeloSel, modelosDisp, '');
+    _anioSel = ensureInt(_anioSel, anios, DateTime.now().year);
+    _tipoSel = ensureStr(_tipoSel, tipos, tipos.isNotEmpty ? tipos.first : '');
+    _transmisionSel = ensureStr(
       _transmisionSel,
       transmisiones,
       transmisiones.isNotEmpty ? transmisiones.first : '',
     );
-    _descripcionSel = _ensureStr(
+    _descripcionSel = ensureStr(
       _descripcionSel,
       descripciones,
       descripciones.isNotEmpty ? descripciones.first : '',
@@ -184,7 +185,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                           notifier.modelosDisponibles(marca: _marcaSel),
                           _addModelos,
                         );
-                        _modeloSel = _ensureStr(
+                        _modeloSel = ensureStr(
                           _modeloSel,
                           nuevosModelos,
                           nuevosModelos.isNotEmpty ? nuevosModelos.first : '',
@@ -595,7 +596,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
-    double _toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
+    double toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
 
     final clave = _claveController.text.trim();
     final marca = _marcaSel.trim().isEmpty ? 'Mazda' : _marcaSel.trim();
@@ -604,7 +605,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
     final tipo = _tipoSel.trim();
     final transmision = _transmisionSel.trim();
     final descripcion = _descripcionSel.trim();
-    final precioBase = _toDouble(_precioBaseController.text);
+    final precioBase = toDouble(_precioBaseController.text);
     final rutaRemota = _rutaRemotaController.text.trim();
     // validación defensiva, por si acaso
     if (rutaRemota.isEmpty ||
@@ -1137,7 +1138,7 @@ class _ThumbImagen extends StatelessWidget {
     final haveLocal =
         img.rutaLocal.isNotEmpty && File(img.rutaLocal).existsSync();
 
-    Widget _badge(String text, Color color) => Positioned(
+    Widget badge(String text, Color color) => Positioned(
       left: 6,
       top: 6,
       child: Container(
@@ -1192,11 +1193,11 @@ class _ThumbImagen extends StatelessWidget {
             ),
 
           // Badges
-          if (isCover) _badge('Portada', Colors.indigo),
-          if (marcadaParaEliminar) _badge('A borrar', Colors.redAccent),
-          if (marcadaParaRestaurar) _badge('A restaurar', Colors.green),
+          if (isCover) badge('Portada', Colors.indigo),
+          if (marcadaParaEliminar) badge('A borrar', Colors.redAccent),
+          if (marcadaParaRestaurar) badge('A restaurar', Colors.green),
           if (estaSoftDeleted && !marcadaParaRestaurar)
-            _badge('Eliminada', Colors.black54),
+            badge('Eliminada', Colors.black54),
 
           // Botonera (incluye estrella para portada)
           Positioned(

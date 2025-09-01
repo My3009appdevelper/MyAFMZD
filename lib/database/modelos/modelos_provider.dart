@@ -426,8 +426,9 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
     bool incluirEliminados = false,
   }) {
     final cat = claveCatalogo.trim().toLowerCase();
-    if (cat.isEmpty)
+    if (cat.isEmpty) {
       return false; // si el formulario ya lo exige, esto casi nunca ocurrirá
+    }
 
     return state.any((m) {
       if (m.uid == uidActual) return false; // ignorar yo mismo

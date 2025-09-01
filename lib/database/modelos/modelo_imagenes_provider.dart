@@ -102,40 +102,40 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     bool debug = true, // 👈 para controlar verbosity de logs
   }) async {
     // ───────────────────────────── helpers ─────────────────────────────
-    void _log(String m) {
+    void log(String m) {
       if (debug) print('[🚗👀 PREFETCH] $m');
     }
 
-    String _norm(String p) {
+    String norm(String p) {
       final s = p.trim();
       final noLeading = s.startsWith('/') ? s.substring(1) : s;
       return noLeading.replaceAll(RegExp(r'/+'), '/');
     }
 
-    String _basename(String ruta) {
-      final rn = _norm(ruta);
+    String basename(String ruta) {
+      final rn = norm(ruta);
       final idx = rn.lastIndexOf('/');
       return idx >= 0 ? rn.substring(idx + 1) : rn;
     }
 
-    String _extFromRuta(String ruta) {
-      final base = _basename(ruta);
+    String extFromRuta(String ruta) {
+      final base = basename(ruta);
       final i = base.lastIndexOf('.');
       return (i >= 0 && i < base.length - 1)
           ? base.substring(i + 1).toLowerCase()
           : 'jpg';
     }
 
-    String? _yearFromRuta(String ruta) {
-      final rn = _norm(ruta);
+    String? yearFromRuta(String ruta) {
+      final rn = norm(ruta);
       final first = rn.split('/').first;
       final m = RegExp(r'^\d{4}$').firstMatch(first);
       return m != null ? first : null;
     }
 
     // Si sha256 viene vacío, intenta extraerlo del nombre del archivo remoto (sin extensión)
-    String? _deriveShaFromRutaRemota(String ruta) {
-      final base = _basename(ruta);
+    String? deriveShaFromRutaRemota(String ruta) {
+      final base = basename(ruta);
       final nameNoExt = base.replaceFirst(RegExp(r'\.[^.]+$'), '');
       return RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(nameNoExt)
           ? nameNoExt.toLowerCase()
@@ -143,7 +143,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     }
 
     // Nombre canónico por SHA: AAAA_<sha>.ext  (sin el id de modelo)
-    Future<File> _canonicalFileFor(
+    Future<File> canonicalFileFor(
       String sha,
       String ext, {
       String? year,
@@ -158,7 +158,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     }
 
     // Ruta local existente para un SHA usando el estado (rápido)
-    File? _localFromStateBySha(String sha) {
+    File? localFromStateBySha(String sha) {
       try {
         final row = state.firstWhere(
           (i) =>
@@ -173,7 +173,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     }
 
     // Ruta local existente para un SHA escaneando la carpeta (por si hay archivos previos)
-    Future<File?> _scanDiskBySha(String sha) async {
+    Future<File?> scanDiskBySha(String sha) async {
       try {
         final dir = await getApplicationSupportDirectory();
         final imgsDir = Directory(p.join(dir.path, 'modelos_img'));
@@ -191,13 +191,13 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     }
 
     // Mueve/renombra de forma segura (si ya está con ese nombre, no hace nada)
-    Future<File> _ensureCanonicalName(
+    Future<File> ensureCanonicalName(
       File file,
       String sha,
       String ext, {
       String? year,
     }) async {
-      final dst = await _canonicalFileFor(sha, ext, year: year);
+      final dst = await canonicalFileFor(sha, ext, year: year);
       if (p.equals(file.path, dst.path)) return file;
       try {
         if (await dst.exists()) {
@@ -220,22 +220,23 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     }
     // ───────────────────────── fin helpers ────────────────────────────
 
-    _log(
+    log(
       '⇢ descargarFaltantes(modeloUid=$modeloUid, max=$max, incluirEliminadas=$incluirEliminadas)',
     );
-    _log('Estado actual: ${state.length} filas en memoria');
+    log('Estado actual: ${state.length} filas en memoria');
 
     // 1) Candidatas que necesitan archivo local
     final candidatas = state.where((i) {
       if (!incluirEliminadas && i.deleted) return false;
       if (modeloUid != null && i.modeloUid != modeloUid) return false;
       if (i.rutaRemota.trim().isEmpty) return false;
-      if (i.rutaLocal.isNotEmpty && File(i.rutaLocal).existsSync())
+      if (i.rutaLocal.isNotEmpty && File(i.rutaLocal).existsSync()) {
         return false;
+      }
       return true;
     }).toList();
 
-    _log('Candidatas que requieren archivo local: ${candidatas.length}');
+    log('Candidatas que requieren archivo local: ${candidatas.length}');
     if (candidatas.isEmpty) return 0;
 
     // 2) Calcula el SHA efectivo por fila (sha256 o basename)
@@ -243,11 +244,11 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     final sinShaList = <ModeloImagenDb>[];
     for (final row in candidatas) {
       final ownSha = row.sha256.trim().toLowerCase();
-      final derived = _deriveShaFromRutaRemota(row.rutaRemota) ?? '';
+      final derived = deriveShaFromRutaRemota(row.rutaRemota) ?? '';
       final effSha = (ownSha.isNotEmpty ? ownSha : derived);
       if (effSha.isEmpty) {
         sinShaList.add(row);
-        final key = 'ruta:${_norm(row.rutaRemota)}';
+        final key = 'ruta:${norm(row.rutaRemota)}';
         (effective[key] ??= []).add(row);
       } else {
         (effective['sha:$effSha'] ??= []).add(row);
@@ -275,11 +276,11 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
         .toSet()
         .length;
 
-    _log(
+    log(
       'Grupos formados: total=$totalGrupos | por_SHA=$gruposSha (únicos=$unicosSha) | por_RUTA=$gruposRuta',
     );
     if (sinShaList.isNotEmpty) {
-      _log(
+      log(
         '⚠️ Filas sin SHA deducible (grupos por ruta): ${sinShaList.length}',
       );
     }
@@ -307,47 +308,47 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
       final isShaGroup = key.startsWith('sha:');
       final sha0 = isShaGroup
           ? key.substring(4)
-          : (_deriveShaFromRutaRemota(grupo.first.rutaRemota) ?? '')
+          : (deriveShaFromRutaRemota(grupo.first.rutaRemota) ?? '')
                 .toLowerCase();
-      final year = _yearFromRuta(grupo.first.rutaRemota);
-      final ext = _extFromRuta(grupo.first.rutaRemota);
+      final year = yearFromRuta(grupo.first.rutaRemota);
+      final ext = extFromRuta(grupo.first.rutaRemota);
 
-      ejemploRutaPorKey[key] = _norm(grupo.first.rutaRemota);
+      ejemploRutaPorKey[key] = norm(grupo.first.rutaRemota);
       tamGrupo[key] = grupo.length;
       coverGrupo[key] = hasCover(grupo);
 
-      _log(
+      log(
         '• Grupo $idxGrupo/$totalGrupos  key=$key  size=${grupo.length}  cover=${coverGrupo[key]}  ext=$ext  year=${year ?? "0000"}',
       );
 
       // 4.a INTENTO DE REUSO LOCAL
       File? local;
       if (isShaGroup && sha0.isNotEmpty) {
-        local = _localFromStateBySha(sha0);
+        local = localFromStateBySha(sha0);
         if (local != null) {
           reusadasEstado[sha0] = local.path;
-          _log('  ↳ Reuso por estado (SHA): $sha0 → ${p.basename(local.path)}');
+          log('  ↳ Reuso por estado (SHA): $sha0 → ${p.basename(local.path)}');
         } else {
-          local = await _scanDiskBySha(sha0);
+          local = await scanDiskBySha(sha0);
           if (local != null) {
             reusadasDisco[sha0] = local.path;
-            _log(
+            log(
               '  ↳ Reuso por disco (SHA): $sha0 → ${p.basename(local.path)}',
             );
           }
         }
       } else {
         // Fallback raro: sin SHA -> reuso por ruta normalizada
-        final rn = _norm(grupo.first.rutaRemota);
+        final rn = norm(grupo.first.rutaRemota);
         try {
           final other = state.firstWhere(
             (i) =>
-                _norm(i.rutaRemota) == rn &&
+                norm(i.rutaRemota) == rn &&
                 i.rutaLocal.isNotEmpty &&
                 File(i.rutaLocal).existsSync(),
           );
           local = File(other.rutaLocal);
-          _log('  ↳ Reuso por ruta: ${p.basename(local.path)}');
+          log('  ↳ Reuso por ruta: ${p.basename(local.path)}');
         } catch (_) {}
       }
 
@@ -355,23 +356,23 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
 
       // 4.b DESCARGA ÚNICA (si no hubo reuso)
       if (local == null) {
-        final remotePath = _norm(grupo.first.rutaRemota);
-        _log('  ↓ Descargando: $remotePath');
+        final remotePath = norm(grupo.first.rutaRemota);
+        log('  ↓ Descargando: $remotePath');
         final tmp = await _service.descargarImagenOnline(remotePath);
         if (tmp == null) {
-          _log('  ⚠️ No se pudo descargar $remotePath (skip)');
+          log('  ⚠️ No se pudo descargar $remotePath (skip)');
           continue;
         }
 
         if (effectiveSha.isEmpty) {
           effectiveSha = (await _service.calcularSha256(tmp)).toLowerCase();
-          _log('  ↳ SHA calculado: $effectiveSha');
+          log('  ↳ SHA calculado: $effectiveSha');
         }
 
-        local = await _ensureCanonicalName(tmp, effectiveSha, ext, year: year);
+        local = await ensureCanonicalName(tmp, effectiveSha, ext, year: year);
         descargasReales++;
         descargadas[effectiveSha] = local.path;
-        _log('  ✅ Descargada y normalizada → ${p.basename(local.path)}');
+        log('  ✅ Descargada y normalizada → ${p.basename(local.path)}');
       } else {
         // Asegura nombre canónico si ya teníamos el archivo en un nombre viejo
         final shaForName = (isShaGroup && sha0.isNotEmpty)
@@ -379,14 +380,14 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
             : (effectiveSha.isNotEmpty ? effectiveSha : '');
         if (shaForName.isNotEmpty) {
           final before = local.path;
-          local = await _ensureCanonicalName(
+          local = await ensureCanonicalName(
             local,
             shaForName,
             ext,
             year: year,
           );
           if (!p.equals(before, local.path)) {
-            _log('  ↳ Renombrada a canónico: ${p.basename(local.path)}');
+            log('  ↳ Renombrada a canónico: ${p.basename(local.path)}');
           }
         }
       }
@@ -411,25 +412,25 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     }
 
     // 6) RESUMEN
-    _log('—'.padRight(60, '—'));
-    _log('RESUMEN');
-    _log('  candidatos=${candidatas.length}');
-    _log(
+    log('—'.padRight(60, '—'));
+    log('RESUMEN');
+    log('  candidatos=${candidatas.length}');
+    log(
       '  grupos_total=$totalGrupos  | por_SHA=$gruposSha (únicos=$unicosSha) | por_RUTA=$gruposRuta',
     );
-    _log(
+    log(
       '  descargas_reales=$descargasReales  | reuso_estado=${reusadasEstado.length} | reuso_disco=${reusadasDisco.length}',
     );
     if (descargadas.isNotEmpty) {
-      _log('  Descargadas (${descargadas.length}):');
+      log('  Descargadas (${descargadas.length}):');
       descargadas.forEach((sha, path) {
         final key = 'sha:$sha';
         final eg = ejemploRutaPorKey[key] ?? '';
-        _log('    • $sha  ← $eg  → ${p.basename(path)}');
+        log('    • $sha  ← $eg  → ${p.basename(path)}');
       });
     }
     if (gruposRuta > 0) {
-      _log('  Grupos por RUTA (sin SHA deducible): $gruposRuta');
+      log('  Grupos por RUTA (sin SHA deducible): $gruposRuta');
     }
 
     return descargasReales;

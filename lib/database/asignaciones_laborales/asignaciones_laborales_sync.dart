@@ -108,32 +108,32 @@ class AsignacionesLaboralesSync {
       }
 
       // 6) Map → Companions (remotos ⇒ isSynced=true)
-      DateTime? _dt(dynamic v) => (v == null || (v is String && v.isEmpty))
+      DateTime? dt(dynamic v) => (v == null || (v is String && v.isEmpty))
           ? null
           : DateTime.parse(v.toString()).toUtc();
-      String _str(dynamic v, {String def = ''}) =>
+      String str(dynamic v, {String def = ''}) =>
           (v is String && v.isNotEmpty) ? v : (v?.toString() ?? def);
-      bool _bool(dynamic v) => (v is bool) ? v : (v?.toString() == 'true');
+      bool parseBool(dynamic v) => (v is bool) ? v : (v?.toString() == 'true');
 
       final companions = remotos.map((m) {
         return AsignacionesLaboralesCompanion(
           uid: Value(m['uid'] as String),
-          colaboradorUid: Value(_str(m['colaborador_uid'])),
-          distribuidorUid: Value(_str(m['distribuidor_uid'])),
-          managerColaboradorUid: Value(_str(m['manager_colaborador_uid'])),
-          rol: Value(_str(m['rol'], def: 'vendedor')),
-          puesto: Value(_str(m['puesto'])),
-          nivel: Value(_str(m['nivel'])),
-          fechaInicio: Value(_dt(m['fecha_inicio']) ?? DateTime.now().toUtc()),
+          colaboradorUid: Value(str(m['colaborador_uid'])),
+          distribuidorUid: Value(str(m['distribuidor_uid'])),
+          managerColaboradorUid: Value(str(m['manager_colaborador_uid'])),
+          rol: Value(str(m['rol'], def: 'vendedor')),
+          puesto: Value(str(m['puesto'])),
+          nivel: Value(str(m['nivel'])),
+          fechaInicio: Value(dt(m['fecha_inicio']) ?? DateTime.now().toUtc()),
           fechaFin: m['fecha_fin'] == null
               ? const Value.absent()
-              : Value(_dt(m['fecha_fin'])),
-          createdByUsuarioUid: Value(_str(m['created_by_usuario_uid'])),
-          closedByUsuarioUid: Value(_str(m['closed_by_usuario_uid'])),
-          notas: Value(_str(m['notas'])),
-          createdAt: Value(_dt(m['created_at']) ?? DateTime.now().toUtc()),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
-          deleted: Value(_bool(m['deleted'])),
+              : Value(dt(m['fecha_fin'])),
+          createdByUsuarioUid: Value(str(m['created_by_usuario_uid'])),
+          closedByUsuarioUid: Value(str(m['closed_by_usuario_uid'])),
+          notas: Value(str(m['notas'])),
+          createdAt: Value(dt(m['created_at']) ?? DateTime.now().toUtc()),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          deleted: Value(parseBool(m['deleted'])),
           isSynced: const Value(true),
         );
       }).toList();
@@ -152,7 +152,7 @@ class AsignacionesLaboralesSync {
   // 🔧 Helper: mapear AsignacionLaboralDb (Drift) → JSON snake_case (Supabase)
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _asignacionToSupabase(AsignacionLaboralDb a) {
-    String? _iso(DateTime? d) => d?.toUtc().toIso8601String();
+    String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': a.uid,
       'colaborador_uid': a.colaboradorUid,
@@ -161,13 +161,13 @@ class AsignacionesLaboralesSync {
       'rol': a.rol,
       'puesto': a.puesto,
       'nivel': a.nivel,
-      'fecha_inicio': _iso(a.fechaInicio),
-      'fecha_fin': _iso(a.fechaFin),
+      'fecha_inicio': iso(a.fechaInicio),
+      'fecha_fin': iso(a.fechaFin),
       'created_by_usuario_uid': a.createdByUsuarioUid,
       'closed_by_usuario_uid': a.closedByUsuarioUid,
       'notas': a.notas,
-      'created_at': _iso(a.createdAt),
-      'updated_at': _iso(a.updatedAt),
+      'created_at': iso(a.createdAt),
+      'updated_at': iso(a.updatedAt),
       'deleted': a.deleted,
     };
   }

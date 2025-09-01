@@ -111,10 +111,10 @@ class UsuariosSync {
       }
 
       // 6) Map → Companions (remotos ⇒ isSynced=true)
-      DateTime? _dt(dynamic v) =>
+      DateTime? dt(dynamic v) =>
           (v == null) ? null : DateTime.parse(v.toString()).toUtc();
 
-      Map<String, bool> _permisos(dynamic v) {
+      Map<String, bool> permisos(dynamic v) {
         if (v == null) return <String, bool>{};
         if (v is Map) {
           // Normalmente jsonb ya viene como Map<String, dynamic>
@@ -133,8 +133,8 @@ class UsuariosSync {
           correo: Value((m['correo'] as String?) ?? ''),
           rol: Value((m['rol'] as String?) ?? 'usuario'),
           uuidDistribuidora: Value((m['uuid_distribuidora'] as String?) ?? ''),
-          permisos: Value(_permisos(m['permisos'])),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          permisos: Value(permisos(m['permisos'])),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
         );
@@ -154,7 +154,7 @@ class UsuariosSync {
   // 🔧 Helper: mapear UsuarioDb (Drift) → JSON snake_case para Supabase
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _usuarioToSupabase(UsuarioDb u) {
-    String? _iso(DateTime? d) => d?.toUtc().toIso8601String();
+    String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': u.uid,
       'nombre': u.nombre,
@@ -162,7 +162,7 @@ class UsuariosSync {
       'rol': u.rol,
       'uuid_distribuidora': u.uuidDistribuidora,
       'permisos': u.permisos, // json/jsonb
-      'updated_at': _iso(u.updatedAt),
+      'updated_at': iso(u.updatedAt),
       'deleted': u.deleted,
     };
   }

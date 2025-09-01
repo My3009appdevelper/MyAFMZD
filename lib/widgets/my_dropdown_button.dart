@@ -23,7 +23,7 @@ class MyDropdownButton<T> extends StatelessWidget {
     final textStyle = theme.textTheme.bodyLarge;
 
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       onChanged: onChanged,
       items: items
           .map(

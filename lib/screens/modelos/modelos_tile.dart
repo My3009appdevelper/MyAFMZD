@@ -50,7 +50,7 @@ class _ModeloItemTileState extends ConsumerState<ModeloItemTile> {
         height: 140,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: colorScheme.surfaceVariant,
+          color: colorScheme.surfaceContainerHighest,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),

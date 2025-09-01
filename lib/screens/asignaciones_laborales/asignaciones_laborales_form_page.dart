@@ -2,7 +2,6 @@
 
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myafmzd/database/app_database.dart';
@@ -382,7 +381,7 @@ class _AsignacionLaboralFormPageState
 
                   // =================== Nivel (dropdown simple) =========
                   DropdownButtonFormField<String>(
-                    value: _nivelSel.isEmpty ? null : _nivelSel,
+                    initialValue: _nivelSel.isEmpty ? null : _nivelSel,
                     items: niveles
                         .map(
                           (n) => DropdownMenuItem(

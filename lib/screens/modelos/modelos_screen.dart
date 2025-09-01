@@ -20,7 +20,7 @@ class ModelosScreen extends ConsumerStatefulWidget {
 
 class _ModelosScreenState extends ConsumerState<ModelosScreen> {
   bool _cargandoInicial = true;
-  bool _abriendoPdf = false;
+  final bool _abriendoPdf = false;
   bool _trabajandoMasivo = false;
 
   int? _anioSeleccionado; // null => Todos

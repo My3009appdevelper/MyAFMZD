@@ -247,9 +247,9 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     final grupo = _grupoController.text.trim();
     final direccion = _direccionController.text.trim();
 
-    double _toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
-    final lat = _toDouble(_latController.text);
-    final lng = _toDouble(_lngController.text);
+    double toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
+    final lat = toDouble(_latController.text);
+    final lng = toDouble(_lngController.text);
 
     final distribuidoresNotifier = ref.read(distribuidoresProvider.notifier);
 

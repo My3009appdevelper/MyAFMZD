@@ -111,9 +111,9 @@ class DistribuidoresSync {
       }
 
       // 6) Map → Companions (remotos ⇒ isSynced=true)
-      DateTime? _dt(dynamic v) =>
+      DateTime? dt(dynamic v) =>
           (v == null) ? null : DateTime.parse(v.toString()).toUtc();
-      double _toDouble(dynamic v) =>
+      double toDouble(dynamic v) =>
           (v is num) ? v.toDouble() : double.tryParse('$v') ?? 0.0;
 
       final companions = remotos.map((m) {
@@ -123,9 +123,9 @@ class DistribuidoresSync {
           grupo: Value((m['grupo'] as String?) ?? 'AFMZD'),
           direccion: Value((m['direccion'] as String?) ?? ''),
           activo: Value((m['activo'] as bool?) ?? true),
-          latitud: Value(_toDouble(m['latitud'])),
-          longitud: Value(_toDouble(m['longitud'])),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          latitud: Value(toDouble(m['latitud'])),
+          longitud: Value(toDouble(m['longitud'])),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
         );
@@ -145,7 +145,7 @@ class DistribuidoresSync {
   // 🔧 Helper: mapear DistribuidorDb (Drift) → JSON snake_case para Supabase
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _distribuidorToSupabase(DistribuidorDb d) {
-    String? _iso(DateTime? v) => v?.toUtc().toIso8601String();
+    String? iso(DateTime? v) => v?.toUtc().toIso8601String();
     return {
       'uid': d.uid,
       'nombre': d.nombre,
@@ -154,7 +154,7 @@ class DistribuidoresSync {
       'activo': d.activo,
       'latitud': d.latitud,
       'longitud': d.longitud,
-      'updated_at': _iso(d.updatedAt),
+      'updated_at': iso(d.updatedAt),
       'deleted': d.deleted,
     };
   }

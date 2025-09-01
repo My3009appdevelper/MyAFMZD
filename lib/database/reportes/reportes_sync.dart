@@ -133,14 +133,14 @@ class ReportesSync {
       }
 
       // 6) Map → Companions (vienen de remoto ⇒ isSynced=true)
-      DateTime? _dt(String? s) =>
+      DateTime? dt(String? s) =>
           (s == null || s.isEmpty) ? null : DateTime.parse(s).toUtc();
 
       final companions = remotos.map((m) {
         return ReportesCompanion(
           uid: Value(m['uid'] as String),
           nombre: Value((m['nombre'] as String?) ?? ''),
-          fecha: Value(_dt(m['fecha']) ?? DateTime.now().toUtc()),
+          fecha: Value(dt(m['fecha']) ?? DateTime.now().toUtc()),
           rutaRemota: Value((m['ruta_remota'] as String?) ?? ''),
           // Nunca asumimos descarga automática del PDF:
           // si el servidor manda 'ruta_local', la respetamos; si no, dejamos lo que ya está localmente.
@@ -148,7 +148,7 @@ class ReportesSync {
               ? const Value.absent()
               : Value(m['ruta_local'] as String? ?? ''),
           tipo: Value((m['tipo'] as String?) ?? ''),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           isSynced: const Value(true),
           deleted: Value((m['deleted'] as bool?) ?? false),
         );
@@ -168,14 +168,14 @@ class ReportesSync {
   // 🔧 Helper: mapear ReportesDb (Drift) → JSON snake_case para Supabase
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _reporteToSupabase(ReportesDb r) {
-    String? _iso(DateTime? d) => d?.toUtc().toIso8601String();
+    String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': r.uid,
       'nombre': r.nombre,
-      'fecha': _iso(r.fecha),
+      'fecha': iso(r.fecha),
       'ruta_remota': r.rutaRemota,
       'tipo': r.tipo,
-      'updated_at': _iso(r.updatedAt),
+      'updated_at': iso(r.updatedAt),
       'deleted': r.deleted,
     };
   }

@@ -11,7 +11,7 @@ plugins {
 android {
     namespace = "com.example.myafmzd"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973" // 🔧 Necesario actualizar
+    ndkVersion = flutter.ndkVersion // 🔧 Necesario actualizar
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

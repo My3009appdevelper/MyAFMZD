@@ -196,7 +196,7 @@ class _AsignacionesLaboralesScreenState
               // Rol
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _filtroRol.isEmpty ? null : _filtroRol,
+                  initialValue: _filtroRol.isEmpty ? null : _filtroRol,
                   items: [
                     const DropdownMenuItem(value: '', child: Text('— Todos —')),
                     ...roles.map(
@@ -223,7 +223,7 @@ class _AsignacionesLaboralesScreenState
               // Distribuidor
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _filtroDistribuidorUid.isEmpty
+                  initialValue: _filtroDistribuidorUid.isEmpty
                       ? null
                       : _filtroDistribuidorUid,
                   items: [

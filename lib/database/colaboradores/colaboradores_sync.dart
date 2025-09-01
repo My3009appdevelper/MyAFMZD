@@ -137,39 +137,39 @@ class ColaboradoresSync {
       }
 
       // 6) Map → Companions (remotos ⇒ isSynced=true)
-      DateTime? _dt(dynamic v) => (v == null || (v is String && v.isEmpty))
+      DateTime? dt(dynamic v) => (v == null || (v is String && v.isEmpty))
           ? null
           : DateTime.parse(v.toString()).toUtc();
 
-      String _str(dynamic v, {String def = ''}) =>
+      String str(dynamic v, {String def = ''}) =>
           (v is String && v.isNotEmpty) ? v : (v?.toString() ?? def);
 
       final companions = remotos.map((m) {
         return ColaboradoresCompanion(
           uid: Value(m['uid'] as String),
-          nombres: Value(_str(m['nombres'])),
-          apellidoPaterno: Value(_str(m['apellido_paterno'])),
-          apellidoMaterno: Value(_str(m['apellido_materno'])),
+          nombres: Value(str(m['nombres'])),
+          apellidoPaterno: Value(str(m['apellido_paterno'])),
+          apellidoMaterno: Value(str(m['apellido_materno'])),
           fechaNacimiento: m['fecha_nacimiento'] == null
               ? const Value.absent()
-              : Value(_dt(m['fecha_nacimiento'])),
+              : Value(dt(m['fecha_nacimiento'])),
           curp: m['curp'] == null
               ? const Value.absent()
-              : Value(_str(m['curp'])),
-          rfc: m['rfc'] == null ? const Value.absent() : Value(_str(m['rfc'])),
-          telefonoMovil: Value(_str(m['telefono_movil'])),
-          emailPersonal: Value(_str(m['email_personal'])),
+              : Value(str(m['curp'])),
+          rfc: m['rfc'] == null ? const Value.absent() : Value(str(m['rfc'])),
+          telefonoMovil: Value(str(m['telefono_movil'])),
+          emailPersonal: Value(str(m['email_personal'])),
           // Foto: Remota desde servidor; Local NO se pisa si no viene
-          fotoRutaRemota: Value(_str(m['foto_ruta_remota'])),
+          fotoRutaRemota: Value(str(m['foto_ruta_remota'])),
           fotoRutaLocal: m['foto_ruta_local'] == null
               ? const Value.absent()
-              : Value(_str(m['foto_ruta_local'])),
+              : Value(str(m['foto_ruta_local'])),
           genero: m['genero'] == null
               ? const Value.absent()
               : Value(m['genero'] as String?),
-          notas: Value(_str(m['notas'])),
-          createdAt: Value(_dt(m['created_at']) ?? DateTime.now().toUtc()),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          notas: Value(str(m['notas'])),
+          createdAt: Value(dt(m['created_at']) ?? DateTime.now().toUtc()),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
         );
@@ -189,13 +189,13 @@ class ColaboradoresSync {
   // 🔧 Helper: mapear ColaboradorDb (Drift) → JSON snake_case para Supabase
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _colaboradorToSupabase(ColaboradorDb c) {
-    String? _iso(DateTime? d) => d?.toUtc().toIso8601String();
+    String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': c.uid,
       'nombres': c.nombres,
       'apellido_paterno': c.apellidoPaterno,
       'apellido_materno': c.apellidoMaterno,
-      'fecha_nacimiento': _iso(c.fechaNacimiento),
+      'fecha_nacimiento': iso(c.fechaNacimiento),
       'curp': c.curp,
       'rfc': c.rfc,
       'telefono_movil': c.telefonoMovil,
@@ -204,8 +204,8 @@ class ColaboradoresSync {
       // Nota: NO enviamos foto_ruta_local al servidor
       'genero': c.genero,
       'notas': c.notas,
-      'created_at': _iso(c.createdAt),
-      'updated_at': _iso(c.updatedAt),
+      'created_at': iso(c.createdAt),
+      'updated_at': iso(c.updatedAt),
       'deleted': c.deleted,
     };
   }

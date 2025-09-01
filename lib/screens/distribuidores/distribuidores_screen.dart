@@ -96,7 +96,9 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     final distribuidoresNotifier = ref.watch(distribuidoresProvider);
     final grupos = (() {
       final set = <String>{'Todos'};
-      for (final d in distribuidoresNotifier) set.add(d.grupo);
+      for (final d in distribuidoresNotifier) {
+        set.add(d.grupo);
+      }
       final arr = set.toList()..sort();
       // asegurar 'Todos' al inicio
       arr.remove('Todos');

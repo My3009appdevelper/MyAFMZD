@@ -108,45 +108,45 @@ class ProductosSync {
       }
 
       // 6) Map → Companions (remotos ⇒ isSynced=true)
-      DateTime? _dt(dynamic v) => (v == null || (v is String && v.isEmpty))
+      DateTime? dt(dynamic v) => (v == null || (v is String && v.isEmpty))
           ? null
           : DateTime.parse(v.toString()).toUtc();
-      double _toDouble(dynamic v) =>
+      double toDouble(dynamic v) =>
           (v is num) ? v.toDouble() : double.tryParse('$v') ?? 0.0;
-      int _toInt(dynamic v) => (v is int) ? v : int.tryParse('$v') ?? 0;
-      bool _toBool(dynamic v) => (v is bool) ? v : (v?.toString() == 'true');
+      int toInt(dynamic v) => (v is int) ? v : int.tryParse('$v') ?? 0;
+      bool toBool(dynamic v) => (v is bool) ? v : (v?.toString() == 'true');
 
       final companions = remotos.map((m) {
         return ProductosCompanion(
           uid: Value(m['uid'] as String),
           nombre: Value((m['nombre'] as String?) ?? 'Autofinanciamiento Puro'),
-          activo: Value(_toBool(m['activo'])),
-          plazoMeses: Value(_toInt(m['plazo_meses'])),
-          factorIntegrante: Value(_toDouble(m['factor_integrante'])),
-          factorPropietario: Value(_toDouble(m['factor_propietario'])),
-          cuotaInscripcionPct: Value(_toDouble(m['cuota_inscripcion_pct'])),
+          activo: Value(toBool(m['activo'])),
+          plazoMeses: Value(toInt(m['plazo_meses'])),
+          factorIntegrante: Value(toDouble(m['factor_integrante'])),
+          factorPropietario: Value(toDouble(m['factor_propietario'])),
+          cuotaInscripcionPct: Value(toDouble(m['cuota_inscripcion_pct'])),
           cuotaAdministracionPct: Value(
-            _toDouble(m['cuota_administracion_pct']),
+            toDouble(m['cuota_administracion_pct']),
           ),
           ivaCuotaAdministracionPct: Value(
-            _toDouble(m['iva_cuota_administracion_pct']),
+            toDouble(m['iva_cuota_administracion_pct']),
           ),
-          cuotaSeguroVidaPct: Value(_toDouble(m['cuota_seguro_vida_pct'])),
-          adelantoMinMens: Value(_toInt(m['adelanto_min_mens'])),
-          adelantoMaxMens: Value(_toInt(m['adelanto_max_mens'])),
-          mesEntregaMin: Value(_toInt(m['mes_entrega_min'])),
-          mesEntregaMax: Value(_toInt(m['mes_entrega_max'])),
-          prioridad: Value(_toInt(m['prioridad'])),
+          cuotaSeguroVidaPct: Value(toDouble(m['cuota_seguro_vida_pct'])),
+          adelantoMinMens: Value(toInt(m['adelanto_min_mens'])),
+          adelantoMaxMens: Value(toInt(m['adelanto_max_mens'])),
+          mesEntregaMin: Value(toInt(m['mes_entrega_min'])),
+          mesEntregaMax: Value(toInt(m['mes_entrega_max'])),
+          prioridad: Value(toInt(m['prioridad'])),
           notas: Value((m['notas'] as String?) ?? ''),
           vigenteDesde: m['vigente_desde'] == null
               ? const Value.absent()
-              : Value(_dt(m['vigente_desde'])),
+              : Value(dt(m['vigente_desde'])),
           vigenteHasta: m['vigente_hasta'] == null
               ? const Value.absent()
-              : Value(_dt(m['vigente_hasta'])),
-          createdAt: Value(_dt(m['created_at']) ?? DateTime.now().toUtc()),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
-          deleted: Value(_toBool(m['deleted'])),
+              : Value(dt(m['vigente_hasta'])),
+          createdAt: Value(dt(m['created_at']) ?? DateTime.now().toUtc()),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          deleted: Value(toBool(m['deleted'])),
           isSynced: const Value(true),
         );
       }).toList();
@@ -165,7 +165,7 @@ class ProductosSync {
   // 🔧 Helper: mapear ProductoDb (Drift) → JSON snake_case para Supabase
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _productoToSupabase(ProductoDb p) {
-    String? _iso(DateTime? d) => d?.toUtc().toIso8601String();
+    String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': p.uid,
       'nombre': p.nombre,
@@ -183,10 +183,10 @@ class ProductosSync {
       'mes_entrega_max': p.mesEntregaMax,
       'prioridad': p.prioridad,
       'notas': p.notas,
-      'vigente_desde': _iso(p.vigenteDesde),
-      'vigente_hasta': _iso(p.vigenteHasta),
-      'created_at': _iso(p.createdAt),
-      'updated_at': _iso(p.updatedAt),
+      'vigente_desde': iso(p.vigenteDesde),
+      'vigente_hasta': iso(p.vigenteHasta),
+      'created_at': iso(p.createdAt),
+      'updated_at': iso(p.updatedAt),
       'deleted': p.deleted,
     };
   }

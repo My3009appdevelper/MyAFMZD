@@ -149,7 +149,7 @@ class ModeloImagenesSync {
       }
 
       // 6) Map → Companions (remotos ⇒ isSynced=true)
-      DateTime? _dt(dynamic v) => (v == null || (v is String && v.isEmpty))
+      DateTime? dt(dynamic v) => (v == null || (v is String && v.isEmpty))
           ? null
           : DateTime.parse(v.toString()).toUtc();
 
@@ -161,7 +161,7 @@ class ModeloImagenesSync {
           rutaLocal: const Value.absent(),
           sha256: Value((m['sha256'] as String?) ?? ''),
           isCover: Value((m['is_cover'] as bool?) ?? false),
-          updatedAt: Value(_dt(m['updated_at']) ?? DateTime.now().toUtc()),
+          updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
         );
@@ -181,7 +181,7 @@ class ModeloImagenesSync {
   // 🔧 Helper: mapear ModeloImagenDb (Drift) → JSON snake_case para Supabase
   // ---------------------------------------------------------------------------
   Map<String, dynamic> _imagenToSupabase(ModeloImagenDb i) {
-    String? _iso(DateTime? d) => d?.toUtc().toIso8601String();
+    String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': i.uid,
       'modelo_uid': i.modeloUid,
@@ -189,7 +189,7 @@ class ModeloImagenesSync {
       // Nota: NO enviamos ruta_local al servidor
       'sha256': i.sha256,
       'is_cover': i.isCover,
-      'updated_at': _iso(i.updatedAt),
+      'updated_at': iso(i.updatedAt),
       'deleted': i.deleted,
     };
   }

@@ -12,13 +12,13 @@ class DistribuidorPopup extends StatelessWidget {
     final d = distribuidor;
 
     // Tamaño fijo integrado (sin parámetros externos)
-    const double _width = 260;
-    const double _maxHeight = 130;
+    const double width = 260;
+    const double maxHeight = 130;
 
     return SizedBox(
-      width: _width,
+      width: width,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: _maxHeight),
+        constraints: const BoxConstraints(maxHeight: maxHeight),
         child: Card(
           margin: const EdgeInsets.all(8),
           elevation: 6,

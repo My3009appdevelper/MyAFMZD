@@ -83,7 +83,7 @@ LazyDatabase _openConnection() {
     const bool wipeOnColdStart = true; // ⬅️ ponlo en false para producción
 
     // ─────────────────────── helpers de borrado ──────────────────────
-    Future<int> _deleteWhere(Directory dir, bool Function(File f) test) async {
+    Future<int> deleteWhere(Directory dir, bool Function(File f) test) async {
       var count = 0;
       if (!(await dir.exists())) return 0;
       try {
@@ -106,7 +106,7 @@ LazyDatabase _openConnection() {
       return count;
     }
 
-    Future<int> _deleteAllInDir(Directory dir) async {
+    Future<int> deleteAllInDir(Directory dir) async {
       var count = 0;
       if (!(await dir.exists())) return 0;
       try {
@@ -132,7 +132,7 @@ LazyDatabase _openConnection() {
       return count;
     }
 
-    String _name(File f) => p.basename(f.path).toLowerCase();
+    String name(File f) => p.basename(f.path).toLowerCase();
 
     // ─────────────────────────── limpieza ────────────────────────────
     if (wipeOnColdStart) {
@@ -146,26 +146,26 @@ LazyDatabase _openConnection() {
       }
 
       // PDFs y miniaturas en temp y documents
-      final deletedTempPdfs = await _deleteWhere(
+      final deletedTempPdfs = await deleteWhere(
         tempDir,
-        (f) => _name(f).endsWith('.pdf'),
+        (f) => name(f).endsWith('.pdf'),
       );
-      final deletedDocsPdfs = await _deleteWhere(
+      final deletedDocsPdfs = await deleteWhere(
         docsDir,
-        (f) => _name(f).endsWith('.pdf'),
+        (f) => name(f).endsWith('.pdf'),
       );
-      final deletedTempTh = await _deleteWhere(
+      final deletedTempTh = await deleteWhere(
         tempDir,
-        (f) => _name(f).contains('miniatura_'),
+        (f) => name(f).contains('miniatura_'),
       );
-      final deletedDocsTh = await _deleteWhere(
+      final deletedDocsTh = await deleteWhere(
         docsDir,
-        (f) => _name(f).contains('miniatura_'),
+        (f) => name(f).contains('miniatura_'),
       );
 
       // Todas las imágenes gestionadas por la app (nuestro repositorio canónico)
       await modelosImgDir.create(recursive: true);
-      final deletedImgs = await _deleteAllInDir(modelosImgDir);
+      final deletedImgs = await deleteAllInDir(modelosImgDir);
 
       print('[🗑️ MENSAJE APP DATABASE] 🧹 Limpieza completada:');
       print(

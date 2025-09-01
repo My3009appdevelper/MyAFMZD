@@ -52,10 +52,7 @@ class ModelosDao extends DatabaseAccessor<AppDatabase> with _$ModelosDaoMixin {
 
   Future<void> marcarComoSincronizadoDrift(String uid) async {
     await (update(modelos)..where((t) => t.uid.equals(uid))).write(
-      const ModelosCompanion(
-        isSynced: const Value(true),
-        updatedAt: const Value.absent(),
-      ),
+      const ModelosCompanion(isSynced: Value(true), updatedAt: Value.absent()),
     );
   }
 
