@@ -115,57 +115,63 @@ class UsuarioService {
   // 📌 CREAR / ACTUALIZAR / ELIMINAR ONLINE
   // ---------------------------------------------------------------------------
 
-  // ---------------------------------------------------------------------------
-  // 🔐 EXTRA (solo usuarios): crear en Auth + insertar en tabla `usuarios`
-  //     - NO toca Drift; devuelve el payload para que tu Sync/Provider lo upserte localmente.
-  // ---------------------------------------------------------------------------
+  // 🔐 Crear en Auth + insertar en tabla `usuarios` (con tu nuevo esquema).
+  // - Idempotente a nivel de llamada: si Auth dice user_already_exists, no se inserta en tabla y se lanza excepción clara.
+  // - No toca Drift; devuelve el payload para que tu Provider lo persista local.
   Future<Map<String, dynamic>> crearUsuarioEnAuthYTabla({
-    required String nombre,
+    required String userName,
     required String correo,
     required String password,
-    required String rol,
-    required String uuidDistribuidora,
-    required Map<String, bool> permisos,
+    String? colaboradorUid,
   }) async {
     try {
       // 1) Crear en Auth
-      final auth = await supabase.auth.signUp(
+      final authRes = await supabase.auth.signUp(
         email: correo,
         password: password,
       );
-      final user = auth.user;
+      final user = authRes.user;
       if (user == null) {
-        throw Exception('No se pudo crear el usuario en Auth');
+        // En SDK modernos, si falla signUp, suele venir con excepción; este guard es por seguridad.
+        throw AuthException('No se pudo crear el usuario en Auth');
       }
-      print('[👤 MENSAJES USUARIOS SERVICE] ✅ Auth creado: ${user.email}');
+      print('[👤 USUARIOS SERVICE] ✅ Auth creado: ${user.email}');
 
       // 2) Insertar/actualizar fila en la tabla `usuarios`
       final nowIso = DateTime.now().toUtc().toIso8601String();
       final row = <String, dynamic>{
         'uid': user.id,
-        'nombre': nombre,
+        'colaborador_uid': colaboradorUid, // puede ser null
+        'user_name': userName,
         'correo': correo,
-        'rol': rol,
-        'uuid_distribuidora': uuidDistribuidora,
-        'permisos': permisos, // json/jsonb en Supabase
-        'deleted': false,
         'updated_at': nowIso,
+        'deleted': false,
       };
 
-      await supabase.from('usuarios').upsert(row);
-      print(
-        '[👤 MENSAJES USUARIOS SERVICE] ✅ Insertado en tabla usuarios: ${user.id}',
-      );
-
-      // 3) Devolver payload para que el caller lo persista local (Drift)
+      // 3) Devolver payload para persistir local (Drift)
       return row;
+    } on AuthApiException catch (e) {
+      // Errores que vienen del endpoint de Auth con código
+      if (e.code == 'user_already_exists') {
+        // ⚠️ NO insertar en tabla. Propagamos un mensaje claro de negocio.
+        print('[👤 USUARIOS SERVICE] ❌ Auth: correo ya registrado');
+        throw Exception('El correo ya está registrado en Auth');
+      }
+      print('[👤 USUARIOS SERVICE] ❌ AuthApiException: ${e.message}');
+      rethrow;
+    } on AuthException catch (e) {
+      // Errores genéricos de Auth
+      print('[👤 USUARIOS SERVICE] ❌ AuthException: ${e.message}');
+      rethrow;
     } catch (e) {
-      print('[👤 MENSAJES USUARIOS SERVICE] ❌ Error crear en Auth+Tabla: $e');
+      print('[👤 USUARIOS SERVICE] ❌ Error crear en Auth+Tabla: $e');
       rethrow;
     }
   }
 
   /// ✅ Crear/actualizar usuario sin pasar por Auth (sync/offline).
+  /// Espera llaves acordes al esquema remoto (snake_case).
+  /// Ej: { uid, colaborador_uid, user_name, correo, updated_at, deleted }
   Future<void> upsertUsuarioOnline(Map<String, dynamic> data) async {
     final uid = data['uid'];
     print('[👤 MENSAJES USUARIOS SERVICE] ⬆️ Upsert online usuario: $uid');

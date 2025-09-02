@@ -36,20 +36,14 @@ class ColaboradoresSync {
             c.fotoRutaLocal.isNotEmpty && File(c.fotoRutaLocal).existsSync();
 
         if (hasLocalImg && c.fotoRutaRemota.isNotEmpty) {
-          final yaExiste = await _service.existsImagen(c.fotoRutaRemota);
-          if (!yaExiste) {
-            await _service.uploadImagenOnline(
-              File(c.fotoRutaLocal),
-              c.fotoRutaRemota,
-            );
-            print(
-              '[👥 MENSAJES COLABORADORES SYNC] ☁️ Foto subida: ${c.fotoRutaRemota}',
-            );
-          } else {
-            print(
-              '[👥 MENSAJES COLABORADORES SYNC] ⏭️ Remoto ya existe, no subo: ${c.fotoRutaRemota}',
-            );
-          }
+          await _service.uploadImagenOnline(
+            File(c.fotoRutaLocal),
+            c.fotoRutaRemota,
+            overwrite: true, // 👈 fuerza reemplazo siempre
+          );
+          print(
+            '[👥 MENSAJES COLABORADORES SYNC] ☁️ Foto subida/actualizada: ${c.fotoRutaRemota}',
+          );
         } else {
           print(
             '[👥 MENSAJES COLABORADORES SYNC] ⚠️ Sin foto local o rutaRemota vacía para ${c.uid}',

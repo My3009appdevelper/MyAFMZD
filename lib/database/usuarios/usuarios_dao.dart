@@ -50,6 +50,34 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
     usuarios,
   )..where((u) => u.correo.equals(correo))).getSingleOrNull();
 
+  /// Obtener por colaborador (no eliminados).
+  Future<List<UsuarioDb>> obtenerPorColaboradorDrift(String colaboradorUid) {
+    return (select(usuarios)
+          ..where(
+            (u) =>
+                u.deleted.equals(false) &
+                u.colaboradorUid.equals(colaboradorUid),
+          )
+          ..orderBy([(u) => OrderingTerm.asc(u.userName)]))
+        .get();
+  }
+
+  /// Buscar por texto en userName o emailCache (no eliminados).
+  Future<List<UsuarioDb>> buscarTextoDrift(String q) {
+    final like = '%${q.trim()}%';
+    return (select(usuarios)
+          ..where(
+            (u) =>
+                u.deleted.equals(false) &
+                (u.userName.like(like) | u.correo.like(like)),
+          )
+          ..orderBy([
+            (u) => OrderingTerm.asc(u.userName),
+            (u) => OrderingTerm.asc(u.correo),
+          ]))
+        .get();
+  }
+
   /// Obtener todos (incluye eliminados).
   Future<List<UsuarioDb>> obtenerTodosDrift() => select(usuarios).get();
 
@@ -58,30 +86,8 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
     return (select(usuarios)
           ..where((u) => u.deleted.equals(false))
           ..orderBy([
-            (u) => OrderingTerm(expression: u.nombre, mode: OrderingMode.asc),
+            (u) => OrderingTerm(expression: u.userName, mode: OrderingMode.asc),
           ]))
-        .get();
-  }
-
-  /// Listar por rol (no eliminados).
-  Future<List<UsuarioDb>> obtenerPorRolDrift(String rol) {
-    return (select(usuarios)
-          ..where((u) => u.deleted.equals(false) & u.rol.equals(rol))
-          ..orderBy([(u) => OrderingTerm.asc(u.nombre)]))
-        .get();
-  }
-
-  /// Listar por distribuidora (no eliminados).
-  Future<List<UsuarioDb>> obtenerPorDistribuidoraDrift(
-    String uuidDistribuidora,
-  ) {
-    return (select(usuarios)
-          ..where(
-            (u) =>
-                u.deleted.equals(false) &
-                u.uuidDistribuidora.equals(uuidDistribuidora),
-          )
-          ..orderBy([(u) => OrderingTerm.asc(u.nombre)]))
         .get();
   }
 

@@ -25,8 +25,6 @@ class ColaboradorItemTile extends ConsumerStatefulWidget {
 }
 
 class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
-  bool _trabajandoFoto = false;
-
   @override
   Widget build(BuildContext context) {
     // versión viva desde el provider
@@ -36,10 +34,6 @@ class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
           (x) => x.uid == widget.colaborador.uid,
           orElse: () => widget.colaborador,
         );
-
-    final tieneLocal =
-        c.fotoRutaLocal.isNotEmpty && File(c.fotoRutaLocal).existsSync();
-    final tieneRemota = c.fotoRutaRemota.trim().isNotEmpty;
 
     return ListTile(
       key: ValueKey(c.uid),
@@ -55,31 +49,7 @@ class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
         ],
       ),
       isThreeLine: true,
-      trailing: SizedBox(
-        width: 40,
-        height: 40,
-        child: Center(
-          child: _trabajandoFoto
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : tieneLocal
-              ? IconButton(
-                  tooltip: 'Eliminar foto local',
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _eliminarFotoLocal(c),
-                )
-              : (tieneRemota
-                    ? IconButton(
-                        tooltip: 'Descargar foto',
-                        icon: const Icon(Icons.cloud_download),
-                        onPressed: () => _descargarFoto(c),
-                      )
-                    : const SizedBox.shrink()),
-        ),
-      ),
+
       onTap: widget.onTap,
       onLongPress: () => _mostrarOpcionesColaborador(context, c),
     );
@@ -108,26 +78,6 @@ class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
     final first = parts.first[0];
     final last = parts.length > 1 ? parts.last[0] : '';
     return (first + last).toUpperCase();
-  }
-
-  Future<void> _descargarFoto(ColaboradorDb c) async {
-    setState(() => _trabajandoFoto = true);
-    try {
-      await ref.read(colaboradoresProvider.notifier).descargarFoto(c);
-      if (widget.onActualizado != null) widget.onActualizado!();
-    } finally {
-      if (mounted) setState(() => _trabajandoFoto = false);
-    }
-  }
-
-  Future<void> _eliminarFotoLocal(ColaboradorDb c) async {
-    setState(() => _trabajandoFoto = true);
-    try {
-      await ref.read(colaboradoresProvider.notifier).eliminarFotoLocal(c);
-      if (widget.onActualizado != null) widget.onActualizado!();
-    } finally {
-      if (mounted) setState(() => _trabajandoFoto = false);
-    }
   }
 
   Future<void> _mostrarOpcionesColaborador(

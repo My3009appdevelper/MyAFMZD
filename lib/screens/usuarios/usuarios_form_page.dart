@@ -2,9 +2,8 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
-import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
-import 'package:myafmzd/widgets/my_dropdown_button.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 
@@ -18,55 +17,88 @@ class UsuariosFormPage extends ConsumerStatefulWidget {
 
 class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nombreController;
-  late TextEditingController _correoController;
-  late TextEditingController _contrasenaController;
-  late TextEditingController _rolController;
-  String _uuidDistribuidora = 'AFMZD';
-  Map<String, bool> _permisos = {};
+  bool _enviando = false;
+
+  late TextEditingController _userNameCtrl;
+  late TextEditingController _correoCtrl;
+  late TextEditingController _passwordCtrl;
+
   bool _esEdicion = false;
+  bool _correoFueEditado = false;
+  String? _colaboradorUidSel;
 
   @override
   void initState() {
     super.initState();
-    final usuario = widget.usuarioEditar;
-    _esEdicion = usuario != null;
+    final u = widget.usuarioEditar;
+    _esEdicion = u != null;
 
-    _nombreController = TextEditingController(text: usuario?.nombre ?? '');
-    _correoController = TextEditingController(text: usuario?.correo ?? '');
-    _contrasenaController = TextEditingController();
-    _rolController = TextEditingController(text: usuario?.rol ?? '');
-    _uuidDistribuidora = usuario?.uuidDistribuidora ?? 'AFMZD';
-    _permisos =
-        usuario?.permisos ?? {'Ver reportes': true, 'Ver usuarios': false};
+    _userNameCtrl = TextEditingController(text: u?.userName ?? '');
+    _correoCtrl = TextEditingController(text: u?.correo ?? '');
+    _passwordCtrl = TextEditingController();
+
+    _colaboradorUidSel = u?.colaboradorUid;
+
+    // Autollenado simple: si userName luce como correo y el usuario no tocó "correo"
+    _userNameCtrl.addListener(() {
+      if (_correoFueEditado) return;
+      final un = _userNameCtrl.text.trim();
+
+      // Solo autollenar si está vacío o si coincide con el autollenado previo
+      if (_correoCtrl.text.isEmpty || _correoCtrl.text == _ultimoAutoCorreo) {
+        _correoCtrl.text = un;
+        _ultimoAutoCorreo = un;
+      }
+    });
+    _correoCtrl.addListener(() {
+      // Si el usuario cambia "correo" manualmente, no volvemos a autollenar
+      final c = _correoCtrl.text.trim();
+      _correoFueEditado = true;
+      _ultimoAutoCorreo = c;
+    });
   }
+
+  String _ultimoAutoCorreo = '';
 
   @override
   void dispose() {
-    _nombreController.dispose();
-    _correoController.dispose();
-    _contrasenaController.dispose();
-    _rolController.dispose();
+    _userNameCtrl.dispose();
+    _correoCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    const List<String> rolesDisponibles = [
-      'admin',
-      'usuario',
-      'distribuidor',
-      'vendedor',
-      'supervisor',
-    ];
-
-    final distribuidores = ref
-        .watch(distribuidoresProvider)
-        .where((d) => d.activo)
-        .toList();
+    final colaboradores = ref.watch(colaboradoresProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final textStyle = theme.textTheme.bodyLarge;
+    final labelStyle = theme.textTheme.bodyMedium;
+
+    // Para el DropdownSearch: item y búsqueda por nombre completo
+    List<ColaboradorDb> _filtrarColabs(String filtro) {
+      final f = filtro.trim().toLowerCase();
+      if (f.isEmpty) return colaboradores;
+      return colaboradores.where((c) {
+        final nombre = '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'
+            .trim()
+            .toLowerCase();
+        return nombre.contains(f) ||
+            c.emailPersonal.toLowerCase().contains(f) ||
+            c.telefonoMovil.toLowerCase().contains(f);
+      }).toList();
+    }
+
+    ColaboradorDb? _selInicial() {
+      if (_colaboradorUidSel == null || _colaboradorUidSel!.isEmpty) {
+        return null;
+      }
+      try {
+        return colaboradores.firstWhere((c) => c.uid == _colaboradorUidSel);
+      } catch (_) {
+        return null;
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -81,74 +113,38 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
               key: _formKey,
               child: ListView(
                 children: [
-                  // Nombre
-                  MyTextFormField(
-                    controller: _nombreController,
-                    labelText: 'Nombre',
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Campo requerido'
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Correo
-                  MyTextFormField(
-                    controller: _correoController,
-                    labelText: 'Correo',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) => value == null || !value.contains('@')
-                        ? 'Correo inválido'
-                        : null,
-                  ),
-
-                  // Contraseña
-                  if (!_esEdicion)
-                    MyTextFormField(
-                      controller: _contrasenaController,
-                      labelText: "Contraseña",
-                      obscureText: true,
-                      validator: (value) => value == null || value.length < 6
-                          ? 'Mínimo 6 caracteres'
-                          : null,
-                    ),
-                  const SizedBox(height: 12),
-
-                  DropdownSearch<DistribuidorDb>(
-                    selectedItem: distribuidores.firstWhere(
-                      (d) => d.uid == _uuidDistribuidora,
-                      orElse: () => distribuidores.first,
-                    ),
+                  // =================== Colaborador ===================
+                  DropdownSearch<ColaboradorDb>(
+                    selectedItem: _selInicial(),
                     items: (String filtro, LoadProps? props) async {
-                      return distribuidores
-                          .where(
-                            (d) => d.nombre.toLowerCase().contains(
-                              filtro.toLowerCase(),
-                            ),
-                          )
-                          .toList();
+                      return _filtrarColabs(filtro);
                     },
-                    itemAsString: (DistribuidorDb d) => d.nombre,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _uuidDistribuidora = value.uid);
-                      }
-                    },
+                    itemAsString: (c) =>
+                        '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'
+                            .trim(),
                     compareFn: (a, b) => a.uid == b.uid,
+                    onChanged: (c) {
+                      setState(() => _colaboradorUidSel = c?.uid);
+                    },
                     popupProps: const PopupProps.menu(
                       showSearchBox: true,
                       searchFieldProps: TextFieldProps(
                         decoration: InputDecoration(
-                          hintText: 'Buscar distribuidora...',
+                          hintText: 'Buscar colaborador...',
                           contentPadding: EdgeInsets.symmetric(horizontal: 12),
                         ),
                       ),
                     ),
+                    suffixProps: DropdownSuffixProps(
+                      clearButtonProps: ClearButtonProps(
+                        isVisible: (_colaboradorUidSel ?? '').isNotEmpty,
+                        tooltip: 'Quitar selección',
+                      ),
+                    ),
                     decoratorProps: DropDownDecoratorProps(
                       decoration: InputDecoration(
-                        labelText: "Distribuidora",
-                        labelStyle: textStyle?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
+                        labelText: 'Colaborador (opcional)',
+                        labelStyle: labelStyle,
                         filled: true,
                         fillColor: colorScheme.surface,
                         enabledBorder: OutlineInputBorder(
@@ -184,24 +180,44 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Rol
-                  MyDropdownButton<String>(
-                    labelText: "Rol",
-                    value: _rolController.text.isNotEmpty
-                        ? _rolController.text
+                  // =================== userName ===================
+                  MyTextFormField(
+                    controller: _userNameCtrl,
+                    labelText: 'Usuario (userName)',
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Campo requerido'
                         : null,
-                    items: rolesDisponibles,
+                  ),
+                  const SizedBox(height: 12),
 
-                    onChanged: (value) {
-                      if (value != null) {
-                        _rolController.text = value;
-                        setState(() {});
-                      }
+                  // =================== Correo ===================
+                  MyTextFormField(
+                    controller: _correoCtrl,
+                    labelText: 'Correo',
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      final value = v?.trim() ?? '';
+                      if (value.isEmpty) return 'Campo requerido';
+                      if (!value.contains('@')) return 'Correo inválido';
+                      return null;
                     },
                   ),
+                  const SizedBox(height: 12),
+
+                  // =================== Contraseña (solo crear) ===================
+                  if (!_esEdicion)
+                    MyTextFormField(
+                      controller: _passwordCtrl,
+                      labelText: 'Contraseña',
+                      obscureText: true,
+                      validator: (v) => (v == null || v.length < 6)
+                          ? 'Mínimo 6 caracteres'
+                          : null,
+                    ),
+
                   const SizedBox(height: 24),
 
-                  // Guardar
+                  // =================== Guardar ===================
                   MyElevatedButton(
                     onPressed: _guardar,
                     icon: Icons.save,
@@ -217,26 +233,27 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
   }
 
   Future<void> _guardar() async {
+    if (_enviando) return; // evita doble tap
     if (!_formKey.currentState!.validate()) return;
 
-    final nombre = _nombreController.text.trim();
-    final correo = _correoController.text.trim();
-    final contrasena = _contrasenaController.text.trim();
-    final rol = _rolController.text.trim();
+    setState(() => _enviando = true);
 
+    final userName = _userNameCtrl.text.trim();
+    final correo = _correoCtrl.text.trim();
+    final password = _passwordCtrl.text.trim();
     final usuariosNotifier = ref.read(usuariosProvider.notifier);
 
-    // Validación de duplicados
+    // Validación local de duplicados
     final hayDuplicado = usuariosNotifier.existeDuplicado(
       uidActual: widget.usuarioEditar?.uid ?? '',
-      nombre: nombre,
+      userName: userName,
       correo: correo,
     );
-
     if (hayDuplicado) {
+      setState(() => _enviando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('❌ Ya existe un usuario con ese nombre o correo'),
+          content: Text('❌ Ya existe un usuario con ese userName o correo'),
         ),
       );
       return;
@@ -246,30 +263,26 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
       if (_esEdicion) {
         await usuariosNotifier.editarUsuario(
           uid: widget.usuarioEditar!.uid,
-          nombre: nombre,
+          userName: userName,
           correo: correo,
-          rol: rol,
-          uuidDistribuidora: _uuidDistribuidora,
-          permisos: _permisos,
+          colaboradorUid: _colaboradorUidSel,
         );
         if (mounted) Navigator.pop(context, true);
       } else {
-        await ref
-            .read(usuariosProvider.notifier)
-            .crearUsuario(
-              nombre: nombre,
-              correo: correo,
-              password: contrasena,
-              rol: rol,
-              uuidDistribuidora: _uuidDistribuidora,
-              permisos: _permisos,
-            );
+        await usuariosNotifier.crearUsuario(
+          userName: userName,
+          correo: correo,
+          password: password,
+          colaboradorUid: _colaboradorUidSel,
+        );
         if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
+    } finally {
+      if (mounted) setState(() => _enviando = false);
     }
   }
 }

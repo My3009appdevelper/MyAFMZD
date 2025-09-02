@@ -197,6 +197,19 @@ class ColaboradoresService {
     }
   }
 
+  /// Eliminar imagen de Storage de la mejor manera posible
+  Future<void> deleteImagenOnlineSafe(String remotePath) async {
+    final clean = _normalizePath(remotePath);
+    try {
+      await supabase.storage.from(_bucketImagenes).remove([clean]);
+      print('[👥 MENSAJES COLABORADORES SERVICE] ✅ Imagen eliminada: $clean');
+    } catch (e) {
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ❌ Error eliminando imagen: $e',
+      );
+    }
+  }
+
   /// Descargar imagen de Storage y guardarla local
   Future<File?> descargarImagenOnline(
     String rutaRemota, {

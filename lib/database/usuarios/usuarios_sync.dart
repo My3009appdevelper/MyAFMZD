@@ -114,26 +114,13 @@ class UsuariosSync {
       DateTime? dt(dynamic v) =>
           (v == null) ? null : DateTime.parse(v.toString()).toUtc();
 
-      Map<String, bool> permisos(dynamic v) {
-        if (v == null) return <String, bool>{};
-        if (v is Map) {
-          // Normalmente jsonb ya viene como Map<String, dynamic>
-          return v.map<String, bool>(
-            (k, val) => MapEntry(k.toString(), val == true),
-          );
-        }
-        // Si por alguna razón llega string (raro), ignora/normaliza a {}
-        return <String, bool>{};
-      }
-
       final companions = remotos.map((m) {
         return UsuariosCompanion(
           uid: Value(m['uid'] as String),
-          nombre: Value((m['nombre'] as String?) ?? ''),
+          colaboradorUid: Value((m['colaborador_uid'] as String?)),
+          userName: Value((m['user_name'] as String?) ?? ''),
           correo: Value((m['correo'] as String?) ?? ''),
-          rol: Value((m['rol'] as String?) ?? 'usuario'),
-          uuidDistribuidora: Value((m['uuid_distribuidora'] as String?) ?? ''),
-          permisos: Value(permisos(m['permisos'])),
+          createdAt: Value(dt(m['created_at']) ?? DateTime.now().toUtc()),
           updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
@@ -157,11 +144,10 @@ class UsuariosSync {
     String? iso(DateTime? d) => d?.toUtc().toIso8601String();
     return {
       'uid': u.uid,
-      'nombre': u.nombre,
+      'colaborador_uid': u.colaboradorUid,
+      'user_name': u.userName,
       'correo': u.correo,
-      'rol': u.rol,
-      'uuid_distribuidora': u.uuidDistribuidora,
-      'permisos': u.permisos, // json/jsonb
+      'created_at': iso(u.createdAt),
       'updated_at': iso(u.updatedAt),
       'deleted': u.deleted,
     };

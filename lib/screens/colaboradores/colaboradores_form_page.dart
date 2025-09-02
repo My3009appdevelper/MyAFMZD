@@ -10,7 +10,6 @@ import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
-import 'package:path/path.dart' as p;
 
 class ColaboradorFormPage extends ConsumerStatefulWidget {
   final ColaboradorDb? colaboradorEditar;
@@ -363,14 +362,9 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
 
         // Si hay nueva foto, súbela y actualiza rutas
         if (_fotoSeleccionada != null && await _fotoSeleccionada!.exists()) {
-          final nuevoPath = _buildRutaRemotaAvatar(
-            uid: widget.colaboradorEditar!.uid,
-            originalPath: _fotoSeleccionada!.path,
-          );
           await notifier.subirNuevaFoto(
             colaborador: widget.colaboradorEditar!,
             archivo: _fotoSeleccionada!,
-            nuevoPath: nuevoPath,
           );
         }
 
@@ -395,14 +389,9 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
         if (nuevo != null &&
             _fotoSeleccionada != null &&
             await _fotoSeleccionada!.exists()) {
-          final nuevoPath = _buildRutaRemotaAvatar(
-            uid: nuevo.uid,
-            originalPath: _fotoSeleccionada!.path,
-          );
           await notifier.subirNuevaFoto(
             colaborador: nuevo,
             archivo: _fotoSeleccionada!,
-            nuevoPath: nuevoPath,
           );
         }
 
@@ -419,15 +408,4 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
 
   String _fmtFecha(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  String _buildRutaRemotaAvatar({
-    required String uid,
-    required String originalPath,
-  }) {
-    var ext = p.extension(originalPath).toLowerCase();
-    if (ext.startsWith('.')) ext = ext.substring(1);
-    if (ext.isEmpty) ext = 'jpg';
-    // Estructura simple y estable por uid:
-    return 'colaboradores/$uid/avatar.$ext';
-  }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_tile.dart';
+import 'package:myafmzd/screens/usuarios/usuarios_form_page.dart';
 
 class UsuariosScreen extends ConsumerStatefulWidget {
   const UsuariosScreen({super.key});
@@ -72,8 +73,7 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
                     child: UsuariosItemTile(
                       key: ValueKey(usuario.uid),
                       usuario: usuario,
-                      onTap:
-                          () {}, // o alguna acción rápida si luego la defines
+                      onTap: () {},
                       onActualizado: () async {
                         await _cargarUsuarios();
                       },
@@ -82,6 +82,18 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
                 },
               ),
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const UsuariosFormPage()),
+          );
+          if (result == true) {
+            await _cargarUsuarios();
+          }
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 

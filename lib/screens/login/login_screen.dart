@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
@@ -161,6 +162,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           width: double.infinity,
                           child: MyElevatedButton(
                             onPressed: () {
+                              if (_cargando) return;
                               if (_formKey.currentState?.validate() ?? false) {
                                 _iniciarSesion();
                               }
@@ -204,6 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+      await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
       await ref.read(perfilProvider.notifier).cargarUsuario();
 
       final usuario = ref.read(perfilProvider);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
@@ -42,6 +43,9 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
       await ref.read(modelosProvider.notifier).cargarOfflineFirst();
       await ref.read(modeloImagenesProvider.notifier).cargarOfflineFirst();
       await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
+      await ref
+          .read(asignacionesLaboralesProvider.notifier)
+          .cargarOfflineFirst();
 
       final usuario = ref.read(perfilProvider);
       if (usuario == null) {

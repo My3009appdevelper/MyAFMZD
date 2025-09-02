@@ -18,10 +18,23 @@ class $UsuariosTable extends Usuarios
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
+  static const VerificationMeta _colaboradorUidMeta = const VerificationMeta(
+    'colaboradorUid',
+  );
   @override
-  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
-    'nombre',
+  late final GeneratedColumn<String> colaboradorUid = GeneratedColumn<String>(
+    'colaborador_uid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _userNameMeta = const VerificationMeta(
+    'userName',
+  );
+  @override
+  late final GeneratedColumn<String> userName = GeneratedColumn<String>(
+    'user_name',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -38,39 +51,18 @@ class $UsuariosTable extends Usuarios
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
-  static const VerificationMeta _rolMeta = const VerificationMeta('rol');
-  @override
-  late final GeneratedColumn<String> rol = GeneratedColumn<String>(
-    'rol',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('usuario'),
-  );
-  static const VerificationMeta _uuidDistribuidoraMeta = const VerificationMeta(
-    'uuidDistribuidora',
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
   );
   @override
-  late final GeneratedColumn<String> uuidDistribuidora =
-      GeneratedColumn<String>(
-        'uuid_distribuidora',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-        defaultValue: const Constant(''),
-      );
-  @override
-  late final GeneratedColumnWithTypeConverter<Map<String, bool>, String>
-  permisos = GeneratedColumn<String>(
-    'permisos',
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    defaultValue: const Constant('{}'),
-  ).withConverter<Map<String, bool>>($UsuariosTable.$converterpermisos);
+    defaultValue: currentDateAndTime,
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -116,11 +108,10 @@ class $UsuariosTable extends Usuarios
   @override
   List<GeneratedColumn> get $columns => [
     uid,
-    nombre,
+    colaboradorUid,
+    userName,
     correo,
-    rol,
-    uuidDistribuidora,
-    permisos,
+    createdAt,
     updatedAt,
     deleted,
     isSynced,
@@ -145,10 +136,19 @@ class $UsuariosTable extends Usuarios
     } else if (isInserting) {
       context.missing(_uidMeta);
     }
-    if (data.containsKey('nombre')) {
+    if (data.containsKey('colaborador_uid')) {
       context.handle(
-        _nombreMeta,
-        nombre.isAcceptableOrUnknown(data['nombre']!, _nombreMeta),
+        _colaboradorUidMeta,
+        colaboradorUid.isAcceptableOrUnknown(
+          data['colaborador_uid']!,
+          _colaboradorUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('user_name')) {
+      context.handle(
+        _userNameMeta,
+        userName.isAcceptableOrUnknown(data['user_name']!, _userNameMeta),
       );
     }
     if (data.containsKey('correo')) {
@@ -157,19 +157,10 @@ class $UsuariosTable extends Usuarios
         correo.isAcceptableOrUnknown(data['correo']!, _correoMeta),
       );
     }
-    if (data.containsKey('rol')) {
+    if (data.containsKey('created_at')) {
       context.handle(
-        _rolMeta,
-        rol.isAcceptableOrUnknown(data['rol']!, _rolMeta),
-      );
-    }
-    if (data.containsKey('uuid_distribuidora')) {
-      context.handle(
-        _uuidDistribuidoraMeta,
-        uuidDistribuidora.isAcceptableOrUnknown(
-          data['uuid_distribuidora']!,
-          _uuidDistribuidoraMeta,
-        ),
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
     if (data.containsKey('updated_at')) {
@@ -203,28 +194,22 @@ class $UsuariosTable extends Usuarios
         DriftSqlType.string,
         data['${effectivePrefix}uid'],
       )!,
-      nombre: attachedDatabase.typeMapping.read(
+      colaboradorUid: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}nombre'],
+        data['${effectivePrefix}colaborador_uid'],
+      ),
+      userName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_name'],
       )!,
       correo: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}correo'],
       )!,
-      rol: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}rol'],
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
       )!,
-      uuidDistribuidora: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}uuid_distribuidora'],
-      )!,
-      permisos: $UsuariosTable.$converterpermisos.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}permisos'],
-        )!,
-      ),
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -244,28 +229,23 @@ class $UsuariosTable extends Usuarios
   $UsuariosTable createAlias(String alias) {
     return $UsuariosTable(attachedDatabase, alias);
   }
-
-  static TypeConverter<Map<String, bool>, String> $converterpermisos =
-      const PermisosConverter();
 }
 
 class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
   final String uid;
-  final String nombre;
+  final String? colaboradorUid;
+  final String userName;
   final String correo;
-  final String rol;
-  final String uuidDistribuidora;
-  final Map<String, bool> permisos;
+  final DateTime createdAt;
   final DateTime updatedAt;
   final bool deleted;
   final bool isSynced;
   const UsuarioDb({
     required this.uid,
-    required this.nombre,
+    this.colaboradorUid,
+    required this.userName,
     required this.correo,
-    required this.rol,
-    required this.uuidDistribuidora,
-    required this.permisos,
+    required this.createdAt,
     required this.updatedAt,
     required this.deleted,
     required this.isSynced,
@@ -274,15 +254,12 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['uid'] = Variable<String>(uid);
-    map['nombre'] = Variable<String>(nombre);
-    map['correo'] = Variable<String>(correo);
-    map['rol'] = Variable<String>(rol);
-    map['uuid_distribuidora'] = Variable<String>(uuidDistribuidora);
-    {
-      map['permisos'] = Variable<String>(
-        $UsuariosTable.$converterpermisos.toSql(permisos),
-      );
+    if (!nullToAbsent || colaboradorUid != null) {
+      map['colaborador_uid'] = Variable<String>(colaboradorUid);
     }
+    map['user_name'] = Variable<String>(userName);
+    map['correo'] = Variable<String>(correo);
+    map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['deleted'] = Variable<bool>(deleted);
     map['is_synced'] = Variable<bool>(isSynced);
@@ -292,11 +269,12 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
   UsuariosCompanion toCompanion(bool nullToAbsent) {
     return UsuariosCompanion(
       uid: Value(uid),
-      nombre: Value(nombre),
+      colaboradorUid: colaboradorUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(colaboradorUid),
+      userName: Value(userName),
       correo: Value(correo),
-      rol: Value(rol),
-      uuidDistribuidora: Value(uuidDistribuidora),
-      permisos: Value(permisos),
+      createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deleted: Value(deleted),
       isSynced: Value(isSynced),
@@ -310,11 +288,10 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return UsuarioDb(
       uid: serializer.fromJson<String>(json['uid']),
-      nombre: serializer.fromJson<String>(json['nombre']),
+      colaboradorUid: serializer.fromJson<String?>(json['colaboradorUid']),
+      userName: serializer.fromJson<String>(json['userName']),
       correo: serializer.fromJson<String>(json['correo']),
-      rol: serializer.fromJson<String>(json['rol']),
-      uuidDistribuidora: serializer.fromJson<String>(json['uuidDistribuidora']),
-      permisos: serializer.fromJson<Map<String, bool>>(json['permisos']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -325,11 +302,10 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'uid': serializer.toJson<String>(uid),
-      'nombre': serializer.toJson<String>(nombre),
+      'colaboradorUid': serializer.toJson<String?>(colaboradorUid),
+      'userName': serializer.toJson<String>(userName),
       'correo': serializer.toJson<String>(correo),
-      'rol': serializer.toJson<String>(rol),
-      'uuidDistribuidora': serializer.toJson<String>(uuidDistribuidora),
-      'permisos': serializer.toJson<Map<String, bool>>(permisos),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deleted': serializer.toJson<bool>(deleted),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -338,21 +314,21 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
 
   UsuarioDb copyWith({
     String? uid,
-    String? nombre,
+    Value<String?> colaboradorUid = const Value.absent(),
+    String? userName,
     String? correo,
-    String? rol,
-    String? uuidDistribuidora,
-    Map<String, bool>? permisos,
+    DateTime? createdAt,
     DateTime? updatedAt,
     bool? deleted,
     bool? isSynced,
   }) => UsuarioDb(
     uid: uid ?? this.uid,
-    nombre: nombre ?? this.nombre,
+    colaboradorUid: colaboradorUid.present
+        ? colaboradorUid.value
+        : this.colaboradorUid,
+    userName: userName ?? this.userName,
     correo: correo ?? this.correo,
-    rol: rol ?? this.rol,
-    uuidDistribuidora: uuidDistribuidora ?? this.uuidDistribuidora,
-    permisos: permisos ?? this.permisos,
+    createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deleted: deleted ?? this.deleted,
     isSynced: isSynced ?? this.isSynced,
@@ -360,13 +336,12 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
   UsuarioDb copyWithCompanion(UsuariosCompanion data) {
     return UsuarioDb(
       uid: data.uid.present ? data.uid.value : this.uid,
-      nombre: data.nombre.present ? data.nombre.value : this.nombre,
+      colaboradorUid: data.colaboradorUid.present
+          ? data.colaboradorUid.value
+          : this.colaboradorUid,
+      userName: data.userName.present ? data.userName.value : this.userName,
       correo: data.correo.present ? data.correo.value : this.correo,
-      rol: data.rol.present ? data.rol.value : this.rol,
-      uuidDistribuidora: data.uuidDistribuidora.present
-          ? data.uuidDistribuidora.value
-          : this.uuidDistribuidora,
-      permisos: data.permisos.present ? data.permisos.value : this.permisos,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
@@ -377,11 +352,10 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
   String toString() {
     return (StringBuffer('UsuarioDb(')
           ..write('uid: $uid, ')
-          ..write('nombre: $nombre, ')
+          ..write('colaboradorUid: $colaboradorUid, ')
+          ..write('userName: $userName, ')
           ..write('correo: $correo, ')
-          ..write('rol: $rol, ')
-          ..write('uuidDistribuidora: $uuidDistribuidora, ')
-          ..write('permisos: $permisos, ')
+          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
           ..write('isSynced: $isSynced')
@@ -392,11 +366,10 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
   @override
   int get hashCode => Object.hash(
     uid,
-    nombre,
+    colaboradorUid,
+    userName,
     correo,
-    rol,
-    uuidDistribuidora,
-    permisos,
+    createdAt,
     updatedAt,
     deleted,
     isSynced,
@@ -406,11 +379,10 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
       identical(this, other) ||
       (other is UsuarioDb &&
           other.uid == this.uid &&
-          other.nombre == this.nombre &&
+          other.colaboradorUid == this.colaboradorUid &&
+          other.userName == this.userName &&
           other.correo == this.correo &&
-          other.rol == this.rol &&
-          other.uuidDistribuidora == this.uuidDistribuidora &&
-          other.permisos == this.permisos &&
+          other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deleted == this.deleted &&
           other.isSynced == this.isSynced);
@@ -418,22 +390,20 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
 
 class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
   final Value<String> uid;
-  final Value<String> nombre;
+  final Value<String?> colaboradorUid;
+  final Value<String> userName;
   final Value<String> correo;
-  final Value<String> rol;
-  final Value<String> uuidDistribuidora;
-  final Value<Map<String, bool>> permisos;
+  final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> deleted;
   final Value<bool> isSynced;
   final Value<int> rowid;
   const UsuariosCompanion({
     this.uid = const Value.absent(),
-    this.nombre = const Value.absent(),
+    this.colaboradorUid = const Value.absent(),
+    this.userName = const Value.absent(),
     this.correo = const Value.absent(),
-    this.rol = const Value.absent(),
-    this.uuidDistribuidora = const Value.absent(),
-    this.permisos = const Value.absent(),
+    this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -441,11 +411,10 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
   });
   UsuariosCompanion.insert({
     required String uid,
-    this.nombre = const Value.absent(),
+    this.colaboradorUid = const Value.absent(),
+    this.userName = const Value.absent(),
     this.correo = const Value.absent(),
-    this.rol = const Value.absent(),
-    this.uuidDistribuidora = const Value.absent(),
-    this.permisos = const Value.absent(),
+    this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -453,11 +422,10 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
   }) : uid = Value(uid);
   static Insertable<UsuarioDb> custom({
     Expression<String>? uid,
-    Expression<String>? nombre,
+    Expression<String>? colaboradorUid,
+    Expression<String>? userName,
     Expression<String>? correo,
-    Expression<String>? rol,
-    Expression<String>? uuidDistribuidora,
-    Expression<String>? permisos,
+    Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? deleted,
     Expression<bool>? isSynced,
@@ -465,11 +433,10 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
   }) {
     return RawValuesInsertable({
       if (uid != null) 'uid': uid,
-      if (nombre != null) 'nombre': nombre,
+      if (colaboradorUid != null) 'colaborador_uid': colaboradorUid,
+      if (userName != null) 'user_name': userName,
       if (correo != null) 'correo': correo,
-      if (rol != null) 'rol': rol,
-      if (uuidDistribuidora != null) 'uuid_distribuidora': uuidDistribuidora,
-      if (permisos != null) 'permisos': permisos,
+      if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deleted != null) 'deleted': deleted,
       if (isSynced != null) 'is_synced': isSynced,
@@ -479,11 +446,10 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
 
   UsuariosCompanion copyWith({
     Value<String>? uid,
-    Value<String>? nombre,
+    Value<String?>? colaboradorUid,
+    Value<String>? userName,
     Value<String>? correo,
-    Value<String>? rol,
-    Value<String>? uuidDistribuidora,
-    Value<Map<String, bool>>? permisos,
+    Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? deleted,
     Value<bool>? isSynced,
@@ -491,11 +457,10 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
   }) {
     return UsuariosCompanion(
       uid: uid ?? this.uid,
-      nombre: nombre ?? this.nombre,
+      colaboradorUid: colaboradorUid ?? this.colaboradorUid,
+      userName: userName ?? this.userName,
       correo: correo ?? this.correo,
-      rol: rol ?? this.rol,
-      uuidDistribuidora: uuidDistribuidora ?? this.uuidDistribuidora,
-      permisos: permisos ?? this.permisos,
+      createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deleted: deleted ?? this.deleted,
       isSynced: isSynced ?? this.isSynced,
@@ -509,22 +474,17 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
     if (uid.present) {
       map['uid'] = Variable<String>(uid.value);
     }
-    if (nombre.present) {
-      map['nombre'] = Variable<String>(nombre.value);
+    if (colaboradorUid.present) {
+      map['colaborador_uid'] = Variable<String>(colaboradorUid.value);
+    }
+    if (userName.present) {
+      map['user_name'] = Variable<String>(userName.value);
     }
     if (correo.present) {
       map['correo'] = Variable<String>(correo.value);
     }
-    if (rol.present) {
-      map['rol'] = Variable<String>(rol.value);
-    }
-    if (uuidDistribuidora.present) {
-      map['uuid_distribuidora'] = Variable<String>(uuidDistribuidora.value);
-    }
-    if (permisos.present) {
-      map['permisos'] = Variable<String>(
-        $UsuariosTable.$converterpermisos.toSql(permisos.value),
-      );
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
@@ -545,11 +505,10 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
   String toString() {
     return (StringBuffer('UsuariosCompanion(')
           ..write('uid: $uid, ')
-          ..write('nombre: $nombre, ')
+          ..write('colaboradorUid: $colaboradorUid, ')
+          ..write('userName: $userName, ')
           ..write('correo: $correo, ')
-          ..write('rol: $rol, ')
-          ..write('uuidDistribuidora: $uuidDistribuidora, ')
-          ..write('permisos: $permisos, ')
+          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
           ..write('isSynced: $isSynced, ')
@@ -6331,11 +6290,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$UsuariosTableCreateCompanionBuilder =
     UsuariosCompanion Function({
       required String uid,
-      Value<String> nombre,
+      Value<String?> colaboradorUid,
+      Value<String> userName,
       Value<String> correo,
-      Value<String> rol,
-      Value<String> uuidDistribuidora,
-      Value<Map<String, bool>> permisos,
+      Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
       Value<bool> isSynced,
@@ -6344,11 +6302,10 @@ typedef $$UsuariosTableCreateCompanionBuilder =
 typedef $$UsuariosTableUpdateCompanionBuilder =
     UsuariosCompanion Function({
       Value<String> uid,
-      Value<String> nombre,
+      Value<String?> colaboradorUid,
+      Value<String> userName,
       Value<String> correo,
-      Value<String> rol,
-      Value<String> uuidDistribuidora,
-      Value<Map<String, bool>> permisos,
+      Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
       Value<bool> isSynced,
@@ -6369,8 +6326,13 @@ class $$UsuariosTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get nombre => $composableBuilder(
-    column: $table.nombre,
+  ColumnFilters<String> get colaboradorUid => $composableBuilder(
+    column: $table.colaboradorUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userName => $composableBuilder(
+    column: $table.userName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6379,20 +6341,9 @@ class $$UsuariosTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get rol => $composableBuilder(
-    column: $table.rol,
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get uuidDistribuidora => $composableBuilder(
-    column: $table.uuidDistribuidora,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<Map<String, bool>, Map<String, bool>, String>
-  get permisos => $composableBuilder(
-    column: $table.permisos,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
@@ -6425,8 +6376,13 @@ class $$UsuariosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get nombre => $composableBuilder(
-    column: $table.nombre,
+  ColumnOrderings<String> get colaboradorUid => $composableBuilder(
+    column: $table.colaboradorUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userName => $composableBuilder(
+    column: $table.userName,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6435,18 +6391,8 @@ class $$UsuariosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get rol => $composableBuilder(
-    column: $table.rol,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get uuidDistribuidora => $composableBuilder(
-    column: $table.uuidDistribuidora,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get permisos => $composableBuilder(
-    column: $table.permisos,
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6478,22 +6424,19 @@ class $$UsuariosTableAnnotationComposer
   GeneratedColumn<String> get uid =>
       $composableBuilder(column: $table.uid, builder: (column) => column);
 
-  GeneratedColumn<String> get nombre =>
-      $composableBuilder(column: $table.nombre, builder: (column) => column);
+  GeneratedColumn<String> get colaboradorUid => $composableBuilder(
+    column: $table.colaboradorUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userName =>
+      $composableBuilder(column: $table.userName, builder: (column) => column);
 
   GeneratedColumn<String> get correo =>
       $composableBuilder(column: $table.correo, builder: (column) => column);
 
-  GeneratedColumn<String> get rol =>
-      $composableBuilder(column: $table.rol, builder: (column) => column);
-
-  GeneratedColumn<String> get uuidDistribuidora => $composableBuilder(
-    column: $table.uuidDistribuidora,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<Map<String, bool>, String> get permisos =>
-      $composableBuilder(column: $table.permisos, builder: (column) => column);
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -6534,22 +6477,20 @@ class $$UsuariosTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> uid = const Value.absent(),
-                Value<String> nombre = const Value.absent(),
+                Value<String?> colaboradorUid = const Value.absent(),
+                Value<String> userName = const Value.absent(),
                 Value<String> correo = const Value.absent(),
-                Value<String> rol = const Value.absent(),
-                Value<String> uuidDistribuidora = const Value.absent(),
-                Value<Map<String, bool>> permisos = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UsuariosCompanion(
                 uid: uid,
-                nombre: nombre,
+                colaboradorUid: colaboradorUid,
+                userName: userName,
                 correo: correo,
-                rol: rol,
-                uuidDistribuidora: uuidDistribuidora,
-                permisos: permisos,
+                createdAt: createdAt,
                 updatedAt: updatedAt,
                 deleted: deleted,
                 isSynced: isSynced,
@@ -6558,22 +6499,20 @@ class $$UsuariosTableTableManager
           createCompanionCallback:
               ({
                 required String uid,
-                Value<String> nombre = const Value.absent(),
+                Value<String?> colaboradorUid = const Value.absent(),
+                Value<String> userName = const Value.absent(),
                 Value<String> correo = const Value.absent(),
-                Value<String> rol = const Value.absent(),
-                Value<String> uuidDistribuidora = const Value.absent(),
-                Value<Map<String, bool>> permisos = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UsuariosCompanion.insert(
                 uid: uid,
-                nombre: nombre,
+                colaboradorUid: colaboradorUid,
+                userName: userName,
                 correo: correo,
-                rol: rol,
-                uuidDistribuidora: uuidDistribuidora,
-                permisos: permisos,
+                createdAt: createdAt,
                 updatedAt: updatedAt,
                 deleted: deleted,
                 isSynced: isSynced,

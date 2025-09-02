@@ -76,12 +76,12 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       final actualizados = await _dao.obtenerTodosDrift();
       state = actualizados;
 
-      // 7) Prefetch de fotos (descargar faltantes si hay red)
-      final descargadas = await descargarFaltantes();
-      if (descargadas > 0) {
+      // 7) Sincroniza fotos locales con lo remoto (descarga nuevas y limpia obsoletas)
+      final cambios = await syncFotosLocales();
+      if (cambios > 0) {
         state = await _dao.obtenerTodosDrift();
         print(
-          '[👥 MENSAJES COLABORADORES PROVIDER] Prefetch completado → $descargadas fotos descargadas',
+          '[👥 MENSAJES COLABORADORES PROVIDER] Fotos sincronizadas → $cambios cambios aplicados',
         );
       }
     } catch (e) {
@@ -276,58 +276,70 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   Future<void> subirNuevaFoto({
     required ColaboradorDb colaborador,
     required File archivo,
-    required String nuevoPath, // e.g. "empleados/uid123/avatar.jpg"
   }) async {
     try {
-      // Si ya existe en remoto, no copiamos local; solo metadata
-      final yaExisteRemoto = await _servicio.existsImagen(nuevoPath);
-      if (yaExisteRemoto) {
-        print(
-          '[👥 MENSAJES COLABORADORES PROVIDER] ⏭️ Remoto ya existe: $nuevoPath',
-        );
-        await _dao.actualizarParcialPorUid(
-          colaborador.uid,
-          ColaboradoresCompanion(
-            fotoRutaRemota: Value(nuevoPath),
-            fotoRutaLocal: const Value(''),
-            updatedAt: Value(DateTime.now().toUtc()),
-            isSynced: const Value(false),
-          ),
-        );
-        state = await _dao.obtenerTodosDrift();
-        if (_hayInternet) await cargarOfflineFirst();
-        return;
-      }
+      // 0) Hash + ext
+      final hash = await _servicio.calcularSha256(archivo);
+      final ext = p.extension(archivo.path).toLowerCase();
+      final cleanExt = (ext.isEmpty ? '.jpg' : ext); // default si hace falta
 
+      // 1) Ruta remota con hash (ej: colaboradores/<uid>/<sha>.png)
+      final remotePath = 'colaboradores/${colaborador.uid}/$hash$cleanExt';
+
+      // 2) Copia local canónica (nombre deriva de remotePath => cambia con el hash)
       final dir = await getApplicationSupportDirectory();
       final fotosDir = Directory(p.join(dir.path, 'colaboradores_img'));
       if (!await fotosDir.exists()) await fotosDir.create(recursive: true);
 
-      final safeName = nuevoPath.replaceAll('/', '_');
+      final safeName = remotePath.replaceAll('/', '_');
       final destino = File(p.join(fotosDir.path, safeName));
       await archivo.copy(destino.path);
+
+      // 3) Guardar metadata local (nueva ruta remota + local) y marcar para sync
+      final oldRemote =
+          colaborador.fotoRutaRemota; // para limpieza remota luego
+      final oldLocal = colaborador.fotoRutaLocal;
 
       await _dao.actualizarParcialPorUid(
         colaborador.uid,
         ColaboradoresCompanion(
-          fotoRutaRemota: Value(nuevoPath),
+          fotoRutaRemota: Value(remotePath),
           fotoRutaLocal: Value(destino.path),
           updatedAt: Value(DateTime.now().toUtc()),
           isSynced: const Value(false),
         ),
       );
 
+      //Eliminarmos el archivo local viejo
+      if (oldLocal.isNotEmpty) {
+        final file = File(oldLocal);
+        try {
+          if (await file.exists()) await file.delete();
+        } catch (e) {
+          print(
+            '[👥 MENSAJES COLABORADORES PROVIDER] ⚠️ Error borrando foto local: $e',
+          );
+        }
+      }
+
+      // 4) Refrescar estado y sincronizar si hay red
       state = await _dao.obtenerTodosDrift();
 
       if (_hayInternet) {
-        await cargarOfflineFirst();
+        // Sube nueva imagen + metadata
+        await _sync.pushColaboradoresOffline();
+        // Limpia la imagen remota anterior si existe y es distinta
+        if (oldRemote.isNotEmpty && oldRemote != remotePath) {
+          await _servicio.deleteImagenOnlineSafe(oldRemote);
+        }
+        // Trae metadata fresca si otro cliente tocó algo más
+        await _sync.pullColaboradoresOnline();
+        state = await _dao.obtenerTodosDrift();
       }
 
-      print(
-        '[👥 MENSAJES COLABORADORES PROVIDER] Foto guardada localmente: ${destino.path}',
-      );
+      print('[Colaboradores] Foto preparada y lista para sync: $remotePath');
     } catch (e) {
-      print('[👥 MENSAJES COLABORADORES PROVIDER] ❌ Error preparando foto: $e');
+      print('[Colaboradores] ❌ Error preparando foto: $e');
       rethrow;
     }
   }
@@ -335,66 +347,95 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   // ---------------------------------------------------------------------------
   // 📥 Descarga diferida en lote (faltantes)
   // ---------------------------------------------------------------------------
-  Future<int> descargarFaltantes({int max = 200}) async {
+  Future<int> syncFotosLocales({
+    int max = 500,
+    bool borrarObsoletas = true,
+  }) async {
     if (!_hayInternet) return 0;
 
-    // Candidatos: tienen rutaRemota válida pero no rutaLocal o archivo no existe
+    // Construye la lista de “candidatos” a revisar (tienen una ruta remota válida)
     final candidatos =
         state.where((c) {
           if (c.deleted) return false;
-          if (c.fotoRutaRemota.trim().isEmpty) return false;
-          if (c.fotoRutaLocal.isNotEmpty &&
-              File(c.fotoRutaLocal).existsSync()) {
-            return false;
-          }
-          return true;
+          return c.fotoRutaRemota.trim().isNotEmpty;
         }).toList()..sort(
           (a, b) => b.updatedAt.compareTo(a.updatedAt),
         ); // recientes primero
 
     if (candidatos.isEmpty) return 0;
 
-    // Reusar por rutaRemota cuando sea posible
-    int descargados = 0;
+    int cambios = 0;
     int procesados = 0;
 
-    // Agrupar por rutaRemota para descargar una sola vez por ruta
-    final Map<String, List<ColaboradorDb>> grupos = {};
+    String _cleanRemote(String r) => r.startsWith('/') ? r.substring(1) : r;
+    String _safeName(String r) => _cleanRemote(r).replaceAll('/', '_');
+
     for (final c in candidatos) {
-      final key = c.fotoRutaRemota.trim();
-      (grupos[key] ??= []).add(c);
-    }
-
-    for (final entry in grupos.entries) {
       if (procesados >= max) break;
-      final ruta = entry.key;
-      final grupo = entry.value;
+      final remote = c.fotoRutaRemota.trim();
+      final expectedSafeName = _safeName(remote);
 
-      // ¿Se puede reusar ya?
-      File? reused = _localFileForRuta(ruta);
+      // Si ya hay ruta local, verifica si apunta al archivo esperado (mismo “safeName”)
+      final tieneLocal =
+          c.fotoRutaLocal.isNotEmpty && File(c.fotoRutaLocal).existsSync();
+      final apuntaALoEsperado =
+          tieneLocal && p.basename(c.fotoRutaLocal) == expectedSafeName;
 
-      if (reused == null) {
-        final file = await _servicio.descargarImagenOnline(ruta);
-        if (file == null) continue;
-        reused = file;
-        descargados++;
-      }
-
-      // Propagar rutaLocal al grupo
-      for (final c in grupo) {
-        await _dao.actualizarParcialPorUid(
-          c.uid,
-          ColaboradoresCompanion(fotoRutaLocal: Value(reused.path)),
-        );
+      // Ya está correcto → nada que hacer
+      if (apuntaALoEsperado) {
         procesados++;
-        if (procesados >= max) break;
+        continue;
       }
+
+      // Si hay local pero NO corresponde al archivo esperado (hash cambió o moviste path)
+      if (tieneLocal &&
+          p.basename(c.fotoRutaLocal) != expectedSafeName &&
+          borrarObsoletas) {
+        try {
+          await File(c.fotoRutaLocal).delete();
+        } catch (_) {
+          // no nos detenemos por errores de borrado
+        }
+      }
+
+      // ¿Ya existe en el destino canónico por casualidad?
+      // Nota: descargarImagenOnline guarda como "<safeName>" en appSupport/colaboradores_img
+      // así que podemos intentar usarlo directamente.
+      File? targetFile;
+      try {
+        // Intenta componer el path canónico y ver si ya existe
+        final baseDir = await getApplicationSupportDirectory();
+        final targetDir = Directory(p.join(baseDir.path, 'colaboradores_img'));
+        final canonical = File(p.join(targetDir.path, expectedSafeName));
+        if (await canonical.exists()) {
+          targetFile = canonical;
+        }
+      } catch (_) {
+        // Ignora y fuerza descarga
+      }
+
+      // Si no existe localmente el esperado, descárgalo del Storage
+      targetFile ??= await _servicio.descargarImagenOnline(remote);
+      if (targetFile == null) {
+        // No se pudo descargar; pasa al siguiente sin romper
+        procesados++;
+        continue;
+      }
+
+      // Actualiza la ruta local en DB para que apunte al canónico recién creado/encontrado
+      await _dao.actualizarParcialPorUid(
+        c.uid,
+        ColaboradoresCompanion(fotoRutaLocal: Value(targetFile.path)),
+      );
+
+      cambios++;
+      procesados++;
     }
 
-    if (descargados > 0 || procesados > 0) {
+    if (cambios > 0) {
       state = await _dao.obtenerTodosDrift();
     }
-    return descargados;
+    return cambios;
   }
 
   // ---------------------------------------------------------------------------

@@ -92,7 +92,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              usuario.nombre,
+                              usuario.userName,
                               style: textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: colorsTheme.onSurface,
@@ -105,16 +105,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                               Icons.email_outlined,
                               usuario.correo,
                             ),
-                            _buildUserInfoRow(
-                              context,
-                              Icons.security_outlined,
-                              usuario.rol,
-                            ),
-                            _buildUserInfoRow(
-                              context,
-                              Icons.business_outlined,
-                              _getNombreDistribuidor(usuario.uuidDistribuidora),
-                            ),
                           ],
                         ),
                       ),
@@ -122,44 +112,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                   ),
 
                   const SizedBox(height: 32),
-
-                  // Permisos
-                  Text(
-                    'Permisos',
-                    style: textTheme.titleMedium?.copyWith(
-                      color: colorsTheme.onSurface,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  ...usuario.permisos.entries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            entry.value ? Icons.check_circle : Icons.cancel,
-                            color: entry.value
-                                ? colorsTheme.onSurface
-                                : colorsTheme.error,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              entry.key,
-                              style: textTheme.bodyLarge?.copyWith(
-                                color: colorsTheme.onSurface,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -212,23 +164,8 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
       return;
     }
 
-    final uuid = usuario.uuidDistribuidora;
-    if (uuid == 'AFMZD' || uuid.isEmpty) {
-      setState(() => _cargandoInicial = false);
-      return;
-    }
-
     setState(() {
       _cargandoInicial = false;
     });
-  }
-
-  String _getNombreDistribuidor(String uuid) {
-    if (uuid == 'AFMZD') return 'AFMZD';
-    final distribuidor = ref
-        .read(distribuidoresProvider.notifier)
-        .obtenerPorId(uuid);
-    if (distribuidor != null) return distribuidor.nombre;
-    return 'Sin distribuidora';
   }
 }

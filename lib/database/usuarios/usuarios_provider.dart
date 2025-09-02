@@ -76,33 +76,27 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
   // CREAR (Auth + tabla online) → upsert local (isSynced=true)
   // ---------------------------------------------------------------------------
   Future<UsuarioDb?> crearUsuario({
-    required String nombre,
+    required String userName,
+    String? colaboradorUid,
     required String correo,
     required String password,
-    required String rol,
-    required String uuidDistribuidora,
-    required Map<String, bool> permisos,
   }) async {
     try {
       // 1) Crear en Auth + upsert en tabla (ONLINE). El service devuelve el row.
       final row = await _servicio.crearUsuarioEnAuthYTabla(
-        nombre: nombre,
+        userName: userName,
         correo: correo,
         password: password,
-        rol: rol,
-        uuidDistribuidora: uuidDistribuidora,
-        permisos: permisos,
+        colaboradorUid: colaboradorUid,
       );
 
-      // 2) Mapear a Companion (remoto ⇒ isSynced=true)
       final comp = UsuariosCompanion(
         uid: Value(row['uid'] as String),
-        nombre: Value((row['nombre'] as String?) ?? ''),
+        colaboradorUid: Value(row['colaborador_uid'] as String?),
+        userName: Value((row['user_name'] as String?) ?? ''),
         correo: Value((row['correo'] as String?) ?? ''),
-        rol: Value((row['rol'] as String?) ?? 'usuario'),
-        uuidDistribuidora: Value((row['uuid_distribuidora'] as String?) ?? ''),
-        permisos: Value(Map<String, bool>.from(row['permisos'] ?? {})),
-        updatedAt: Value(DateTime.parse(row['updated_at']).toUtc()),
+        createdAt: Value(DateTime.now().toUtc()),
+        updatedAt: Value(DateTime.now().toUtc()),
         deleted: Value((row['deleted'] as bool?) ?? false),
         isSynced: const Value(true),
       );
@@ -124,20 +118,17 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
   // Editar usuario
   Future<void> editarUsuario({
     required String uid,
-    required String nombre,
-    required String correo,
-    required String rol,
-    required String uuidDistribuidora,
-    required Map<String, bool> permisos,
+    String? userName,
+    String? correo,
+    String? colaboradorUid,
   }) async {
     try {
       final actualizado = UsuariosCompanion(
         uid: Value(uid),
-        nombre: Value(nombre),
-        correo: Value(correo),
-        rol: Value(rol),
-        uuidDistribuidora: Value(uuidDistribuidora),
-        permisos: Value(permisos),
+        userName: userName != null ? Value(userName) : const Value.absent(),
+        correo: correo != null ? Value(correo) : const Value.absent(),
+        colaboradorUid: Value(colaboradorUid),
+        createdAt: const Value.absent(),
         updatedAt: Value(DateTime.now().toUtc()),
         deleted: const Value.absent(),
         isSynced: Value(false),
@@ -157,13 +148,13 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
 
   bool existeDuplicado({
     required String uidActual,
-    required String nombre,
+    required String userName,
     required String correo,
   }) {
     return state.any(
       (u) =>
           u.uid != uidActual &&
-          (u.nombre.trim().toLowerCase() == nombre.trim().toLowerCase() ||
+          (u.userName.trim().toLowerCase() == userName.trim().toLowerCase() ||
               u.correo.trim().toLowerCase() == correo.trim().toLowerCase()),
     );
   }
