@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_form_page.dart';
+import 'package:myafmzd/widgets/my_loader_overlay.dart';
 import 'package:myafmzd/widgets/visor_pdf.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_tile.dart';
@@ -15,14 +17,15 @@ class ReportesScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportesScreenState extends ConsumerState<ReportesScreen> {
-  bool _abriendoPdf = false;
   bool _descargandoTodos = false;
   bool _cargandoInicial = true;
 
   @override
   void initState() {
     super.initState();
-    _cargarReportes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarReportes();
+    });
   }
 
   @override
@@ -39,137 +42,159 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     ref.listen<bool>(connectivityProvider, (previous, next) async {
-      if (previous != next && mounted) {
-        await _cargarReportes();
-      }
+      if (!mounted || previous == next) return;
+      await _cargarReportes();
     });
 
-    return Stack(
-      children: [
-        DefaultTabController(
-          key: ValueKey(tipos.join('|')),
-          length: tipos.length,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(
-                "Reportes Mensuales",
-                style: textTheme.titleLarge?.copyWith(
-                  color: colorScheme.onSurface,
+    return MyLoaderOverlay(
+      child: _cargandoInicial
+          // Estado inicial: sin tabs, sin filtro, sin FAB (solo el overlay visible)
+          ? Scaffold(
+              appBar: AppBar(
+                title: Text(
+                  "Reportes Mensuales",
+                  style: textTheme.titleLarge?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
                 ),
+                centerTitle: true,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                // OJO: sin bottom mientras carga
               ),
-              centerTitle: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              bottom: tipos.isNotEmpty
-                  ? TabBar(
-                      isScrollable: true,
-                      indicatorColor: colorScheme.onSurface,
-                      labelColor: colorScheme.onSurface,
-                      unselectedLabelColor: colorScheme.secondary.withOpacity(
-                        0.6,
+              body:
+                  const SizedBox.shrink(), // el overlay ya muestra “Cargando…”
+              // sin FAB mientras carga
+            )
+          // Ya cargado: ahora sí TabController + Tabs + FAB
+          : (tipos.isEmpty
+                // Sin tipos: estado vacío (sin TabController para evitar length=0)
+                ? Scaffold(
+                    appBar: AppBar(
+                      title: Text(
+                        "Reportes Mensuales",
+                        style: textTheme.titleLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
                       ),
-                      tabs: tipos.map((t) {
-                        final count = (grupos[t] ?? const []).length;
-                        return Tab(text: '$t ($count)');
-                      }).toList(),
-                    )
-                  : null,
-            ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () async {
-                final resultado = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ReporteFormPage()),
-                );
-
-                if (mounted && resultado == true) {
-                  await _cargarReportes();
-                }
-              },
-              tooltip: 'Agregar nuevo reporte',
-              child: const Icon(Icons.add),
-            ),
-
-            body: Column(
-              children: [
-                if (mesesDisponibles.length > 1)
-                  _buildFiltroMes(mesesDisponibles, mesSeleccionado, totalMes),
-
-                Expanded(
-                  child: _cargandoInicial
-                      ? const Center(child: CircularProgressIndicator())
-                      : TabBarView(
-                          children: tipos.map((tipo) {
-                            final reportes = grupos[tipo] ?? [];
-                            return RefreshIndicator(
-                              onRefresh: _cargarReportes,
-                              child: ListView.builder(
-                                physics: const BouncingScrollPhysics(
-                                  parent: AlwaysScrollableScrollPhysics(),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 24,
-                                ),
-                                itemCount: reportes.length,
-                                itemBuilder: (context, index) {
-                                  final reporte = reportes[index];
-                                  return ReporteItemTile(
-                                    key: ValueKey(reporte.uid),
-                                    reporte: reporte,
-                                    onTap: () async {
-                                      if (_abriendoPdf) return;
-                                      setState(() => _abriendoPdf = true);
-                                      await _abrirReporte(reporte.uid);
-                                      if (mounted) {
-                                        setState(() => _abriendoPdf = false);
-                                      }
-                                    },
-                                    onActualizado: () async {
-                                      await _cargarReportes(); // ← en vez de setState()
-                                    },
-                                  );
-                                },
-                              ),
-                            );
+                      centerTitle: true,
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      scrolledUnderElevation: 0,
+                    ),
+                    body: Center(
+                      child: Text(
+                        'No hay reportes para mostrar',
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    floatingActionButton: FloatingActionButton(
+                      onPressed: () async {
+                        final resultado = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ReporteFormPage(),
+                          ),
+                        );
+                        if (mounted && resultado == true) {
+                          await _cargarReportes();
+                        }
+                      },
+                      tooltip: 'Agregar nuevo reporte',
+                      child: const Icon(Icons.add),
+                    ),
+                  )
+                // Con tipos: TabController, TabBar y TabBarView sincronizados
+                : DefaultTabController(
+                    length: tipos.length,
+                    child: Scaffold(
+                      appBar: AppBar(
+                        title: Text(
+                          "Reportes Mensuales",
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        centerTitle: true,
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        scrolledUnderElevation: 0,
+                        bottom: TabBar(
+                          isScrollable: true,
+                          indicatorColor: colorScheme.onSurface,
+                          labelColor: colorScheme.onSurface,
+                          unselectedLabelColor: colorScheme.secondary
+                              .withOpacity(0.6),
+                          tabs: tipos.map((t) {
+                            final count = (grupos[t] ?? const []).length;
+                            return Tab(text: '$t ($count)');
                           }).toList(),
                         ),
-                ),
-              ],
-            ),
-          ),
-        ),
+                      ),
+                      floatingActionButton: FloatingActionButton(
+                        onPressed: () async {
+                          final resultado = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ReporteFormPage(),
+                            ),
+                          );
+                          if (mounted && resultado == true) {
+                            await _cargarReportes();
+                          }
+                        },
+                        tooltip: 'Agregar nuevo reporte',
+                        child: const Icon(Icons.add),
+                      ),
+                      body: Column(
+                        children: [
+                          if (mesesDisponibles.length > 1)
+                            _buildFiltroMes(
+                              mesesDisponibles,
+                              mesSeleccionado,
+                              totalMes,
+                            ),
 
-        if (_abriendoPdf)
-          ModalBarrier(
-            dismissible: false,
-            color: Colors.black.withOpacity(0.3),
-          ),
-        if (_abriendoPdf)
-          const Center(
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(16)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 12),
-                    Text(
-                      'Abriendo reporte...',
-                      style: TextStyle(fontWeight: FontWeight.w500),
+                          Expanded(
+                            child: TabBarView(
+                              children: tipos.map((tipo) {
+                                final reportes = grupos[tipo] ?? [];
+                                return RefreshIndicator(
+                                  onRefresh: _cargarReportes,
+                                  child: ListView.builder(
+                                    physics: const BouncingScrollPhysics(
+                                      parent: AlwaysScrollableScrollPhysics(),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 24,
+                                    ),
+                                    itemCount: reportes.length,
+                                    itemBuilder: (context, index) {
+                                      final reporte = reportes[index];
+                                      return ReporteItemTile(
+                                        key: ValueKey(reporte.uid),
+                                        reporte: reporte,
+                                        onTap: () async {
+                                          await _abrirReporte(reporte.uid);
+                                        },
+                                        onActualizado: () async {
+                                          await _cargarReportes();
+                                        },
+                                      );
+                                    },
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
+                  )),
     );
   }
 
@@ -202,7 +227,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
           const SizedBox(width: 12),
           // 👇 Chip con el total del mes filtrado
           Chip(
-            label: Text('Total: $totalMes'),
+            label: Text('Total reportes: $totalMes'),
             backgroundColor: colorScheme.surface,
           ),
           const SizedBox(width: 12),
@@ -261,20 +286,28 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     if (!mounted) return;
 
     setState(() => _cargandoInicial = true);
+
+    // UX opcional
+    FocusScope.of(context).unfocus();
+
+    // Overlay
+    context.loaderOverlay.show(progress: 'Cargando reportes…');
+
     final inicio = DateTime.now();
 
-    final hayInternet = ref.read(connectivityProvider);
-    await ref.read(reporteProvider.notifier).cargarOfflineFirst();
+    try {
+      final hayInternet = ref.read(connectivityProvider);
 
-    const duracionMinima = Duration(milliseconds: 1500);
-    final duracion = DateTime.now().difference(inicio);
-    if (duracion < duracionMinima) {
-      await Future.delayed(duracionMinima - duracion);
-    }
+      await ref.read(reporteProvider.notifier).cargarOfflineFirst();
 
-    if (mounted) {
-      setState(() => _cargandoInicial = false);
+      // delay mínimo (tu mismo patrón)
+      const duracionMinima = Duration(milliseconds: 1500);
+      final duracion = DateTime.now().difference(inicio);
+      if (duracion < duracionMinima) {
+        await Future.delayed(duracionMinima - duracion);
+      }
 
+      if (!mounted) return;
       if (!hayInternet) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -285,6 +318,13 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _cargandoInicial = false);
+      }
     }
   }
 
@@ -293,25 +333,45 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     final reporte = notifier.obtenerPorUid(uid);
     if (reporte == null) return;
 
+    if (!mounted) return;
+    context.loaderOverlay.show(progress: 'Abriendo reporte…');
+
     File? archivo;
-    print('[📄 MENSAJES REPORTES SCREEN] Abriendo local: ${reporte.rutaLocal}');
 
-    if (reporte.rutaLocal.isNotEmpty &&
-        await File(reporte.rutaLocal).exists()) {
-      archivo = File(reporte.rutaLocal);
-    } else {
-      print(
-        '[📄 MENSAJES REPORTES SCREEN] No local → intentando descargar en línea...',
-      );
-      final actualizado = await notifier.descargarPDF(reporte);
-      if (actualizado != null &&
-          actualizado.rutaLocal.isNotEmpty &&
-          await File(actualizado.rutaLocal).exists()) {
-        archivo = File(actualizado.rutaLocal);
+    try {
+      // 1) Intentar local
+      if (reporte.rutaLocal.isNotEmpty &&
+          await File(reporte.rutaLocal).exists()) {
+        archivo = File(reporte.rutaLocal);
+      } else {
+        // 2) Descargar si no existe local
+        if (!mounted) return;
+        context.loaderOverlay.progress('Descargando PDF…');
+
+        final actualizado = await notifier.descargarPDF(reporte);
+        if (actualizado != null &&
+            actualizado.rutaLocal.isNotEmpty &&
+            await File(actualizado.rutaLocal).exists()) {
+          archivo = File(actualizado.rutaLocal);
+        }
       }
-    }
 
-    if (archivo != null && mounted) {
+      if (!mounted) return;
+
+      if (archivo == null) {
+        // Feedback si no se pudo abrir/descargar
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el reporte.')),
+        );
+        return;
+      }
+
+      // Oculta overlay ANTES de navegar (importante para UX)
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+
+      // Navegar al visor
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -319,6 +379,11 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               VisorPDF(assetPath: archivo!.path, titulo: reporte.nombre),
         ),
       );
+    } finally {
+      // Por si saliste por excepciones sin alcanzar el hide previo
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
     }
   }
 }

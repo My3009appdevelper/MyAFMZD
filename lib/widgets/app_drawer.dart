@@ -41,6 +41,7 @@ class AppDrawer extends ConsumerWidget {
               ref.read(themeModeProvider.notifier).toggleTheme();
             },
           ),
+
           const Divider(),
 
           // 🚪 Cerrar sesión

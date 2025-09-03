@@ -1,15 +1,13 @@
 // ignore_for_file: avoid_print
 
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
-
 import 'package:myafmzd/widgets/my_elevated_button.dart';
+import 'package:myafmzd/widgets/my_picker_search_field.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 
 class AsignacionLaboralFormPage extends ConsumerStatefulWidget {
@@ -95,13 +93,6 @@ class _AsignacionLaboralFormPageState
     final distInicial = _buscarDistribuidor(_distribuidorUidSel);
     final managerInicial = _buscarColab(_managerUidSel);
 
-    // Estilos como en tu ejemplo
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final labelStyle = theme.textTheme.bodyLarge?.copyWith(
-      color: colorScheme.onSurface,
-    );
-
     final managerInicialSeguro = (managerInicial?.uid == _colaboradorUidSel)
         ? null
         : managerInicial;
@@ -121,18 +112,17 @@ class _AsignacionLaboralFormPageState
               child: ListView(
                 children: [
                   // =================== Colaborador ====================
-                  DropdownSearch<ColaboradorDb>(
-                    selectedItem: colabInicial,
-                    items: (String filtro, LoadProps? props) async {
-                      final f = filtro.toLowerCase();
-                      return _colaboradores
-                          .where(
-                            (c) => _nombreColab(c).toLowerCase().contains(f),
-                          )
-                          .toList();
-                    },
+                  MyPickerSearchField<ColaboradorDb>(
+                    items: _colaboradores,
+                    initialValue: colabInicial,
                     itemAsString: (c) => _nombreColab(c),
                     compareFn: (a, b) => a.uid == b.uid,
+                    labelText: 'Colaborador *',
+                    hintText: 'Toca para buscar…',
+                    bottomSheetTitle: 'Buscar colaborador',
+                    searchHintText: 'Nombre, correo o teléfono',
+                    validator: (c) =>
+                        c == null ? 'El colaborador es obligatorio' : null,
                     onChanged: (value) {
                       setState(() {
                         _colaboradorUidSel = value?.uid;
@@ -152,213 +142,39 @@ class _AsignacionLaboralFormPageState
                         }
                       });
                     },
-
-                    popupProps: const PopupProps.menu(
-                      showSearchBox: true,
-                      searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar colaborador...',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                      ),
-                    ),
-
-                    decoratorProps: DropDownDecoratorProps(
-                      decoration: InputDecoration(
-                        labelText: 'Colaborador *',
-                        labelStyle: labelStyle,
-                        filled: true,
-                        fillColor: colorScheme.surface,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary.withOpacity(0.3),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: colorScheme.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.error,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
-                    validator: (c) =>
-                        c == null ? 'El colaborador es obligatorio' : null,
                   ),
 
                   const SizedBox(height: 12),
 
                   // =================== Distribuidor ===================
-                  DropdownSearch<DistribuidorDb>(
-                    selectedItem: distInicial,
-                    items: (String filtro, LoadProps? props) async {
-                      final f = filtro.toLowerCase();
-                      return _distribuidores
-                          .where((d) => d.nombre.toLowerCase().contains(f))
-                          .toList();
-                    },
+                  MyPickerSearchField<DistribuidorDb>(
+                    items: _distribuidores,
+                    initialValue: distInicial,
                     itemAsString: (d) => d.nombre,
                     compareFn: (a, b) => a.uid == b.uid,
-                    onChanged: (d) {
-                      setState(() => _distribuidorUidSel = d?.uid ?? '');
-                    },
-                    popupProps: const PopupProps.menu(
-                      showSearchBox: true,
-                      searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar distribuidor...',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                      ),
-                    ),
-                    suffixProps: DropdownSuffixProps(
-                      clearButtonProps: ClearButtonProps(
-                        isVisible: _distribuidorUidSel.isNotEmpty,
-                        tooltip: 'Quitar selección',
-                      ),
-                    ),
-                    decoratorProps: DropDownDecoratorProps(
-                      decoration: InputDecoration(
-                        labelText: 'Distribuidor',
-                        labelStyle: labelStyle,
-                        filled: true,
-                        fillColor: colorScheme.surface,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary.withOpacity(0.3),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: colorScheme.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.error,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
+                    labelText: 'Distribuidor',
+                    hintText: 'Toca para buscar…',
+                    bottomSheetTitle: 'Buscar distribuidor',
+                    searchHintText: 'Nombre del distribuidor',
+                    onChanged: (d) =>
+                        setState(() => _distribuidorUidSel = d?.uid ?? ''),
                   ),
                   const SizedBox(height: 12),
 
                   // =================== Manager (opcional) ==============
-                  DropdownSearch<ColaboradorDb>(
-                    selectedItem: managerInicialSeguro,
-                    items: (String filtro, LoadProps? props) async {
-                      final f = filtro.toLowerCase();
-                      return _colaboradores
-                          .where(
-                            (c) => c.uid != _colaboradorUidSel,
-                          ) // ← excluye al mismo
-                          .where(
-                            (c) => _nombreColab(c).toLowerCase().contains(f),
-                          )
-                          .toList();
-                    },
-
+                  MyPickerSearchField<ColaboradorDb>(
+                    items: _colaboradores
+                        .where((c) => c.uid != _colaboradorUidSel)
+                        .toList(),
+                    initialValue: managerInicialSeguro,
                     itemAsString: (c) => _nombreColab(c),
                     compareFn: (a, b) => a.uid == b.uid,
-                    onChanged: (c) {
-                      setState(() => _managerUidSel = c?.uid ?? '');
-                    },
-                    popupProps: const PopupProps.menu(
-                      showSearchBox: true,
-                      searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar manager...',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                      ),
-                    ),
-                    suffixProps: DropdownSuffixProps(
-                      clearButtonProps: ClearButtonProps(
-                        isVisible: _managerUidSel.isNotEmpty,
-                        tooltip: 'Quitar selección',
-                      ),
-                    ),
-                    decoratorProps: DropDownDecoratorProps(
-                      decoration: InputDecoration(
-                        labelText: 'Manager directo',
-                        labelStyle: labelStyle,
-                        filled: true,
-                        fillColor: colorScheme.surface,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary.withOpacity(0.3),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: colorScheme.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.error,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                        suffixIcon: _managerUidSel.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Quitar selección',
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  setState(() {
-                                    _managerUidSel = '';
-                                  });
-                                },
-                              ),
-                        suffixIconConstraints: const BoxConstraints(
-                          minHeight: 24,
-                          minWidth: 24,
-                        ),
-                      ),
-                    ),
+                    labelText: 'Manager directo',
+                    hintText: 'Toca para buscar…',
+                    bottomSheetTitle: 'Buscar manager',
+                    searchHintText: 'Nombre, correo o teléfono',
+                    onChanged: (c) =>
+                        setState(() => _managerUidSel = c?.uid ?? ''),
                   ),
                   const SizedBox(height: 12),
 

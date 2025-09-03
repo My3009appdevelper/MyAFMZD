@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class ChipPickerSingle extends StatefulWidget {
+class MyChipPickerSingle extends StatefulWidget {
   final String label;
   final List<String> options;
   final String selected;
@@ -8,7 +8,7 @@ class ChipPickerSingle extends StatefulWidget {
   final ValueChanged<String> onSelected;
   final ValueChanged<String>? onAddNew;
 
-  const ChipPickerSingle({
+  const MyChipPickerSingle({
     super.key,
     required this.label,
     required this.options,
@@ -19,10 +19,10 @@ class ChipPickerSingle extends StatefulWidget {
   });
 
   @override
-  State<ChipPickerSingle> createState() => _ChipPickerSingleState();
+  State<MyChipPickerSingle> createState() => _MyChipPickerSingleState();
 }
 
-class _ChipPickerSingleState extends State<ChipPickerSingle> {
+class _MyChipPickerSingleState extends State<MyChipPickerSingle> {
   // padding unificado para que todas queden del mismo alto
   static const _kLabelPadding = EdgeInsets.symmetric(
     horizontal: 8,
@@ -38,7 +38,7 @@ class _ChipPickerSingleState extends State<ChipPickerSingle> {
   }
 
   @override
-  void didUpdateWidget(covariant ChipPickerSingle oldWidget) {
+  void didUpdateWidget(covariant MyChipPickerSingle oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selected != _current) _current = widget.selected;
   }
@@ -164,8 +164,7 @@ class _ChipPickerSingleState extends State<ChipPickerSingle> {
                         }
                       },
 
-                      // Mismo look & feel que tus ChoiceChip
-                      labelPadding: _kLabelPadding, // 👈 misma altura
+                      labelPadding: _kLabelPadding,
                       side: BorderSide(
                         color: colorScheme.outlineVariant.withOpacity(0.45),
                         width: 1,

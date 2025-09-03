@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
+import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class PerfilScreen extends ConsumerStatefulWidget {
   const PerfilScreen({super.key});
@@ -19,7 +21,9 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarPerfil();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarPerfil();
+    });
   }
 
   @override
@@ -29,92 +33,95 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     ref.listen<bool>(connectivityProvider, (previous, next) async {
-      if (previous != next && mounted) {
-        await _cargarPerfil();
-      }
+      if (!mounted || previous == next) return;
+      await _cargarPerfil();
     });
 
     if (usuario == null) {
-      return Scaffold(
-        body: Center(
-          child: Text(
-            'Usuario no disponible',
-            style: textTheme.bodyLarge?.copyWith(color: colorsTheme.onSurface),
+      return MyLoaderOverlay(
+        child: Scaffold(
+          body: Center(
+            child: Text(
+              'Usuario no disponible',
+              style: textTheme.bodyLarge?.copyWith(
+                color: colorsTheme.onSurface,
+              ),
+            ),
           ),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Perfil",
-          style: textTheme.titleLarge?.copyWith(color: colorsTheme.onSurface),
+    return MyLoaderOverlay(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            "Perfil",
+            style: textTheme.titleLarge?.copyWith(color: colorsTheme.onSurface),
+          ),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          scrolledUnderElevation: 0,
         ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-      ),
-      body: _cargandoInicial
-          ? Center(
-              child: CircularProgressIndicator(color: colorsTheme.secondary),
-            )
-          : RefreshIndicator(
-              color: colorsTheme.secondary,
-              onRefresh: _cargarPerfil,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 32,
-                ),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  // Card de perfil
-                  Center(
-                    child: Card(
-                      color: colorsTheme.surface,
-                      elevation: 1,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 20,
+        body: _cargandoInicial
+            ? const SizedBox.shrink() // el overlay ya muestra "Cargando…"
+            : RefreshIndicator(
+                color: colorsTheme.secondary,
+                onRefresh: _cargarPerfil,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    // Card de perfil
+                    Center(
+                      child: Card(
+                        color: colorsTheme.surface,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.account_circle,
-                              size: 60,
-                              color: colorsTheme.onSurface,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              usuario.userName,
-                              style: textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 20,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.account_circle,
+                                size: 60,
                                 color: colorsTheme.onSurface,
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            _buildUserInfoRow(
-                              context,
-                              Icons.email_outlined,
-                              usuario.correo,
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              Text(
+                                usuario.userName,
+                                style: textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: colorsTheme.onSurface,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildUserInfoRow(
+                                context,
+                                Icons.email_outlined,
+                                usuario.correo,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 32),
-                ],
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 
@@ -144,28 +151,43 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
   Future<void> _cargarPerfil() async {
     if (!mounted) return;
     setState(() => _cargandoInicial = true);
+
+    FocusScope.of(context).unfocus();
+
+    // SHOW
+    context.loaderOverlay.show(progress: 'Cargando perfil…');
+
     final inicio = DateTime.now();
 
-    await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
-    await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
-    await ref.read(perfilProvider.notifier).cargarUsuario();
-    final usuario = ref.read(perfilProvider);
+    try {
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
 
-    final duracion = DateTime.now().difference(inicio);
-    const duracionMinima = Duration(milliseconds: 1500);
-    if (duracion < duracionMinima) {
-      await Future.delayed(duracionMinima - duracion);
+      if (!mounted) return;
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando distribuidores…');
+      }
+
+      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+
+      if (!mounted) return;
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Obteniendo usuario…');
+      }
+
+      await ref.read(perfilProvider.notifier).cargarUsuario();
+
+      final duracion = DateTime.now().difference(inicio);
+      const duracionMinima = Duration(milliseconds: 1500);
+      if (duracion < duracionMinima) {
+        await Future.delayed(duracionMinima - duracion);
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _cargandoInicial = false);
+      }
     }
-
-    if (!mounted) return;
-
-    if (usuario == null) {
-      setState(() => _cargandoInicial = false);
-      return;
-    }
-
-    setState(() {
-      _cargandoInicial = false;
-    });
   }
 }

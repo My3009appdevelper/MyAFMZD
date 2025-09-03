@@ -1,9 +1,9 @@
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
+import 'package:myafmzd/widgets/my_picker_search_field.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 
 class DistribuidorFormPage extends ConsumerStatefulWidget {
@@ -39,10 +39,10 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
       text: distribuidor?.direccion ?? '',
     );
     _latController = TextEditingController(
-      text: distribuidor?.latitud.toString() ?? '',
+      text: (distribuidor?.latitud)?.toString() ?? '',
     );
     _lngController = TextEditingController(
-      text: distribuidor?.longitud.toString() ?? '',
+      text: (distribuidor?.longitud)?.toString() ?? '',
     );
     _activo = distribuidor?.activo ?? true;
   }
@@ -60,9 +60,6 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
   @override
   Widget build(BuildContext context) {
     final grupos = ref.watch(distribuidoresProvider.notifier).gruposUnicos;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme.bodyLarge;
 
     return Scaffold(
       appBar: AppBar(
@@ -89,67 +86,18 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                   const SizedBox(height: 12),
 
                   // Grupo
-                  DropdownSearch<String>(
-                    selectedItem: _grupoController.text,
-                    items: (String filtro, LoadProps? props) async {
-                      return grupos
-                          .where(
-                            (d) =>
-                                d.toLowerCase().contains(filtro.toLowerCase()),
-                          )
-                          .toList();
-                    },
-                    onChanged: (value) {
-                      if (value != null) _grupoController.text = value;
-                    },
+                  MyPickerSearchField<String>(
+                    items: grupos,
+                    initialValue: _grupoController.text.isEmpty
+                        ? null
+                        : _grupoController.text,
+                    itemAsString: (s) => s,
                     compareFn: (a, b) => a.toLowerCase() == b.toLowerCase(),
-                    popupProps: const PopupProps.menu(
-                      showSearchBox: true,
-                      searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar grupo...',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                      ),
-                    ),
-                    decoratorProps: DropDownDecoratorProps(
-                      decoration: InputDecoration(
-                        labelText: "Grupo",
-                        labelStyle: textTheme?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                        filled: true,
-                        fillColor: colorScheme.surface,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary.withOpacity(0.3),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: colorScheme.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.error,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
+                    labelText: 'Grupo',
+                    hintText: 'Toca para elegir…',
+                    bottomSheetTitle: 'Seleccionar grupo',
+                    searchHintText: 'Buscar grupo…',
+                    onChanged: (value) => _grupoController.text = value ?? '',
                   ),
                   const SizedBox(height: 12),
 

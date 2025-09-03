@@ -1,11 +1,10 @@
 import 'dart:io';
-
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/widgets/chip_picker.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 import 'package:path/path.dart' as p;
@@ -20,24 +19,36 @@ class ReporteFormPage extends ConsumerStatefulWidget {
 
 class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
   final _formKey = GlobalKey<FormState>();
+
   late TextEditingController _nombreController;
   late TextEditingController _tipoController;
   late TextEditingController _rutaRemotaController;
   late DateTime _fecha;
+
   bool _esEdicion = false;
   File? _archivoPDFSeleccionado;
+
+  // Añadidos locales (como en modelos)
+  final _addTipos = <String>{};
+
+  // Selección normalizada (como en modelos)
+  String _tipoSel = '';
 
   @override
   void initState() {
     super.initState();
-    final reporte = widget.reporteEditar;
-    _esEdicion = reporte != null;
-    _nombreController = TextEditingController(text: reporte?.nombre ?? '');
-    _tipoController = TextEditingController(text: reporte?.tipo ?? 'INTERNO');
-    _fecha = reporte?.fecha ?? DateTime.now();
-    _rutaRemotaController = TextEditingController(
-      text: reporte?.rutaRemota ?? '',
+    final r = widget.reporteEditar;
+    _esEdicion = r != null;
+
+    _nombreController = TextEditingController(text: r?.nombre ?? '');
+    _tipoController = TextEditingController(
+      text: (r?.tipo ?? 'INTERNO').trim(),
     );
+    _tipoSel = _tipoController.text; // espejo del controller para el picker
+
+    _fecha = r?.fecha ?? DateTime.now();
+
+    _rutaRemotaController = TextEditingController(text: r?.rutaRemota ?? '');
   }
 
   @override
@@ -50,7 +61,30 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tipos = ref.watch(reporteProvider.notifier).tiposDisponibles;
+    // Lista de tipos: DB + añadidos locales (como en modelos)
+    final tipos = _mergeStr(
+      ref.watch(reporteProvider.notifier).tiposDisponibles,
+      _addTipos,
+    );
+
+    // Asegurar selección válida (como en modelos: ensureStr)
+    String _ensureTipo(String current, List<String> list, String fallback) {
+      final cur = current.trim();
+      if (cur.isEmpty) {
+        return list.isNotEmpty ? list.first : fallback;
+      }
+      return list.contains(cur)
+          ? cur
+          : (list.isNotEmpty ? list.first : fallback);
+    }
+
+    _tipoSel = _ensureTipo(_tipoSel, tipos, 'INTERNO');
+    if (_tipoController.text.trim().isEmpty ||
+        _tipoController.text != _tipoSel) {
+      // mantener ambos sincronizados
+      _tipoController.text = _tipoSel;
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textStyle = theme.textTheme.bodyLarge;
@@ -66,86 +100,55 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
             padding: const EdgeInsets.all(20),
             child: Form(
               key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               child: ListView(
                 children: [
                   // Nombre
                   MyTextFormField(
                     controller: _nombreController,
                     labelText: 'Nombre',
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Campo obligatorio' : null,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Campo obligatorio'
+                        : null,
                   ),
                   const SizedBox(height: 12),
 
-                  // Tipo de reporte
-                  DropdownSearch<String>(
-                    items: (String filtro, LoadProps? props) async {
-                      return tipos
-                          .where(
-                            (d) =>
-                                d.toLowerCase().contains(filtro.toLowerCase()),
-                          )
-                          .toList();
+                  // ✅ Tipo con MyChipPickerSingle (patrón de Modelos)
+                  MyChipPickerSingle(
+                    label: 'Tipo',
+                    options: tipos,
+                    selected: _tipoSel,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Selecciona un tipo'
+                        : null,
+                    onSelected: (val) {
+                      setState(() {
+                        _tipoSel = val;
+                        _tipoController.text = val; // espejo
+                      });
                     },
-                    selectedItem: _tipoController.text,
-
-                    onChanged: (value) {
-                      if (value != null) _tipoController.text = value;
+                    onAddNew: (nuevo) {
+                      setState(() {
+                        final canon = nuevo.trim();
+                        if (canon.isNotEmpty) {
+                          _addTipos.add(canon);
+                          _tipoSel = canon; // selecciona de inmediato
+                          _tipoController.text = canon;
+                        }
+                      });
                     },
-                    compareFn: (a, b) => a.toLowerCase() == b.toLowerCase(),
-                    dropdownBuilder: (context, selectedItem) {
-                      return MyTextFormField(
-                        controller: _tipoController,
-                        labelText: 'Tipo',
-                      );
-                    },
-                    decoratorProps: DropDownDecoratorProps(
-                      decoration: InputDecoration(
-                        labelStyle: textStyle?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                        filled: true,
-                        fillColor: colorScheme.surface,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary.withOpacity(0.3),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: colorScheme.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.error,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 12),
 
                   // Fecha
-                  Text("Fecha"),
+                  Text(
+                    "Fecha",
+                    style: textStyle?.copyWith(color: colorScheme.onSurface),
+                  ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      '${_fecha.year}-${_fecha.month.toString().padLeft(2, '0')}-'
-                      '${_fecha.day.toString().padLeft(2, '0')}',
+                      '${_fecha.year}-${_fecha.month.toString().padLeft(2, '0')}-${_fecha.day.toString().padLeft(2, '0')}',
                     ),
                     trailing: const Icon(Icons.calendar_month),
                     onTap: _seleccionarFecha,
@@ -156,8 +159,9 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                   MyTextFormField(
                     controller: _rutaRemotaController,
                     labelText: 'Ruta remota',
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Campo obligatorio' : null,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Campo obligatorio'
+                        : null,
                   ),
                   const SizedBox(height: 12),
 
@@ -169,7 +173,6 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
                             _archivoPDFSeleccionado!.path.isNotEmpty)
                         ? 'Archivo seleccionado'
                         : 'Subir nuevo PDF',
-
                     onPressed: _seleccionarPDF,
                   ),
 
@@ -203,7 +206,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
         final actualizado = widget.reporteEditar!.copyWith(
           nombre: nombre,
           tipo: tipo,
-          rutaRemota: _rutaRemotaController.text,
+          rutaRemota: _rutaRemotaController.text.trim(),
           fecha: _fecha,
           updatedAt: DateTime.now().toUtc(),
           isSynced: false,
@@ -213,13 +216,12 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
           actualizado: actualizado,
         );
 
-        // 🟢 Solo subir si el usuario seleccionó un nuevo archivo manualmente
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
           await reporteNotifier.subirNuevoPDF(
             reporte: nuevo,
             archivo: _archivoPDFSeleccionado!,
-            nuevoPath: _rutaRemotaController.text,
+            nuevoPath: _rutaRemotaController.text.trim(),
           );
         }
         if (mounted) Navigator.pop(context, true);
@@ -228,16 +230,15 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
           nombre: nombre,
           tipo: tipo,
           fecha: _fecha,
-          rutaRemota: _rutaRemotaController.text,
+          rutaRemota: _rutaRemotaController.text.trim(),
         );
 
-        // Subir PDF si se seleccionó
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
           await reporteNotifier.subirNuevoPDF(
             reporte: nuevo,
             archivo: _archivoPDFSeleccionado!,
-            nuevoPath: _rutaRemotaController.text,
+            nuevoPath: _rutaRemotaController.text.trim(),
           );
         }
         if (mounted) Navigator.pop(context, true);
@@ -261,6 +262,7 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
       setState(() {
         _fecha = nuevaFecha;
 
+        // Mantengo tu lógica: si ya hay PDF seleccionado, recalcula ruta con el nombre del archivo
         if (_archivoPDFSeleccionado != null) {
           final base = p.basenameWithoutExtension(
             _archivoPDFSeleccionado!.path,
@@ -321,5 +323,14 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
         .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
         .replaceAll(RegExp(r'_+'), '_')
         .replaceAll(RegExp(r'^_|_$'), '');
+  }
+
+  List<String> _mergeStr(List<String> a, Set<String> b) {
+    final set = <String>{}
+      ..addAll(a.map((e) => e.trim()).where((e) => e.isNotEmpty))
+      ..addAll(b.map((e) => e.trim()).where((e) => e.isNotEmpty));
+    final out = set.toList()
+      ..sort((x, y) => x.toLowerCase().compareTo(y.toLowerCase()));
+    return out;
   }
 }

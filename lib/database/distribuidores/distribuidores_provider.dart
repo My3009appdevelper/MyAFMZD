@@ -210,7 +210,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
   List<String> get gruposUnicos {
     final grupos = state.map((d) => d.grupo).toSet().toList();
     grupos.sort();
-    grupos.insert(0, 'Todos');
+    grupos.insert(0, 'AFMZD');
     return grupos;
   }
 

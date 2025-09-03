@@ -6,12 +6,14 @@ import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_form_page.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_popup.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_tile.dart';
+import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class DistribuidoresScreen extends ConsumerStatefulWidget {
   const DistribuidoresScreen({super.key});
@@ -75,7 +77,10 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
       vsync: this,
       mapController: _mapController,
     );
-    _cargarDistribuidores();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarDistribuidores();
+    });
   }
 
   @override
@@ -107,11 +112,11 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     })();
 
     // Lista completa (gatilla rebuild si cambia el estado)
-    final todos = ref.watch(distribuidoresProvider);
+    final distrProvider = ref.watch(distribuidoresProvider);
 
     // Conteos base
-    final totalGeneral = todos.length;
-    final mostrados = filtrados.length;
+    final totalGeneral = distrProvider.where((d) => d.grupo != 'AFMZD').length;
+    final mostrados = filtrados.where((d) => d.grupo != 'AFMZD').length;
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -119,233 +124,242 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     final hayInternet = ref.watch(connectivityProvider);
 
     ref.listen<bool>(connectivityProvider, (previous, next) async {
-      if (previous != next && mounted) {
-        await _cargarDistribuidores();
-      }
+      if (!mounted || previous == next) return;
+      await _cargarDistribuidores();
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Distribuidores',
-          style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
+    return MyLoaderOverlay(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Distribuidores',
+            style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
+          ),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
         ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final resultado = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const DistribuidorFormPage()),
-          );
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final resultado = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DistribuidorFormPage()),
+            );
 
-          if (mounted && resultado == true) {
-            await _cargarDistribuidores();
-          }
-        },
-        tooltip: 'Agregar nueva distribuidora',
-        child: const Icon(Icons.add),
-      ),
-      body: _cargandoInicial
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Column(
-                        children: [
-                          const Text(
-                            'Filtro por grupo',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          DropdownButton<String>(
-                            value: _grupoSeleccionado,
-                            items: [
-                              for (final g in grupos)
-                                DropdownMenuItem(value: g, child: Text(g)),
-                            ],
-                            onChanged: (value) {
-                              if (value == null) return;
-                              setState(() => _grupoSeleccionado = value);
-                              _resetMapaSegunFiltro();
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        children: [
-                          const Text(
-                            'Mostrar inactivos',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Switch.adaptive(
-                            value: _mostrarInactivos,
-                            onChanged: (v) {
-                              setState(() => _mostrarInactivos = v);
-                              _resetMapaSegunFiltro();
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: colorScheme.outlineVariant),
-                      ),
-                      child: Text(
-                        'Mostrados: $mostrados / $totalGeneral',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                hayInternet
-                    ? SizedBox(
-                        height: 250,
-                        child: Stack(
+            if (mounted && resultado == true) {
+              await _cargarDistribuidores();
+            }
+          },
+          tooltip: 'Agregar nueva distribuidora',
+          child: const Icon(Icons.add),
+        ),
+        body: _cargandoInicial
+            ? const SizedBox.shrink()
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Column(
                           children: [
-                            FlutterMap(
-                              mapController: _mapController,
-                              options: MapOptions(
-                                initialCenter: const LatLng(23.6345, -102.5528),
-                                initialZoom: 3.8,
-                                minZoom: 3.5,
-                                interactionOptions: const InteractionOptions(
-                                  flags:
-                                      InteractiveFlag.all &
-                                      ~InteractiveFlag.rotate,
-                                ),
-                                onTap: (_, __) =>
-                                    _popupController.hideAllPopups(),
-                              ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate:
-                                      Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                                      : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                  userAgentPackageName: 'com.example.myafmzd',
-                                  tileProvider: NetworkTileProvider(), // const
-                                  retinaMode: RetinaMode.isHighDensity(context),
-                                  keepBuffer: 4,
-                                ),
-                                PopupMarkerLayer(
-                                  options: PopupMarkerLayerOptions(
-                                    markers: markers,
-                                    popupController: _popupController,
-                                    popupDisplayOptions: PopupDisplayOptions(
-                                      builder: (ctx, marker) {
-                                        // match por instancia exacta
-                                        final data = _entries
-                                            .firstWhere(
-                                              (e) => e.$1 == marker,
-                                              orElse: () => (
-                                                marker,
-                                                DistribuidorDb(
-                                                  uid: 'x',
-                                                  nombre: 'Desconocido',
-                                                  direccion: '',
-                                                  latitud:
-                                                      marker.point.latitude,
-                                                  longitud:
-                                                      marker.point.longitude,
-                                                  activo: false,
-                                                  grupo: '',
-                                                  updatedAt: DateTime.now()
-                                                      .toUtc(),
-                                                  deleted: false,
-                                                  isSynced: false,
-                                                ),
-                                              ),
-                                            )
-                                            .$2;
-
-                                        return DistribuidorPopup(
-                                          distribuidor: data,
-                                        );
-                                      },
-                                    ),
-                                    markerCenterAnimation:
-                                        const MarkerCenterAnimation(),
-                                    markerTapBehavior:
-                                        MarkerTapBehavior.togglePopupAndHideRest(),
-                                  ),
-                                ),
+                            const Text(
+                              'Filtro por grupo',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            DropdownButton<String>(
+                              value: _grupoSeleccionado,
+                              items: [
+                                for (final g in grupos)
+                                  DropdownMenuItem(value: g, child: Text(g)),
                               ],
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => _grupoSeleccionado = value);
+                                _resetMapaSegunFiltro();
+                              },
                             ),
                           ],
                         ),
-                      )
-                    : const SizedBox(
-                        height: 100,
-                        child: Center(
-                          child: Text('🌐 Mapa no disponible sin conexión'),
+                        const SizedBox(width: 12),
+                        Column(
+                          children: [
+                            const Text(
+                              'Mostrar inactivos',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Switch.adaptive(
+                              value: _mostrarInactivos,
+                              onChanged: (v) {
+                                setState(() => _mostrarInactivos = v);
+                                _resetMapaSegunFiltro();
+                              },
+                            ),
+                          ],
                         ),
-                      ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      await _cargarDistribuidores();
-                      final filtradosNow = _filtrados;
-                      if (filtradosNow.isNotEmpty) {
-                        await _resetMapaSegunFiltro();
-                      }
-                    },
-                    child: ListView.builder(
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 24,
-                      ),
-                      itemCount: max(1, filtrados.length),
-                      itemBuilder: (context, index) {
-                        if (filtrados.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.only(top: 80.0),
-                            child: Center(child: Text('No hay distribuidores')),
-                          );
-                        }
-                        final distribuidor = filtrados[index];
-                        return DistribuidorItemTile(
-                          key: ValueKey(distribuidor.uid),
-                          distribuidor: distribuidor,
-                          onTap: () => _centrarYMostrarPopup(distribuidor),
-                          onActualizado: () async {
-                            await _cargarDistribuidores();
-                            await _resetMapaSegunFiltro();
-                          },
-                        );
-                      },
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: colorScheme.outlineVariant),
+                        ),
+                        child: Text(
+                          'Mostrados: $mostrados / $totalGeneral',
+                          style: textTheme.labelLarge?.copyWith(
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  hayInternet
+                      ? SizedBox(
+                          height: 250,
+                          child: Stack(
+                            children: [
+                              FlutterMap(
+                                mapController: _mapController,
+                                options: MapOptions(
+                                  initialCenter: const LatLng(
+                                    23.6345,
+                                    -102.5528,
+                                  ),
+                                  initialZoom: 3.8,
+                                  minZoom: 3.5,
+                                  interactionOptions: const InteractionOptions(
+                                    flags:
+                                        InteractiveFlag.all &
+                                        ~InteractiveFlag.rotate,
+                                  ),
+                                  onTap: (_, __) =>
+                                      _popupController.hideAllPopups(),
+                                ),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                                        : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                    userAgentPackageName: 'com.example.myafmzd',
+                                    tileProvider:
+                                        NetworkTileProvider(), // const
+                                    retinaMode: RetinaMode.isHighDensity(
+                                      context,
+                                    ),
+                                    keepBuffer: 4,
+                                  ),
+                                  PopupMarkerLayer(
+                                    options: PopupMarkerLayerOptions(
+                                      markers: markers,
+                                      popupController: _popupController,
+                                      popupDisplayOptions: PopupDisplayOptions(
+                                        builder: (ctx, marker) {
+                                          // match por instancia exacta
+                                          final data = _entries
+                                              .firstWhere(
+                                                (e) => e.$1 == marker,
+                                                orElse: () => (
+                                                  marker,
+                                                  DistribuidorDb(
+                                                    uid: 'x',
+                                                    nombre: 'Desconocido',
+                                                    direccion: '',
+                                                    latitud:
+                                                        marker.point.latitude,
+                                                    longitud:
+                                                        marker.point.longitude,
+                                                    activo: false,
+                                                    grupo: '',
+                                                    updatedAt: DateTime.now()
+                                                        .toUtc(),
+                                                    deleted: false,
+                                                    isSynced: false,
+                                                  ),
+                                                ),
+                                              )
+                                              .$2;
+
+                                          return DistribuidorPopup(
+                                            distribuidor: data,
+                                          );
+                                        },
+                                      ),
+                                      markerCenterAnimation:
+                                          const MarkerCenterAnimation(),
+                                      markerTapBehavior:
+                                          MarkerTapBehavior.togglePopupAndHideRest(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox(
+                          height: 100,
+                          child: Center(
+                            child: Text('🌐 Mapa no disponible sin conexión'),
+                          ),
+                        ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        await _cargarDistribuidores();
+                        final filtradosNow = _filtrados;
+                        if (filtradosNow.isNotEmpty) {
+                          await _resetMapaSegunFiltro();
+                        }
+                      },
+                      child: ListView.builder(
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 24,
+                        ),
+                        itemCount: max(1, filtrados.length),
+                        itemBuilder: (context, index) {
+                          if (filtrados.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.only(top: 80.0),
+                              child: Center(
+                                child: Text('No hay distribuidores'),
+                              ),
+                            );
+                          }
+                          final distribuidor = filtrados[index];
+                          return DistribuidorItemTile(
+                            key: ValueKey(distribuidor.uid),
+                            distribuidor: distribuidor,
+                            onTap: () => _centrarYMostrarPopup(distribuidor),
+                            onActualizado: () async {
+                              await _cargarDistribuidores();
+                              await _resetMapaSegunFiltro();
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -353,33 +367,49 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     if (!mounted) return;
 
     setState(() => _cargandoInicial = true);
+
+    // UX opcional
+    FocusScope.of(context).unfocus();
+
+    // OVERLAY
+    context.loaderOverlay.show(progress: 'Cargando distribuidores…');
+
     final inicio = DateTime.now();
 
-    final hayInternet = ref.read(connectivityProvider);
-    await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+    try {
+      final hayInternet = ref.read(connectivityProvider);
 
-    const duracionMinima = Duration(milliseconds: 1500);
-    final duracion = DateTime.now().difference(inicio);
-    if (duracion < duracionMinima) {
-      await Future.delayed(duracionMinima - duracion);
-    }
+      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
 
-    if (mounted) {
-      // setear grupo por defecto
+      // Delay mínimo (mismo patrón)
+      const duracionMinima = Duration(milliseconds: 1500);
+      final duracion = DateTime.now().difference(inicio);
+      if (duracion < duracionMinima) {
+        await Future.delayed(duracionMinima - duracion);
+      }
+
+      if (!mounted) return;
+
+      // grupo default
       final lista = ref.read(distribuidoresProvider);
       if (_grupoSeleccionado == null && lista.isNotEmpty) {
         _grupoSeleccionado = 'Todos';
       }
-      setState(() => _cargandoInicial = false);
 
       if (!hayInternet) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('📴 Estás sin conexión. Solo información local.'),
-
             duration: Duration(seconds: 3),
           ),
         );
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _cargandoInicial = false);
       }
     }
   }

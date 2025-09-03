@@ -33,7 +33,7 @@ class MyTextFormField extends StatelessWidget {
         labelText: labelText,
         labelStyle: textStyle?.copyWith(color: colorScheme.onSurface),
         filled: true,
-        fillColor: colorScheme.surface,
+        fillColor: Colors.transparent,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: colorScheme.primary.withOpacity(0.3)),

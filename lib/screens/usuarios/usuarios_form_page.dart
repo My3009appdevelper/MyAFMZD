@@ -1,9 +1,9 @@
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+import 'package:myafmzd/widgets/my_picker_search_field.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 
@@ -71,23 +71,6 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
   @override
   Widget build(BuildContext context) {
     final colaboradores = ref.watch(colaboradoresProvider);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final labelStyle = theme.textTheme.bodyMedium;
-
-    // Para el DropdownSearch: item y búsqueda por nombre completo
-    List<ColaboradorDb> _filtrarColabs(String filtro) {
-      final f = filtro.trim().toLowerCase();
-      if (f.isEmpty) return colaboradores;
-      return colaboradores.where((c) {
-        final nombre = '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'
-            .trim()
-            .toLowerCase();
-        return nombre.contains(f) ||
-            c.emailPersonal.toLowerCase().contains(f) ||
-            c.telefonoMovil.toLowerCase().contains(f);
-      }).toList();
-    }
 
     ColaboradorDb? _selInicial() {
       if (_colaboradorUidSel == null || _colaboradorUidSel!.isEmpty) {
@@ -114,70 +97,22 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
               child: ListView(
                 children: [
                   // =================== Colaborador ===================
-                  DropdownSearch<ColaboradorDb>(
-                    selectedItem: _selInicial(),
-                    items: (String filtro, LoadProps? props) async {
-                      return _filtrarColabs(filtro);
-                    },
+                  MyPickerSearchField<ColaboradorDb>(
+                    items: colaboradores,
+                    initialValue: _selInicial(),
                     itemAsString: (c) =>
                         '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'
+                            .replaceAll(RegExp(r'\s+'), ' ')
                             .trim(),
                     compareFn: (a, b) => a.uid == b.uid,
-                    onChanged: (c) {
-                      setState(() => _colaboradorUidSel = c?.uid);
-                    },
-                    popupProps: const PopupProps.menu(
-                      showSearchBox: true,
-                      searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar colaborador...',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                      ),
-                    ),
-                    suffixProps: DropdownSuffixProps(
-                      clearButtonProps: ClearButtonProps(
-                        isVisible: (_colaboradorUidSel ?? '').isNotEmpty,
-                        tooltip: 'Quitar selección',
-                      ),
-                    ),
-                    decoratorProps: DropDownDecoratorProps(
-                      decoration: InputDecoration(
-                        labelText: 'Colaborador (opcional)',
-                        labelStyle: labelStyle,
-                        filled: true,
-                        fillColor: colorScheme.surface,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary.withOpacity(0.3),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: colorScheme.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: colorScheme.error,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
+                    labelText: 'Colaborador (opcional)',
+                    hintText: 'Toca para buscar…',
+                    bottomSheetTitle: 'Buscar colaborador',
+                    searchHintText: 'Nombre, correo o teléfono',
+                    onChanged: (c) =>
+                        setState(() => _colaboradorUidSel = c?.uid),
                   ),
+
                   const SizedBox(height: 12),
 
                   // =================== userName ===================

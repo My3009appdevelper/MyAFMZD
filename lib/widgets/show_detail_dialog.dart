@@ -19,31 +19,33 @@ Future<void> showDetailsDialog(
           fontWeight: FontWeight.w600,
         ),
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: fields.entries.map((e) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '${e.key}: ',
-                    style: tt.bodyMedium?.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w600,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: fields.entries.map((e) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${e.key}: ',
+                      style: tt.bodyMedium?.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  TextSpan(
-                    text: e.value,
-                    style: tt.bodyMedium?.copyWith(color: cs.onSurface),
-                  ),
-                ],
+                    TextSpan(
+                      text: e.value,
+                      style: tt.bodyMedium?.copyWith(color: cs.onSurface),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
       actions: [
         TextButton(

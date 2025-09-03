@@ -103,7 +103,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
   }) async {
     // ───────────────────────────── helpers ─────────────────────────────
     void log(String m) {
-      if (debug) print('[🚗👀 PREFETCH] $m');
+      if (debug) print('[🚗👀 MENSAJES MODELO_IMAGENES PROVIDER] $m');
     }
 
     String norm(String p) {
@@ -280,9 +280,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
       'Grupos formados: total=$totalGrupos | por_SHA=$gruposSha (únicos=$unicosSha) | por_RUTA=$gruposRuta',
     );
     if (sinShaList.isNotEmpty) {
-      log(
-        '⚠️ Filas sin SHA deducible (grupos por ruta): ${sinShaList.length}',
-      );
+      log('⚠️ Filas sin SHA deducible (grupos por ruta): ${sinShaList.length}');
     }
 
     // Para diagnóstico
@@ -332,9 +330,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
           local = await scanDiskBySha(sha0);
           if (local != null) {
             reusadasDisco[sha0] = local.path;
-            log(
-              '  ↳ Reuso por disco (SHA): $sha0 → ${p.basename(local.path)}',
-            );
+            log('  ↳ Reuso por disco (SHA): $sha0 → ${p.basename(local.path)}');
           }
         }
       } else {
@@ -380,12 +376,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
             : (effectiveSha.isNotEmpty ? effectiveSha : '');
         if (shaForName.isNotEmpty) {
           final before = local.path;
-          local = await ensureCanonicalName(
-            local,
-            shaForName,
-            ext,
-            year: year,
-          );
+          local = await ensureCanonicalName(local, shaForName, ext, year: year);
           if (!p.equals(before, local.path)) {
             log('  ↳ Renombrada a canónico: ${p.basename(local.path)}');
           }

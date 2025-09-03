@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_tile.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_form_page.dart';
+import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class UsuariosScreen extends ConsumerStatefulWidget {
   const UsuariosScreen({super.key});
@@ -18,7 +20,9 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarUsuarios();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarUsuarios();
+    });
   }
 
   @override
@@ -29,70 +33,69 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     ref.listen<bool>(connectivityProvider, (previous, next) async {
-      if (previous != next && mounted) {
-        await _cargarUsuarios();
-      }
+      if (!mounted || previous == next) return;
+      await _cargarUsuarios();
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Usuarios",
-          style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
+    return MyLoaderOverlay(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            "Usuarios",
+            style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
+          ),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
         ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      body: _cargandoInicial
-          ? Center(
-              child: CircularProgressIndicator(color: colorScheme.secondary),
-            )
-          : RefreshIndicator(
-              color: colorScheme.secondary,
-              onRefresh: _cargarUsuarios,
-              child: ListView.builder(
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
+        body: _cargandoInicial
+            ? const SizedBox.shrink()
+            : RefreshIndicator(
+                color: colorScheme.secondary,
+                onRefresh: _cargarUsuarios,
+                child: ListView.builder(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 24,
+                  ),
+                  itemCount: usuariosNotifier.length,
+                  itemBuilder: (context, index) {
+                    final usuario = usuariosNotifier[index];
+                    return Card(
+                      color: colorScheme.surface,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                      child: UsuariosItemTile(
+                        key: ValueKey(usuario.uid),
+                        usuario: usuario,
+                        onTap: () {},
+                        onActualizado: () async {
+                          await _cargarUsuarios();
+                        },
+                      ),
+                    );
+                  },
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 24,
-                ),
-                itemCount: usuariosNotifier.length,
-                itemBuilder: (context, index) {
-                  final usuario = usuariosNotifier[index];
-                  return Card(
-                    color: colorScheme.surface,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    child: UsuariosItemTile(
-                      key: ValueKey(usuario.uid),
-                      usuario: usuario,
-                      onTap: () {},
-                      onActualizado: () async {
-                        await _cargarUsuarios();
-                      },
-                    ),
-                  );
-                },
               ),
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const UsuariosFormPage()),
-          );
-          if (result == true) {
-            await _cargarUsuarios();
-          }
-        },
-        child: const Icon(Icons.add),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UsuariosFormPage()),
+            );
+            if (result == true) {
+              await _cargarUsuarios();
+            }
+          },
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
@@ -101,20 +104,25 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
     if (!mounted) return;
 
     setState(() => _cargandoInicial = true);
+    FocusScope.of(context).unfocus();
+
+    context.loaderOverlay.show(progress: 'Cargando usuarios…');
+
     final inicio = DateTime.now();
 
-    final hayInternet = ref.read(connectivityProvider);
-    await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
+    try {
+      final hayInternet = ref.read(connectivityProvider);
 
-    const duracionMinima = Duration(milliseconds: 1500);
-    final duracion = DateTime.now().difference(inicio);
-    if (duracion < duracionMinima) {
-      await Future.delayed(duracionMinima - duracion);
-    }
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
 
-    if (mounted) {
-      setState(() => _cargandoInicial = false);
+      // delay mínimo (opcional)
+      const duracionMinima = Duration(milliseconds: 1500);
+      final duracion = DateTime.now().difference(inicio);
+      if (duracion < duracionMinima) {
+        await Future.delayed(duracionMinima - duracion);
+      }
 
+      if (!mounted) return;
       if (!hayInternet) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -122,6 +130,13 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
             duration: Duration(seconds: 3),
           ),
         );
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _cargandoInicial = false);
       }
     }
   }

@@ -311,17 +311,20 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       );
 
       //Eliminarmos el archivo local viejo
-      if (oldLocal.isNotEmpty) {
-        final file = File(oldLocal);
+      if (oldLocal.isNotEmpty &&
+          oldLocal != destino.path &&
+          await File(oldLocal).exists()) {
         try {
-          if (await file.exists()) await file.delete();
+          await File(oldLocal).delete();
+          print(
+            '[👥 MENSAJES COLABORADORES PROVIDER] 🧹 Local anterior eliminado: $oldLocal',
+          );
         } catch (e) {
           print(
-            '[👥 MENSAJES COLABORADORES PROVIDER] ⚠️ Error borrando foto local: $e',
+            '[👥 MENSAJES COLABORADORES PROVIDER] ⚠️ No se pudo borrar local anterior: $e',
           );
         }
       }
-
       // 4) Refrescar estado y sincronizar si hay red
       state = await _dao.obtenerTodosDrift();
 

@@ -173,7 +173,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   const SizedBox(height: 16),
 
                   // Marca
-                  ChipPickerSingle(
+                  MyChipPickerSingle(
                     label: 'Marca',
                     options: marcas,
                     selected: _marcaSel,
@@ -199,7 +199,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   const SizedBox(height: 12),
 
                   // Modelo
-                  ChipPickerSingle(
+                  MyChipPickerSingle(
                     label: 'Modelo',
                     options: modelosDisp,
                     selected: _modeloSel,
@@ -217,7 +217,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   const SizedBox(height: 12),
 
                   // Año (reusa ChipPickerSingle con mapeo int<->String)
-                  ChipPickerSingle(
+                  MyChipPickerSingle(
                     label: 'Año',
                     options: anios.map((e) => e.toString()).toList(),
                     selected: (_anioSel ?? DateTime.now().year).toString(),
@@ -266,7 +266,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   const SizedBox(height: 12),
 
                   // Tipo
-                  ChipPickerSingle(
+                  MyChipPickerSingle(
                     label: 'Tipo',
                     options: tipos,
                     selected: _tipoSel,
@@ -280,7 +280,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   const SizedBox(height: 12),
 
                   // Transmisión
-                  ChipPickerSingle(
+                  MyChipPickerSingle(
                     label: 'Transmisión',
                     options: transmisiones,
                     selected: _transmisionSel,
@@ -291,7 +291,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   const SizedBox(height: 12),
 
                   // Descripción
-                  ChipPickerSingle(
+                  MyChipPickerSingle(
                     label: 'Descripción',
                     options: descripciones,
                     selected: _descripcionSel,

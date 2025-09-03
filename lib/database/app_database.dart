@@ -80,7 +80,7 @@ LazyDatabase _openConnection() {
     final modelosImgDir = Directory(p.join(supportDir.path, 'modelos_img'));
 
     // ───────────────────────── toggle de limpieza ────────────────────
-    const bool wipeOnColdStart = true; // ⬅️ ponlo en false para producción
+    const bool wipeOnColdStart = false; // ⬅️ ponlo en false para producción
 
     // ─────────────────────── helpers de borrado ──────────────────────
     Future<int> deleteWhere(Directory dir, bool Function(File f) test) async {

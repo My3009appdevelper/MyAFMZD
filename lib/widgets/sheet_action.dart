@@ -30,37 +30,39 @@ Future<void> showActionSheet(
         padding: const EdgeInsets.all(16),
         child: SafeArea(
           top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (title != null) ...[
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              ...actions.map(
-                (a) => ListTile(
-                  leading: Icon(a.icon, color: cs.primary),
-                  title: Text(
-                    a.label,
-                    style: theme.textTheme.bodyLarge?.copyWith(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null) ...[
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
                       color: cs.onSurface,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  onTap: () {
-                    Navigator.pop(ctx); // cierra el sheet
-                    // corre la acción al cerrar el sheet
-                    Future.microtask(a.onTap);
-                  },
+                  const SizedBox(height: 8),
+                ],
+                ...actions.map(
+                  (a) => ListTile(
+                    leading: Icon(a.icon, color: cs.primary),
+                    title: Text(
+                      a.label,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx); // cierra el sheet
+                      // corre la acción al cerrar el sheet
+                      Future.microtask(a.onTap);
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
@@ -10,6 +11,7 @@ import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/screens/modelos/modelo_detalle_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_form_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_tile.dart';
+import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class ModelosScreen extends ConsumerStatefulWidget {
   const ModelosScreen({super.key});
@@ -20,8 +22,6 @@ class ModelosScreen extends ConsumerStatefulWidget {
 
 class _ModelosScreenState extends ConsumerState<ModelosScreen> {
   bool _cargandoInicial = true;
-  final bool _abriendoPdf = false;
-  bool _trabajandoMasivo = false;
 
   int? _anioSeleccionado; // null => Todos
   bool _soloActivos = false;
@@ -29,7 +29,10 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarModelos();
+    // Misma mecánica que en las otras screens: lanzar carga tras el primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarModelos();
+    });
   }
 
   @override
@@ -37,20 +40,17 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    // Reacciona a cambios de conectividad
+    // Conectividad (mismo listener que en el resto)
     ref.listen<bool>(connectivityProvider, (prev, next) async {
-      if (prev != next && mounted) {
-        await _cargarModelos();
-      }
+      if (!mounted || prev == next) return;
+      await _cargarModelos();
     });
 
     final tipos = ref
         .watch(modelosProvider.notifier)
         .tiposUnicos; // incluye "Todos"
-    // Para chips de años mostramos descendente (reciente primero)
     final anios = [...ref.watch(modelosProvider.notifier).aniosUnicos.reversed];
 
-    // Mapa tipo -> lista filtrada
     final Map<String, List<ModeloDb>> grupos = {
       for (final t in tipos)
         t: ref
@@ -62,118 +62,96 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
             ),
     };
 
-    return Stack(
-      children: [
-        DefaultTabController(
-          key: ValueKey(
-            '${tipos.join("|")}::${_anioSeleccionado ?? "all"}::$_soloActivos',
+    return MyLoaderOverlay(
+      child: DefaultTabController(
+        key: ValueKey(
+          '${tipos.join("|")}::${_anioSeleccionado ?? "all"}::$_soloActivos',
+        ),
+        length: tipos.isEmpty ? 1 : tipos.length, // evitar length=0
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              'Modelos',
+              style: tt.titleLarge?.copyWith(color: cs.onSurface),
+            ),
+            centerTitle: true,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            bottom: _cargandoInicial || tipos.isEmpty
+                ? null
+                : TabBar(
+                    isScrollable: true,
+                    indicatorColor: cs.onSurface,
+                    labelColor: cs.onSurface,
+                    unselectedLabelColor: cs.secondary.withOpacity(0.6),
+                    tabs: [
+                      for (final t in tipos)
+                        Tab(text: '$t (${grupos[t]?.length ?? 0})'),
+                    ],
+                  ),
           ),
-          length: tipos.length,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(
-                'Modelos',
-                style: tt.titleLarge?.copyWith(color: cs.onSurface),
-              ),
-              centerTitle: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              bottom: tipos.isNotEmpty
-                  ? TabBar(
-                      isScrollable: true,
-                      indicatorColor: cs.onSurface,
-                      labelColor: cs.onSurface,
-                      unselectedLabelColor: cs.secondary.withOpacity(0.6),
-                      tabs: [
-                        for (final t in tipos)
-                          Tab(text: '$t (${grupos[t]?.length ?? 0})'),
-                      ],
-                    )
-                  : null,
-            ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () async {
-                final ok = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ModelosFormPage()),
-                );
-                if (mounted && ok == true) {
-                  await _cargarModelos();
-                }
-              },
-              tooltip: 'Agregar nuevo modelo',
-              child: const Icon(Icons.add),
-            ),
-            body: Column(
-              children: [
-                _buildFiltros(
-                  context,
-                  anios,
-                  grupos['Todos']?.length ??
-                      0, // usa solo el total de la pestaña “Todos”
+          floatingActionButton: _cargandoInicial
+              ? null
+              : FloatingActionButton(
+                  onPressed: () async {
+                    final ok = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ModelosFormPage(),
+                      ),
+                    );
+                    if (mounted && ok == true) {
+                      await _cargarModelos();
+                    }
+                  },
+                  tooltip: 'Agregar nuevo modelo',
+                  child: const Icon(Icons.add),
                 ),
-                Expanded(
-                  child: _cargandoInicial
-                      ? const Center(child: CircularProgressIndicator())
-                      : TabBarView(
-                          children: [
-                            for (final t in tipos)
-                              RefreshIndicator(
-                                color: cs.secondary,
-                                onRefresh: _cargarModelos,
-                                child: _buildListaTab(
-                                  context,
-                                  grupos[t] ?? const [],
+          body: _cargandoInicial
+              ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
+              : Column(
+                  children: [
+                    _buildFiltros(context, anios, grupos['Todos']?.length ?? 0),
+                    Expanded(
+                      child: tipos.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No hay modelos para mostrar',
+                                style: tt.bodyLarge?.copyWith(
+                                  color: cs.onSurface,
                                 ),
                               ),
-                          ],
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        if (_abriendoPdf)
-          ModalBarrier(
-            dismissible: false,
-            color: Colors.black.withOpacity(0.25),
-          ),
-        if (_abriendoPdf)
-          const Center(
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(16)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 12),
-                    Text('Abriendo ficha técnica...'),
+                            )
+                          : TabBarView(
+                              children: [
+                                for (final t in tipos)
+                                  RefreshIndicator(
+                                    color: cs.secondary,
+                                    onRefresh: _cargarModelos,
+                                    child: _buildListaTab(
+                                      context,
+                                      grupos[t] ?? const [],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                    ),
                   ],
                 ),
-              ),
-            ),
-          ),
-      ],
+        ),
+      ),
     );
   }
 
   // ========================== Widgets auxiliares ==============================
 
   Widget _buildFiltros(BuildContext context, List<int> anios, int totalActual) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Column(
         children: [
-          // Línea 1: Chips de año (centrados y scroll si desbordan)
+          // Línea 1: chips de año
           SizedBox(
             height: 44,
             child: LayoutBuilder(
@@ -221,8 +199,7 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
                       },
                     ),
                   ),
-
-                  // Chips por año
+                  // Resto de años
                   for (final y in anios)
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
@@ -262,7 +239,6 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
                     ),
                 ];
 
-                // Centra cuando hay espacio; si no, permite scroll horizontal
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: ConstrainedBox(
@@ -278,29 +254,6 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
           ),
 
           const SizedBox(height: 4),
-
-          // Línea 2: Solo activos + total + acción masiva
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  const Text('Solo activos'),
-                  Switch.adaptive(
-                    value: _soloActivos,
-                    onChanged: (v) => setState(() => _soloActivos = v),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              Chip(
-                label: Text('Total: $totalActual'),
-                backgroundColor: colorScheme.surface,
-              ),
-              const SizedBox(width: 8),
-              _buildAccionMasiva(),
-            ],
-          ),
         ],
       ),
     );
@@ -323,7 +276,7 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: modelos.length,
       itemBuilder: (context, index) {
         final m = modelos[index];
@@ -345,7 +298,6 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
                 ),
               );
             },
-
             onActualizado: () async {
               await _cargarModelos();
             },
@@ -355,106 +307,40 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
     );
   }
 
-  Widget _buildAccionMasiva() {
-    // Determinar contra la pestaña activa: tomamos el DefaultTabController
-    final controller = DefaultTabController.maybeOf(context);
-    final tipos = ref.read(modelosProvider.notifier).tiposUnicos;
-    final idx = (controller?.index ?? 0).clamp(0, tipos.length - 1);
-    final tipoActivo = tipos[idx];
-
-    final visibles = ref
-        .read(modelosProvider.notifier)
-        .filtrar(
-          tipo: tipoActivo == 'Todos' ? null : tipoActivo,
-          incluirInactivos: !_soloActivos,
-          anio: _anioSeleccionado,
-        );
-
-    final todosLocales =
-        visibles.isNotEmpty &&
-        visibles.every((m) {
-          return m.fichaRutaLocal.isNotEmpty &&
-              File(m.fichaRutaLocal).existsSync();
-        });
-
-    if (_trabajandoMasivo) {
-      return const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
-
-    return IconButton(
-      icon: Icon(
-        todosLocales ? Icons.delete_outline : Icons.download_for_offline,
-      ),
-      tooltip: todosLocales
-          ? 'Eliminar todas las fichas locales visibles'
-          : 'Descargar todas las fichas visibles',
-      onPressed: visibles.isEmpty
-          ? null
-          : () async {
-              setState(() => _trabajandoMasivo = true);
-              int ok = 0;
-              if (todosLocales) {
-                // Borrar locales
-                for (final m in visibles) {
-                  await ref
-                      .read(modelosProvider.notifier)
-                      .eliminarFichaLocal(m);
-                  ok++;
-                }
-              } else {
-                // Descargar visibles
-                for (final m in visibles) {
-                  final actualizado = await ref
-                      .read(modelosProvider.notifier)
-                      .descargarFicha(m);
-                  if (updatedHasLocal(actualizado)) ok++;
-                }
-              }
-              setState(() => _trabajandoMasivo = false);
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    todosLocales
-                        ? '🗑️ $ok ficha(s) eliminada(s)'
-                        : '📥 $ok ficha(s) descargada(s)',
-                  ),
-                ),
-              );
-            },
-    );
-  }
-
   bool updatedHasLocal(ModeloDb? m) {
     if (m == null) return false;
     return m.fichaRutaLocal.isNotEmpty && File(m.fichaRutaLocal).existsSync();
   }
 
-  // ============================ Acciones ======================================
+  // ============================ Carga con Overlay ==============================
 
   Future<void> _cargarModelos() async {
     if (!mounted) return;
 
     setState(() => _cargandoInicial = true);
+    FocusScope.of(context).unfocus();
+
+    // Mostrar overlay (idéntico patrón)
+    context.loaderOverlay.show(progress: 'Cargando modelos…');
+
     final inicio = DateTime.now();
 
-    // 👇 Captura TODO antes de await (no vuelvas a tocar ref luego)
+    // Capturar refs antes de await (buenas prácticas)
     final hayInternet = ref.read(connectivityProvider);
     final modelosN = ref.read(modelosProvider.notifier);
     final imgsN = ref.read(modeloImagenesProvider.notifier);
 
     try {
       await modelosN.cargarOfflineFirst();
-      if (!mounted) return; // 👈 por si cambiaste de pestaña durante el await
+
+      if (!mounted) return;
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando imágenes…');
+      }
 
       await imgsN.cargarOfflineFirst();
-      if (!mounted) return;
-    } finally {
-      // spinner mínimo por UX consistente con tus pantallas
+
+      // delay mínimo para UX consistente
       const minSpin = Duration(milliseconds: 1500);
       final elapsed = DateTime.now().difference(inicio);
       if (elapsed < minSpin) {
@@ -462,8 +348,6 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
       }
 
       if (!mounted) return;
-
-      setState(() => _cargandoInicial = false);
 
       if (!hayInternet) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -474,6 +358,13 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
             duration: Duration(seconds: 3),
           ),
         );
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _cargandoInicial = false);
       }
     }
   }
