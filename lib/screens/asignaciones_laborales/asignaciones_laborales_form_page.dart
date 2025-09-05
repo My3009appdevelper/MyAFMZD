@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
@@ -111,6 +112,8 @@ class _AsignacionLaboralFormPageState
               autovalidateMode: AutovalidateMode.onUserInteraction,
               child: ListView(
                 children: [
+                  const SizedBox(height: 12),
+
                   // =================== Colaborador ====================
                   MyPickerSearchField<ColaboradorDb>(
                     items: _colaboradores,
@@ -316,19 +319,34 @@ class _AsignacionLaboralFormPageState
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Overlay + tiempo base
+    if (mounted) {
+      final msg = _esEdicion ? 'Editando asignación…' : 'Creando asignación…';
+      context.loaderOverlay.show(progress: msg);
+    }
+    final inicio = DateTime.now();
+
     final asignNotifier = ref.read(asignacionesLaboralesProvider.notifier);
     final uidEditar = widget.asignacionEditar?.uid;
     final esEdicion = _esEdicion;
 
+    // Validaciones con feedback en overlay
     if (_colaboradorUidSel == null || _colaboradorUidSel!.isEmpty) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Debes seleccionar un colaborador');
       return;
     }
     if (_fechaFin != null && _fechaFin!.isBefore(_fechaInicio)) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ La fecha fin no puede ser anterior a la fecha inicio');
       return;
     }
 
+    if (mounted && context.loaderOverlay.visible) {
+      context.loaderOverlay.progress('Validando traslapes…');
+    }
     final traslapa = asignNotifier.tieneTraslapeEnRango(
       colaboradorUid: _colaboradorUidSel!,
       inicio: _fechaInicio,
@@ -336,12 +354,18 @@ class _AsignacionLaboralFormPageState
       excluirUid: uidEditar,
     );
     if (traslapa) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Existe una asignación traslapada/activa para este colaborador');
       return;
     }
 
     try {
       if (!esEdicion) {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Aplicando cambios…');
+        }
+
         await asignNotifier.crearAsignacion(
           colaboradorUid: _colaboradorUidSel!,
           fechaInicio: _fechaInicio.toUtc(),
@@ -354,19 +378,38 @@ class _AsignacionLaboralFormPageState
           createdByUsuarioUid: '',
           notas: _notasCtrl.text.trim(),
         );
+
+        // Validación de manager ≠ colaborador
         if (_managerUidSel.isNotEmpty && _managerUidSel == _colaboradorUidSel) {
+          if (mounted && context.loaderOverlay.visible)
+            context.loaderOverlay.hide();
           _snack('❌ El colaborador no puede ser su propio manager');
           return;
         }
 
+        // Finalización + delay mínimo
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
+        const minSpin = Duration(milliseconds: 1500);
+        final elapsed = DateTime.now().difference(inicio);
+        if (elapsed < minSpin) {
+          await Future.delayed(minSpin - elapsed);
+        }
+        if (mounted && context.loaderOverlay.visible)
+          context.loaderOverlay.hide();
         if (mounted) Navigator.pop(context, true);
         return;
       }
 
+      // ====== EDICIÓN ======
       final original = widget.asignacionEditar!;
       final originalFin = original.fechaFin;
 
       if (originalFin == null && _fechaFin != null) {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Cerrando asignación…');
+        }
         await asignNotifier.cerrarAsignacion(
           uid: original.uid,
           closedByUsuarioUid: '',
@@ -374,9 +417,15 @@ class _AsignacionLaboralFormPageState
           notasAppend: null,
         );
       } else if (originalFin != null && _fechaFin == null) {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Reabriendo asignación…');
+        }
         await asignNotifier.reabrirAsignacion(uid: original.uid);
       }
 
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Aplicando cambios…');
+      }
       await asignNotifier.editarAsignacion(
         uid: original.uid,
         distribuidorUid: _distribuidorUidSel == original.distribuidorUid
@@ -397,13 +446,28 @@ class _AsignacionLaboralFormPageState
             ? null
             : _notasCtrl.text.trim(),
       );
+
       if (_managerUidSel.isNotEmpty && _managerUidSel == _colaboradorUidSel) {
+        if (mounted && context.loaderOverlay.visible)
+          context.loaderOverlay.hide();
         _snack('❌ El colaborador no puede ser su propio manager');
         return;
       }
 
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Finalizando…');
+      }
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Error al guardar: $e');
     }
   }
@@ -413,6 +477,11 @@ class _AsignacionLaboralFormPageState
     final a = widget.asignacionEditar!;
     final asignNotifier = ref.read(asignacionesLaboralesProvider.notifier);
 
+    if (mounted) {
+      context.loaderOverlay.show(progress: 'Cerrando asignación…');
+    }
+    final inicio = DateTime.now();
+
     try {
       final fin = DateTime.now();
       await asignNotifier.cerrarAsignacion(
@@ -421,8 +490,21 @@ class _AsignacionLaboralFormPageState
         fechaFin: fin,
         notasAppend: null,
       );
+
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Finalizando…');
+      }
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ No se pudo cerrar: $e');
     }
   }
@@ -432,10 +514,28 @@ class _AsignacionLaboralFormPageState
     final a = widget.asignacionEditar!;
     final asignNotifier = ref.read(asignacionesLaboralesProvider.notifier);
 
+    if (mounted) {
+      context.loaderOverlay.show(progress: 'Reabriendo asignación…');
+    }
+    final inicio = DateTime.now();
+
     try {
       await asignNotifier.reabrirAsignacion(uid: a.uid);
+
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Finalizando…');
+      }
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ No se pudo reabrir: $e');
     }
   }

@@ -4,6 +4,10 @@ import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
 
+// 👇 Importa las HomeScreens
+import 'package:myafmzd/screens/home_screen.dart';
+import 'package:myafmzd/screens/admin_home_screen.dart';
+
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
@@ -29,6 +33,45 @@ class AppDrawer extends ConsumerWidget {
               ),
             ),
           ),
+
+          // 🌐 Ir al Home principal (reset pila)
+          ListTile(
+            leading: const Icon(Icons.home),
+            title: Text(
+              'Home',
+              style: textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            onTap: () {
+              Navigator.of(context).pop(); // cierra drawer
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                (route) => false,
+              );
+            },
+          ),
+
+          // 🛠️ Ir al Home de Administración (con back)
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings),
+            title: Text(
+              'Administración',
+              style: textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            onTap: () {
+              Navigator.of(context).pop(); // cierra drawer
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
+              );
+            },
+          ),
+
+          const Divider(),
+
+          // 🌓 Tema
           ListTile(
             leading: Icon(isDark ? Icons.dark_mode : Icons.light_mode),
             title: Text(
@@ -95,16 +138,12 @@ class AppDrawer extends ConsumerWidget {
               );
 
               if (confirm == true) {
-                // 🔑 Cerrar sesión con Supabase
                 await Supabase.instance.client.auth.signOut();
-
-                // 🧹 Limpiar perfilProvider
                 ref.read(perfilProvider.notifier).limpiarUsuario();
 
-                // 🔁 Navegación limpia
                 if (context.mounted) {
                   Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/', // Ruta de InitialScreen
+                    '/', // tu InitialScreen
                     (_) => false,
                   );
                 }

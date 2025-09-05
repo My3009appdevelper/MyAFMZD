@@ -11,7 +11,6 @@ import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/screens/modelos/modelo_detalle_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_form_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_tile.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class ModelosScreen extends ConsumerStatefulWidget {
   const ModelosScreen({super.key});
@@ -62,84 +61,80 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
             ),
     };
 
-    return MyLoaderOverlay(
-      child: DefaultTabController(
-        key: ValueKey(
-          '${tipos.join("|")}::${_anioSeleccionado ?? "all"}::$_soloActivos',
-        ),
-        length: tipos.isEmpty ? 1 : tipos.length, // evitar length=0
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(
-              'Modelos',
-              style: tt.titleLarge?.copyWith(color: cs.onSurface),
-            ),
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            bottom: _cargandoInicial || tipos.isEmpty
-                ? null
-                : TabBar(
-                    isScrollable: true,
-                    indicatorColor: cs.onSurface,
-                    labelColor: cs.onSurface,
-                    unselectedLabelColor: cs.secondary.withOpacity(0.6),
-                    tabs: [
-                      for (final t in tipos)
-                        Tab(text: '$t (${grupos[t]?.length ?? 0})'),
-                    ],
-                  ),
+    return DefaultTabController(
+      key: ValueKey(
+        '${tipos.join("|")}::${_anioSeleccionado ?? "all"}::$_soloActivos',
+      ),
+      length: tipos.isEmpty ? 1 : tipos.length, // evitar length=0
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Modelos',
+            style: tt.titleLarge?.copyWith(color: cs.onSurface),
           ),
-          floatingActionButton: _cargandoInicial
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          bottom: _cargandoInicial || tipos.isEmpty
               ? null
-              : FloatingActionButton(
-                  onPressed: () async {
-                    final ok = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ModelosFormPage(),
-                      ),
-                    );
-                    if (mounted && ok == true) {
-                      await _cargarModelos();
-                    }
-                  },
-                  tooltip: 'Agregar nuevo modelo',
-                  child: const Icon(Icons.add),
-                ),
-          body: _cargandoInicial
-              ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
-              : Column(
-                  children: [
-                    _buildFiltros(context, anios, grupos['Todos']?.length ?? 0),
-                    Expanded(
-                      child: tipos.isEmpty
-                          ? Center(
-                              child: Text(
-                                'No hay modelos para mostrar',
-                                style: tt.bodyLarge?.copyWith(
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                            )
-                          : TabBarView(
-                              children: [
-                                for (final t in tipos)
-                                  RefreshIndicator(
-                                    color: cs.secondary,
-                                    onRefresh: _cargarModelos,
-                                    child: _buildListaTab(
-                                      context,
-                                      grupos[t] ?? const [],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                    ),
+              : TabBar(
+                  isScrollable: true,
+                  indicatorColor: cs.onSurface,
+                  labelColor: cs.onSurface,
+                  unselectedLabelColor: cs.secondary.withOpacity(0.6),
+                  tabs: [
+                    for (final t in tipos)
+                      Tab(text: '$t (${grupos[t]?.length ?? 0})'),
                   ],
                 ),
         ),
+        floatingActionButton: _cargandoInicial
+            ? null
+            : FloatingActionButton(
+                onPressed: () async {
+                  final ok = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ModelosFormPage()),
+                  );
+                  if (mounted && ok == true) {
+                    await _cargarModelos();
+                  }
+                },
+                tooltip: 'Agregar nuevo modelo',
+                child: const Icon(Icons.add),
+              ),
+        body: _cargandoInicial
+            ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
+            : Column(
+                children: [
+                  _buildFiltros(context, anios, grupos['Todos']?.length ?? 0),
+                  Expanded(
+                    child: tipos.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No hay modelos para mostrar',
+                              style: tt.bodyLarge?.copyWith(
+                                color: cs.onSurface,
+                              ),
+                            ),
+                          )
+                        : TabBarView(
+                            children: [
+                              for (final t in tipos)
+                                RefreshIndicator(
+                                  color: cs.secondary,
+                                  onRefresh: _cargarModelos,
+                                  child: _buildListaTab(
+                                    context,
+                                    grupos[t] ?? const [],
+                                  ),
+                                ),
+                            ],
+                          ),
+                  ),
+                ],
+              ),
       ),
     );
   }

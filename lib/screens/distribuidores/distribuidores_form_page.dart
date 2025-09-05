@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
@@ -190,35 +191,60 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!mounted) return;
 
+    // UX: cerrar teclado antes de mostrar overlay
+    FocusScope.of(context).unfocus();
+
+    // Overlay base + timer para delay mínimo
+    context.loaderOverlay.show(
+      progress: _esEdicion
+          ? 'Editando distribuidor…'
+          : 'Guardando distribuidor…',
+    );
+    final inicio = DateTime.now();
+
+    // ---- Lee valores de forma defensiva ----
     final nombre = _nombreController.text.trim();
     final grupo = _grupoController.text.trim();
     final direccion = _direccionController.text.trim();
-
     double toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
     final lat = toDouble(_latController.text);
     final lng = toDouble(_lngController.text);
 
     final distribuidoresNotifier = ref.read(distribuidoresProvider.notifier);
 
-    // Validación de duplicados
-    final duplicado = distribuidoresNotifier.existeDuplicado(
-      uidActual: widget.distribuidorEditar?.uid ?? '',
-      nombre: nombre,
-      direccion: direccion.isEmpty ? null : direccion,
-    );
-    if (duplicado) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            '❌ Ya existe un distribuidor con ese nombre o dirección',
-          ),
-        ),
-      );
-      return;
-    }
-
     try {
+      // Paso intermedio (consistente con tus Screens/FormPages)
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Validando datos…');
+      }
+
+      // Validación de duplicados (con overlay)
+      final duplicado = distribuidoresNotifier.existeDuplicado(
+        uidActual: widget.distribuidorEditar?.uid ?? '',
+        nombre: nombre,
+        direccion: direccion.isEmpty ? null : direccion,
+      );
+      if (duplicado) {
+        if (context.loaderOverlay.visible) context.loaderOverlay.hide();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '❌ Ya existe un distribuidor con ese nombre o dirección',
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Persistencia
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress(
+          _esEdicion ? 'Aplicando cambios…' : 'Creando distribuidor…',
+        );
+      }
+
       if (_esEdicion) {
         await distribuidoresNotifier.editarDistribuidor(
           uid: widget.distribuidorEditar!.uid,
@@ -229,7 +255,6 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
           latitud: lat,
           longitud: lng,
         );
-        if (mounted) Navigator.pop(context, true);
       } else {
         await distribuidoresNotifier.crearDistribuidor(
           nombre: nombre,
@@ -239,12 +264,31 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
           latitud: lat,
           longitud: lng,
         );
-        if (mounted) Navigator.pop(context, true);
       }
+
+      // Delay mínimo para consistencia visual
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      // Ocultar overlay ANTES de navegar (UX consistente)
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      // Error: feedback + seguridad
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
+    } finally {
+      // Por si hubo un early return/throw
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
     }
   }
 }

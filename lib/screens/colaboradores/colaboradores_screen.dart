@@ -6,7 +6,6 @@ import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_form_page.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_tile.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class ColaboradoresScreen extends ConsumerStatefulWidget {
   const ColaboradoresScreen({super.key});
@@ -41,85 +40,83 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
 
     final colaboradores = ref.watch(colaboradoresProvider);
 
-    return MyLoaderOverlay(
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Colaboradores",
-            style: tt.titleLarge?.copyWith(color: cs.onSurface),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Colaboradores",
+          style: tt.titleLarge?.copyWith(color: cs.onSurface),
         ),
-        floatingActionButton: _cargandoInicial
-            ? null
-            : FloatingActionButton(
-                onPressed: () async {
-                  final ok = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ColaboradorFormPage(),
-                    ),
-                  );
-                  if (mounted && ok == true) {
-                    await _cargarColaboradores();
-                  }
-                },
-                tooltip: 'Agregar colaborador',
-                child: const Icon(Icons.add),
-              ),
-        body: Column(
-          children: [
-            if (!_cargandoInicial) _buildResumen(context, colaboradores.length),
-            Expanded(
-              child: _cargandoInicial
-                  ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
-                  : RefreshIndicator(
-                      color: cs.secondary,
-                      onRefresh: _cargarColaboradores,
-                      child: colaboradores.isEmpty
-                          ? ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: const [
-                                SizedBox(height: 80),
-                                Center(child: Text('No hay colaboradores')),
-                              ],
-                            )
-                          : ListView.builder(
-                              physics: const BouncingScrollPhysics(
-                                parent: AlwaysScrollableScrollPhysics(),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 24,
-                              ),
-                              itemCount: colaboradores.length,
-                              itemBuilder: (context, index) {
-                                final c = colaboradores[index];
-                                return Card(
-                                  color: cs.surface,
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 2,
-                                  child: ColaboradorItemTile(
-                                    key: ValueKey(c.uid),
-                                    colaborador: c,
-                                    onTap: () {},
-                                    onActualizado: () async {
-                                      await _cargarColaboradores();
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      floatingActionButton: _cargandoInicial
+          ? null
+          : FloatingActionButton(
+              onPressed: () async {
+                final ok = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ColaboradorFormPage(),
+                  ),
+                );
+                if (mounted && ok == true) {
+                  await _cargarColaboradores();
+                }
+              },
+              tooltip: 'Agregar colaborador',
+              child: const Icon(Icons.add),
             ),
-          ],
-        ),
+      body: Column(
+        children: [
+          if (!_cargandoInicial) _buildResumen(context, colaboradores.length),
+          Expanded(
+            child: _cargandoInicial
+                ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
+                : RefreshIndicator(
+                    color: cs.secondary,
+                    onRefresh: _cargarColaboradores,
+                    child: colaboradores.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              SizedBox(height: 80),
+                              Center(child: Text('No hay colaboradores')),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const BouncingScrollPhysics(
+                              parent: AlwaysScrollableScrollPhysics(),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 24,
+                            ),
+                            itemCount: colaboradores.length,
+                            itemBuilder: (context, index) {
+                              final c = colaboradores[index];
+                              return Card(
+                                color: cs.surface,
+                                margin: const EdgeInsets.only(bottom: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                                child: ColaboradorItemTile(
+                                  key: ValueKey(c.uid),
+                                  colaborador: c,
+                                  onTap: () {},
+                                  onActualizado: () async {
+                                    await _cargarColaboradores();
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+          ),
+        ],
       ),
     );
   }

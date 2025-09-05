@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_form_page.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
 import 'package:myafmzd/widgets/visor_pdf.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/reportes/reportes_tile.dart';
@@ -46,31 +45,69 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       await _cargarReportes();
     });
 
-    return MyLoaderOverlay(
-      child: _cargandoInicial
-          // Estado inicial: sin tabs, sin filtro, sin FAB (solo el overlay visible)
-          ? Scaffold(
-              appBar: AppBar(
-                title: Text(
-                  "Reportes Mensuales",
-                  style: textTheme.titleLarge?.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
+    return _cargandoInicial
+        // Estado inicial: sin tabs, sin filtro, sin FAB (solo el overlay visible)
+        ? Scaffold(
+            appBar: AppBar(
+              title: Text(
+                "Reportes Mensuales",
+                style: textTheme.titleLarge?.copyWith(
+                  color: colorScheme.onSurface,
                 ),
-                centerTitle: true,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                scrolledUnderElevation: 0,
-                // OJO: sin bottom mientras carga
               ),
-              body:
-                  const SizedBox.shrink(), // el overlay ya muestra “Cargando…”
-              // sin FAB mientras carga
-            )
-          // Ya cargado: ahora sí TabController + Tabs + FAB
-          : (tipos.isEmpty
-                // Sin tipos: estado vacío (sin TabController para evitar length=0)
-                ? Scaffold(
+              centerTitle: true,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              // OJO: sin bottom mientras carga
+            ),
+            body: const SizedBox.shrink(), // el overlay ya muestra “Cargando…”
+            // sin FAB mientras carga
+          )
+        // Ya cargado: ahora sí TabController + Tabs + FAB
+        : (tipos.isEmpty
+              // Sin tipos: estado vacío (sin TabController para evitar length=0)
+              ? Scaffold(
+                  appBar: AppBar(
+                    title: Text(
+                      "Reportes Mensuales",
+                      style: textTheme.titleLarge?.copyWith(
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    centerTitle: true,
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    scrolledUnderElevation: 0,
+                  ),
+                  body: Center(
+                    child: Text(
+                      'No hay reportes para mostrar',
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  floatingActionButton: FloatingActionButton(
+                    onPressed: () async {
+                      final resultado = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ReporteFormPage(),
+                        ),
+                      );
+                      if (mounted && resultado == true) {
+                        await _cargarReportes();
+                      }
+                    },
+                    tooltip: 'Agregar nuevo reporte',
+                    child: const Icon(Icons.add),
+                  ),
+                )
+              // Con tipos: TabController, TabBar y TabBarView sincronizados
+              : DefaultTabController(
+                  length: tipos.length,
+                  child: Scaffold(
                     appBar: AppBar(
                       title: Text(
                         "Reportes Mensuales",
@@ -82,13 +119,17 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                       backgroundColor: Colors.transparent,
                       elevation: 0,
                       scrolledUnderElevation: 0,
-                    ),
-                    body: Center(
-                      child: Text(
-                        'No hay reportes para mostrar',
-                        style: textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurface,
+                      bottom: TabBar(
+                        isScrollable: true,
+                        indicatorColor: colorScheme.onSurface,
+                        labelColor: colorScheme.onSurface,
+                        unselectedLabelColor: colorScheme.secondary.withOpacity(
+                          0.6,
                         ),
+                        tabs: tipos.map((t) {
+                          final count = (grupos[t] ?? const []).length;
+                          return Tab(text: '$t ($count)');
+                        }).toList(),
                       ),
                     ),
                     floatingActionButton: FloatingActionButton(
@@ -106,96 +147,52 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                       tooltip: 'Agregar nuevo reporte',
                       child: const Icon(Icons.add),
                     ),
-                  )
-                // Con tipos: TabController, TabBar y TabBarView sincronizados
-                : DefaultTabController(
-                    length: tipos.length,
-                    child: Scaffold(
-                      appBar: AppBar(
-                        title: Text(
-                          "Reportes Mensuales",
-                          style: textTheme.titleLarge?.copyWith(
-                            color: colorScheme.onSurface,
+                    body: Column(
+                      children: [
+                        if (mesesDisponibles.length > 1)
+                          _buildFiltroMes(
+                            mesesDisponibles,
+                            mesSeleccionado,
+                            totalMes,
                           ),
-                        ),
-                        centerTitle: true,
-                        backgroundColor: Colors.transparent,
-                        elevation: 0,
-                        scrolledUnderElevation: 0,
-                        bottom: TabBar(
-                          isScrollable: true,
-                          indicatorColor: colorScheme.onSurface,
-                          labelColor: colorScheme.onSurface,
-                          unselectedLabelColor: colorScheme.secondary
-                              .withOpacity(0.6),
-                          tabs: tipos.map((t) {
-                            final count = (grupos[t] ?? const []).length;
-                            return Tab(text: '$t ($count)');
-                          }).toList(),
-                        ),
-                      ),
-                      floatingActionButton: FloatingActionButton(
-                        onPressed: () async {
-                          final resultado = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ReporteFormPage(),
-                            ),
-                          );
-                          if (mounted && resultado == true) {
-                            await _cargarReportes();
-                          }
-                        },
-                        tooltip: 'Agregar nuevo reporte',
-                        child: const Icon(Icons.add),
-                      ),
-                      body: Column(
-                        children: [
-                          if (mesesDisponibles.length > 1)
-                            _buildFiltroMes(
-                              mesesDisponibles,
-                              mesSeleccionado,
-                              totalMes,
-                            ),
 
-                          Expanded(
-                            child: TabBarView(
-                              children: tipos.map((tipo) {
-                                final reportes = grupos[tipo] ?? [];
-                                return RefreshIndicator(
-                                  onRefresh: _cargarReportes,
-                                  child: ListView.builder(
-                                    physics: const BouncingScrollPhysics(
-                                      parent: AlwaysScrollableScrollPhysics(),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 24,
-                                    ),
-                                    itemCount: reportes.length,
-                                    itemBuilder: (context, index) {
-                                      final reporte = reportes[index];
-                                      return ReporteItemTile(
-                                        key: ValueKey(reporte.uid),
-                                        reporte: reporte,
-                                        onTap: () async {
-                                          await _abrirReporte(reporte.uid);
-                                        },
-                                        onActualizado: () async {
-                                          await _cargarReportes();
-                                        },
-                                      );
-                                    },
+                        Expanded(
+                          child: TabBarView(
+                            children: tipos.map((tipo) {
+                              final reportes = grupos[tipo] ?? [];
+                              return RefreshIndicator(
+                                onRefresh: _cargarReportes,
+                                child: ListView.builder(
+                                  physics: const BouncingScrollPhysics(
+                                    parent: AlwaysScrollableScrollPhysics(),
                                   ),
-                                );
-                              }).toList(),
-                            ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 24,
+                                  ),
+                                  itemCount: reportes.length,
+                                  itemBuilder: (context, index) {
+                                    final reporte = reportes[index];
+                                    return ReporteItemTile(
+                                      key: ValueKey(reporte.uid),
+                                      reporte: reporte,
+                                      onTap: () async {
+                                        await _abrirReporte(reporte.uid);
+                                      },
+                                      onActualizado: () async {
+                                        await _cargarReportes();
+                                      },
+                                    );
+                                  },
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  )),
-    );
+                  ),
+                ));
   }
 
   Widget _buildFiltroMes(
@@ -335,6 +332,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
     if (!mounted) return;
     context.loaderOverlay.show(progress: 'Abriendo reporte…');
+    final inicio = DateTime.now();
 
     File? archivo;
 
@@ -366,7 +364,14 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         return;
       }
 
-      // Oculta overlay ANTES de navegar (importante para UX)
+      // Delay mínimo de 1500 ms para UX consistente
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      // Oculta overlay ANTES de navegar
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }
@@ -380,7 +385,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         ),
       );
     } finally {
-      // Por si saliste por excepciones sin alcanzar el hide previo
+      // Por si hubo excepción o return temprano
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }

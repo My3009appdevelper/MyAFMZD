@@ -6,7 +6,6 @@ import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_tile.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_form_page.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class UsuariosScreen extends ConsumerStatefulWidget {
   const UsuariosScreen({super.key});
@@ -37,65 +36,63 @@ class _UsuariosScreenState extends ConsumerState<UsuariosScreen> {
       await _cargarUsuarios();
     });
 
-    return MyLoaderOverlay(
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Usuarios",
-            style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Usuarios",
+          style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
         ),
-        body: _cargandoInicial
-            ? const SizedBox.shrink()
-            : RefreshIndicator(
-                color: colorScheme.secondary,
-                onRefresh: _cargarUsuarios,
-                child: ListView.builder(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 24,
-                  ),
-                  itemCount: usuariosNotifier.length,
-                  itemBuilder: (context, index) {
-                    final usuario = usuariosNotifier[index];
-                    return Card(
-                      color: colorScheme.surface,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
-                      child: UsuariosItemTile(
-                        key: ValueKey(usuario.uid),
-                        usuario: usuario,
-                        onTap: () {},
-                        onActualizado: () async {
-                          await _cargarUsuarios();
-                        },
-                      ),
-                    );
-                  },
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: _cargandoInicial
+          ? const SizedBox.shrink()
+          : RefreshIndicator(
+              color: colorScheme.secondary,
+              onRefresh: _cargarUsuarios,
+              child: ListView.builder(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
                 ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
+                itemCount: usuariosNotifier.length,
+                itemBuilder: (context, index) {
+                  final usuario = usuariosNotifier[index];
+                  return Card(
+                    color: colorScheme.surface,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                    child: UsuariosItemTile(
+                      key: ValueKey(usuario.uid),
+                      usuario: usuario,
+                      onTap: () {},
+                      onActualizado: () async {
+                        await _cargarUsuarios();
+                      },
+                    ),
+                  );
+                },
               ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const UsuariosFormPage()),
-            );
-            if (result == true) {
-              await _cargarUsuarios();
-            }
-          },
-          child: const Icon(Icons.add),
-        ),
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const UsuariosFormPage()),
+          );
+          if (result == true) {
+            await _cargarUsuarios();
+          }
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }

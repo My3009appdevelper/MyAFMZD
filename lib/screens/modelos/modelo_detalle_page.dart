@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
@@ -42,6 +43,61 @@ class ModeloDetallePage extends ConsumerWidget {
 
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    Future<void> _abrirFicha() async {
+      final notifier = ref.read(modelosProvider.notifier);
+      ModeloDb? actualizado;
+
+      // Mostrar overlay
+      if (context.mounted) {
+        context.loaderOverlay.show(progress: 'Abriendo ficha…');
+      }
+
+      try {
+        // 1) Intentar abrir local
+        if (modelo.fichaRutaLocal.isNotEmpty &&
+            File(modelo.fichaRutaLocal).existsSync()) {
+          actualizado = modelo;
+        } else if (modelo.fichaRutaRemota.isNotEmpty) {
+          // 2) Descargar si no existe local
+          if (context.mounted && context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Descargando PDF…');
+          }
+          actualizado = await notifier.descargarFicha(modelo);
+        }
+
+        // 3) Validar y navegar
+        if (actualizado != null &&
+            actualizado.fichaRutaLocal.isNotEmpty &&
+            File(actualizado.fichaRutaLocal).existsSync()) {
+          // Oculta overlay ANTES de navegar (consistente con tus Screens)
+          if (context.mounted && context.loaderOverlay.visible) {
+            context.loaderOverlay.hide();
+          }
+          if (context.mounted) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VisorPDF(
+                  assetPath: actualizado!.fichaRutaLocal,
+                  titulo: '${modelo.modelo} ${modelo.anio}',
+                ),
+              ),
+            );
+          }
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ficha técnica no disponible')),
+            );
+          }
+        }
+      } finally {
+        // Seguridad: por si saliste por excepciones sin alcanzar el hide previo
+        if (context.mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.hide();
+        }
+      }
+    }
 
     // Estilos de etiqueta/valor (negritas para etiqueta, normal para valor)
     final labelStyle = tt.titleMedium?.copyWith(
@@ -187,39 +243,7 @@ class ModeloDetallePage extends ConsumerWidget {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                     ),
-                    onPressed: () async {
-                      final notifier = ref.read(modelosProvider.notifier);
-                      ModeloDb? actualizado;
-
-                      if (modelo.fichaRutaLocal.isNotEmpty &&
-                          File(modelo.fichaRutaLocal).existsSync()) {
-                        actualizado = modelo;
-                      } else if (modelo.fichaRutaRemota.isNotEmpty) {
-                        actualizado = await notifier.descargarFicha(modelo);
-                      }
-
-                      if (actualizado != null &&
-                          actualizado.fichaRutaLocal.isNotEmpty &&
-                          File(actualizado.fichaRutaLocal).existsSync()) {
-                        if (context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => VisorPDF(
-                                assetPath: actualizado!.fichaRutaLocal,
-                                titulo: '${modelo.modelo} ${modelo.anio}',
-                              ),
-                            ),
-                          );
-                        }
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Ficha técnica no disponible"),
-                          ),
-                        );
-                      }
-                    },
+                    onPressed: _abrirFicha,
                   ),
                 ),
               ],

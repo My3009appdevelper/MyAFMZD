@@ -6,7 +6,6 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class PerfilScreen extends ConsumerStatefulWidget {
   const PerfilScreen({super.key});
@@ -38,90 +37,84 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     });
 
     if (usuario == null) {
-      return MyLoaderOverlay(
-        child: Scaffold(
-          body: Center(
-            child: Text(
-              'Usuario no disponible',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorsTheme.onSurface,
-              ),
-            ),
+      return Scaffold(
+        body: Center(
+          child: Text(
+            'Usuario no disponible',
+            style: textTheme.bodyLarge?.copyWith(color: colorsTheme.onSurface),
           ),
         ),
       );
     }
 
-    return MyLoaderOverlay(
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Perfil",
-            style: textTheme.titleLarge?.copyWith(color: colorsTheme.onSurface),
-          ),
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          scrolledUnderElevation: 0,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Perfil",
+          style: textTheme.titleLarge?.copyWith(color: colorsTheme.onSurface),
         ),
-        body: _cargandoInicial
-            ? const SizedBox.shrink() // el overlay ya muestra "Cargando…"
-            : RefreshIndicator(
-                color: colorsTheme.secondary,
-                onRefresh: _cargarPerfil,
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 32,
-                  ),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    // Card de perfil
-                    Center(
-                      child: Card(
-                        color: colorsTheme.surface,
-                        elevation: 1,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+      ),
+      body: _cargandoInicial
+          ? const SizedBox.shrink() // el overlay ya muestra "Cargando…"
+          : RefreshIndicator(
+              color: colorsTheme.secondary,
+              onRefresh: _cargarPerfil,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  // Card de perfil
+                  Center(
+                    child: Card(
+                      color: colorsTheme.surface,
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 20,
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 20,
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.account_circle,
-                                size: 60,
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.account_circle,
+                              size: 60,
+                              color: colorsTheme.onSurface,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              usuario.userName,
+                              style: textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
                                 color: colorsTheme.onSurface,
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                usuario.userName,
-                                style: textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: colorsTheme.onSurface,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 8),
-                              _buildUserInfoRow(
-                                context,
-                                Icons.email_outlined,
-                                usuario.correo,
-                              ),
-                            ],
-                          ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildUserInfoRow(
+                              context,
+                              Icons.email_outlined,
+                              usuario.correo,
+                            ),
+                          ],
                         ),
                       ),
                     ),
+                  ),
 
-                    const SizedBox(height: 32),
-                  ],
-                ),
+                  const SizedBox(height: 32),
+                ],
               ),
-      ),
+            ),
     );
   }
 

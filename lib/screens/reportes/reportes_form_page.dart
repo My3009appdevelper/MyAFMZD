@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/widgets/chip_picker.dart';
@@ -33,6 +35,9 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
   // Selección normalizada (como en modelos)
   String _tipoSel = '';
+
+  bool _guardando = false; // evita doble 'Guardar'
+  bool _abriendoPicker = false; // evita abrir el picker varias veces
 
   @override
   void initState() {
@@ -195,14 +200,28 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_guardando) return;
+    _guardando = true;
+
+    // UX: cerrar teclado
+    FocusScope.of(context).unfocus();
+
+    // Overlay + cronómetro para delay mínimo
+    context.loaderOverlay.show(
+      progress: _esEdicion ? 'Editando reporte…' : 'Guardando reporte…',
+    );
+    final inicio = DateTime.now();
 
     final nombre = _nombreController.text.trim();
     final tipo = _tipoController.text.trim();
-
     final reporteNotifier = ref.read(reporteProvider.notifier);
 
     try {
       if (_esEdicion) {
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Aplicando cambios…');
+        }
+
         final actualizado = widget.reporteEditar!.copyWith(
           nombre: nombre,
           tipo: tipo,
@@ -218,14 +237,20 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo PDF…');
+          }
           await reporteNotifier.subirNuevoPDF(
             reporte: nuevo,
             archivo: _archivoPDFSeleccionado!,
             nuevoPath: _rutaRemotaController.text.trim(),
           );
         }
-        if (mounted) Navigator.pop(context, true);
       } else {
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Creando reporte…');
+        }
+
         final nuevo = await reporteNotifier.crearReporteLocal(
           nombre: nombre,
           tipo: tipo,
@@ -235,19 +260,118 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
 
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo PDF…');
+          }
           await reporteNotifier.subirNuevoPDF(
             reporte: nuevo,
             archivo: _archivoPDFSeleccionado!,
             nuevoPath: _rutaRemotaController.text.trim(),
           );
         }
-        if (mounted) Navigator.pop(context, true);
+      }
+
+      // Delay mínimo para UX consistente
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      // Oculta overlay ANTES de cerrar
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      _guardando = false;
+    }
+  }
+
+  Future<void> _seleccionarPDF() async {
+    if (_abriendoPicker) return; // evita múltiples diálogos
+    _abriendoPicker = true;
+
+    // Muestra overlay mientras se abre y procesa el archivo
+    context.loaderOverlay.show(progress: 'Abriendo selector…');
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (result == null || result.files.single.path == null) return;
+
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Preparando archivo…');
+      }
+
+      _archivoPDFSeleccionado = File(result.files.single.path!);
+
+      // Normaliza nombre → slug + .pdf
+      final nombreOriginal = result.files.single.name;
+      final base = p.basenameWithoutExtension(nombreOriginal);
+      final safeBase = slugify(base.trim());
+      final fileName = safeBase.isEmpty ? 'reporte' : safeBase;
+      final nombreArchivo = '$fileName.pdf';
+
+      // Ruta: reportes/YYYY-MM/archivo.pdf (respeta _fecha seleccionada)
+      final mes =
+          '${_fecha.year.toString().padLeft(4, '0')}-${_fecha.month.toString().padLeft(2, '0')}';
+      final rutaRemota = 'reportes/$mes/$nombreArchivo';
+
+      if (!mounted) return;
+      setState(() {
+        _rutaRemotaController.text = rutaRemota;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF preparado para subir')),
+        );
+      }
+    } on PlatformException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo abrir el selector: ${e.code}')),
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error seleccionando PDF: $e')));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      _abriendoPicker = false;
     }
+  }
+
+  String slugify(String texto) {
+    return texto
+        .toLowerCase()
+        .replaceAll(RegExp(r'[áàä]'), 'a')
+        .replaceAll(RegExp(r'[éèë]'), 'e')
+        .replaceAll(RegExp(r'[íìï]'), 'i')
+        .replaceAll(RegExp(r'[óòö]'), 'o')
+        .replaceAll(RegExp(r'[úùü]'), 'u')
+        .replaceAll(RegExp(r'ñ'), 'n')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
   }
 
   Future<void> _seleccionarFecha() async {
@@ -277,52 +401,6 @@ class _ReporteFormPageState extends ConsumerState<ReporteFormPage> {
         }
       });
     }
-  }
-
-  Future<void> _seleccionarPDF() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-
-    if (result == null || result.files.single.path == null) return;
-
-    _archivoPDFSeleccionado = File(result.files.single.path!);
-
-    final nombreOriginal =
-        result.files.single.name; // e.g. "Cotización Ñ 2025.PDF"
-    final base = p.basenameWithoutExtension(nombreOriginal);
-    final safeBase = slugify(base.trim()); // "cotizacion_n_2025"
-    final fileName = safeBase.isEmpty ? 'reporte' : safeBase;
-
-    // fuerza la extensión .pdf en minúsculas
-    final nombreArchivo = '$fileName.pdf';
-
-    final mes =
-        '${_fecha.year.toString().padLeft(4, '0')}-${_fecha.month.toString().padLeft(2, '0')}';
-    final rutaRemota = 'reportes/$mes/$nombreArchivo';
-
-    setState(() {
-      _rutaRemotaController.text = rutaRemota;
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('PDF preparado para subir')));
-  }
-
-  String slugify(String texto) {
-    return texto
-        .toLowerCase()
-        .replaceAll(RegExp(r'[áàä]'), 'a')
-        .replaceAll(RegExp(r'[éèë]'), 'e')
-        .replaceAll(RegExp(r'[íìï]'), 'i')
-        .replaceAll(RegExp(r'[óòö]'), 'o')
-        .replaceAll(RegExp(r'[úùü]'), 'u')
-        .replaceAll(RegExp(r'ñ'), 'n')
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_|_$'), '');
   }
 
   List<String> _mergeStr(List<String> a, Set<String> b) {

@@ -8,7 +8,6 @@ import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_p
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_form_page.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_tile.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
 
 class AsignacionesLaboralesScreen extends ConsumerStatefulWidget {
   const AsignacionesLaboralesScreen({super.key});
@@ -23,8 +22,7 @@ class _AsignacionesLaboralesScreenState
   bool _cargandoInicial = true;
 
   // Filtros
-  bool _soloActivas = true; // Activas (true) / Históricas (false)
-  String _filtroRol = ''; // vacío => todos
+  bool _soloActivas = true; // Activas (true) / Inactivas (false)
   String _filtroDistribuidorUid = ''; // vacío => todos
 
   @override
@@ -51,19 +49,15 @@ class _AsignacionesLaboralesScreenState
     final _ = ref.watch(asignacionesLaboralesProvider);
 
     // Datos auxiliares para filtros
-    final roles = ref
-        .read(asignacionesLaboralesProvider.notifier)
-        .opcionesRol; // ['vendedor',...]
     final distribuidores =
         ref.watch(distribuidoresProvider).where((d) => !d.deleted).toList()
           ..sort((a, b) => a.nombre.compareTo(b.nombre));
 
-    // Lista visible (derivada del provider)
+    // Lista visible (derivada del provider) — solo por distribuidor
     final visibles = _soloActivas
         ? ref
               .read(asignacionesLaboralesProvider.notifier)
               .listarActivas(
-                rol: _filtroRol.isEmpty ? null : _filtroRol,
                 distribuidorUid: _filtroDistribuidorUid.isEmpty
                     ? null
                     : _filtroDistribuidorUid,
@@ -71,92 +65,88 @@ class _AsignacionesLaboralesScreenState
         : ref
               .read(asignacionesLaboralesProvider.notifier)
               .listarHistoricas(
-                rol: _filtroRol.isEmpty ? null : _filtroRol,
                 distribuidorUid: _filtroDistribuidorUid.isEmpty
                     ? null
                     : _filtroDistribuidorUid,
               );
 
-    return MyLoaderOverlay(
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Asignaciones laborales",
-            style: tt.titleLarge?.copyWith(color: cs.onSurface),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Asignaciones laborales",
+          style: tt.titleLarge?.copyWith(color: cs.onSurface),
         ),
-        floatingActionButton: _cargandoInicial
-            ? null
-            : FloatingActionButton(
-                onPressed: () async {
-                  final ok = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AsignacionLaboralFormPage(),
-                    ),
-                  );
-                  if (mounted && ok == true) {
-                    await _cargarAsignaciones();
-                  }
-                },
-                tooltip: 'Nueva asignación',
-                child: const Icon(Icons.add),
-              ),
-        body: Column(
-          children: [
-            if (!_cargandoInicial)
-              _buildFiltros(context, roles, distribuidores, visibles.length),
-            Expanded(
-              child: _cargandoInicial
-                  ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
-                  : RefreshIndicator(
-                      color: cs.secondary,
-                      onRefresh: _cargarAsignaciones,
-                      child: visibles.isEmpty
-                          ? ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: const [
-                                SizedBox(height: 80),
-                                Center(child: Text('No hay asignaciones')),
-                              ],
-                            )
-                          : ListView.builder(
-                              physics: const BouncingScrollPhysics(
-                                parent: AlwaysScrollableScrollPhysics(),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 24,
-                              ),
-                              itemCount: visibles.length,
-                              itemBuilder: (context, index) {
-                                final a = visibles[index];
-                                return Card(
-                                  color: cs.surface,
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 2,
-                                  child: AsignacionLaboralItemTile(
-                                    key: ValueKey(a.uid),
-                                    asignacion: a,
-                                    onTap: () {},
-                                    onActualizado: () async {
-                                      await _cargarAsignaciones();
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      floatingActionButton: _cargandoInicial
+          ? null
+          : FloatingActionButton(
+              onPressed: () async {
+                final ok = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AsignacionLaboralFormPage(),
+                  ),
+                );
+                if (mounted && ok == true) {
+                  await _cargarAsignaciones();
+                }
+              },
+              tooltip: 'Nueva asignación',
+              child: const Icon(Icons.add),
             ),
-          ],
-        ),
+      body: Column(
+        children: [
+          if (!_cargandoInicial) _buildFiltros(context, distribuidores),
+          Expanded(
+            child: _cargandoInicial
+                ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
+                : RefreshIndicator(
+                    color: cs.secondary,
+                    onRefresh: _cargarAsignaciones,
+                    child: visibles.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              SizedBox(height: 80),
+                              Center(child: Text('No hay asignaciones')),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const BouncingScrollPhysics(
+                              parent: AlwaysScrollableScrollPhysics(),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 24,
+                            ),
+                            itemCount: visibles.length,
+                            itemBuilder: (context, index) {
+                              final a = visibles[index];
+                              return Card(
+                                color: cs.surface,
+                                margin: const EdgeInsets.only(bottom: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                                child: AsignacionLaboralItemTile(
+                                  key: ValueKey(a.uid),
+                                  asignacion: a,
+                                  onTap: () {},
+                                  onActualizado: () async {
+                                    await _cargarAsignaciones();
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -165,9 +155,7 @@ class _AsignacionesLaboralesScreenState
 
   Widget _buildFiltros(
     BuildContext context,
-    List<String> roles,
     List<DistribuidorDb> distribuidores,
-    int totalActual,
   ) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -176,7 +164,7 @@ class _AsignacionesLaboralesScreenState
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Column(
         children: [
-          // Línea 1: chips Activas / Históricas + Total
+          // Línea 1: chips Activas / Inactivas
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -187,51 +175,19 @@ class _AsignacionesLaboralesScreenState
               ),
               const SizedBox(width: 8),
               ChoiceChip(
-                label: const Text('Históricas'),
+                label: const Text('Inactivas'),
                 selected: !_soloActivas,
                 onSelected: (v) => setState(() => _soloActivas = false),
-              ),
-              const SizedBox(width: 12),
-              Chip(
-                label: Text('Total: $totalActual'),
-                backgroundColor: cs.surface,
               ),
             ],
           ),
           const SizedBox(height: 8),
-          // Línea 2: filtros por Rol y Distribuidor
+          // Línea 2: solo filtro por Distribuidor
           Row(
             children: [
-              // Rol
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _filtroRol.isEmpty ? null : _filtroRol,
-                  items: [
-                    const DropdownMenuItem(value: '', child: Text('— Todos —')),
-                    ...roles.map(
-                      (r) => DropdownMenuItem(value: r, child: Text(r)),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() => _filtroRol = v ?? ''),
-                  decoration: InputDecoration(
-                    labelText: 'Rol',
-                    labelStyle: tt.bodyLarge?.copyWith(color: cs.onSurface),
-                    filled: true,
-                    fillColor: cs.surface,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Distribuidor
-              Expanded(
-                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _filtroDistribuidorUid.isEmpty
                       ? null
                       : _filtroDistribuidorUid,

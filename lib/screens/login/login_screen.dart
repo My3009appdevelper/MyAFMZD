@@ -6,7 +6,6 @@ import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
@@ -40,97 +39,95 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
 
-    return MyLoaderOverlay(
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Inicio de Sesión",
-            style: textTheme.titleLarge?.copyWith(color: colors.onPrimary),
-          ),
-          centerTitle: true,
-          backgroundColor: colors.primary,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(isDark ? Icons.dark_mode : Icons.light_mode),
-            onPressed: () {
-              ref.read(themeModeProvider.notifier).toggleTheme();
-            },
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Inicio de Sesión",
+          style: textTheme.titleLarge?.copyWith(color: colors.onPrimary),
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Center(
-            child: Card(
-              color: colors.surface,
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Form(
-                  key: _formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+        centerTitle: true,
+        backgroundColor: colors.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(isDark ? Icons.dark_mode : Icons.light_mode),
+          onPressed: () {
+            ref.read(themeModeProvider.notifier).toggleTheme();
+          },
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
+          child: Card(
+            color: colors.surface,
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Ingresa tus credenciales',
+                        style: textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colors.onSurface,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      MyTextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        labelText: 'Correo',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Ingresa tu correo';
+                          }
+                          if (!value.contains('@')) return 'Correo inválido';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      MyTextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        keyboardType: TextInputType.emailAddress,
+                        labelText: 'Contraseña',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Ingresa tu contraseña';
+                          }
+                          if (value.length < 6) return 'Mínimo 6 caracteres';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      if (_error != null)
                         Text(
-                          'Ingresa tus credenciales',
-                          style: textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colors.onSurface,
+                          _error!,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colors.error,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
-                        MyTextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          labelText: 'Correo',
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu correo';
+                      SizedBox(
+                        width: double.infinity,
+                        child: MyElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState?.validate() ?? false) {
+                              _iniciarSesion();
                             }
-                            if (!value.contains('@')) return 'Correo inválido';
-                            return null;
                           },
+                          icon: Icons.login,
+                          label: 'Ingresar',
                         ),
-                        const SizedBox(height: 12),
-                        MyTextFormField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          keyboardType: TextInputType.emailAddress,
-                          labelText: 'Contraseña',
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu contraseña';
-                            }
-                            if (value.length < 6) return 'Mínimo 6 caracteres';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        if (_error != null)
-                          Text(
-                            _error!,
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: colors.error,
-                            ),
-                          ),
-                        SizedBox(
-                          width: double.infinity,
-                          child: MyElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState?.validate() ?? false) {
-                                _iniciarSesion();
-                              }
-                            },
-                            icon: Icons.login,
-                            label: 'Ingresar',
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),

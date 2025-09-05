@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/widgets/chip_picker.dart';
@@ -27,7 +28,8 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
   final List<File> _imagenesPendientes = [];
   final Set<String> _imagenesPorEliminar = {};
   final Set<String> _imagenesParaRestaurar = {};
-  bool _subiendoImgs = false;
+
+  bool _guardando = false;
 
   // NUEVO: portada pendiente (solo se persiste al Guardar)
   String? _coverSelUid;
@@ -56,6 +58,9 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
 
   bool _esEdicion = false;
   File? _archivoPDFSeleccionado;
+
+  bool _abriendoPickerPDF = false;
+  bool _abriendoPickerImgs = false;
 
   @override
   void initState() {
@@ -389,15 +394,6 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                         label: 'Agregar imágenes',
                         onPressed: _pickImagenes,
                       ),
-                      if (_subiendoImgs)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 8),
-                          child: SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
                     ],
                   ),
 
@@ -571,7 +567,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   MyElevatedButton(
                     icon: Icons.save,
                     label: 'Guardar',
-                    onPressed: _guardar,
+                    onPressed: _guardando ? null : _guardar,
                   ),
                 ],
               ),
@@ -595,6 +591,21 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
+    if (mounted) setState(() => _guardando = true);
+
+    // 0) Overlay base + primer mensaje
+    FocusScope.of(context).unfocus();
+    final overlayMsg = _esEdicion
+        ? 'Editando modelo…'
+        : 'Guardando nuevo modelo…';
+    context.loaderOverlay.show(progress: overlayMsg);
+
+    final inicio = DateTime.now();
+
+    // ---------- Validaciones iniciales ----------
+    if (context.loaderOverlay.visible) {
+      context.loaderOverlay.progress('Validando datos…');
+    }
 
     double toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
 
@@ -607,13 +618,18 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
     final descripcion = _descripcionSel.trim();
     final precioBase = toDouble(_precioBaseController.text);
     final rutaRemota = _rutaRemotaController.text.trim();
-    // validación defensiva, por si acaso
+
+    // validación defensiva de la ruta PDF
     if (rutaRemota.isEmpty ||
         !rutaRemota.toLowerCase().endsWith('.pdf') ||
         rutaRemota.contains(' ')) {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('❌ Ruta remota inválida generada')),
       );
+      if (mounted) setState(() => _guardando = false);
       return;
     }
 
@@ -625,6 +641,9 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
       anio: anio,
     );
     if (duplicado) {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -632,11 +651,17 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           ),
         ),
       );
+      if (mounted) setState(() => _guardando = false);
       return;
     }
 
     try {
       if (_esEdicion) {
+        // ---------- Persistir cambios base ----------
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Aplicando cambios…');
+        }
+
         final actualizado = widget.modeloEditar!.copyWith(
           claveCatalogo: clave,
           marca: marca,
@@ -656,8 +681,12 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           actualizado: actualizado,
         );
 
+        // ---------- Subir ficha PDF (si se seleccionó) ----------
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo ficha PDF…');
+          }
           await modelosNotifier.subirNuevaFicha(
             modelo: nuevo,
             archivo: _archivoPDFSeleccionado!,
@@ -665,10 +694,22 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           );
         }
 
-        // subimos las imágenes pendientes...
+        // ---------- Subir imágenes pendientes ----------
         if (_imagenesPendientes.isNotEmpty) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo imágenes…');
+          }
           await _subirImagenesParaModelo(nuevo.uid, _imagenesPendientes);
           setState(() => _imagenesPendientes.clear());
+        }
+
+        // ---------- Eliminar/Restaurar/Portada ----------
+        if (_imagenesPorEliminar.isNotEmpty ||
+            _imagenesParaRestaurar.isNotEmpty ||
+            _coverSelUid != null) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Aplicando cambios en imágenes…');
+          }
         }
 
         // 1) aplicar eliminaciones pendientes
@@ -699,16 +740,14 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
               );
               if (restaurada.rutaLocal.isEmpty ||
                   !File(restaurada.rutaLocal).existsSync()) {
-                await imgNotifier.descargarImagen(
-                  restaurada,
-                ); // opcional, pero nice-to-have
+                await imgNotifier.descargarImagen(restaurada);
               }
             }
           }
           setState(() => _imagenesParaRestaurar.clear());
         }
 
-        // 3) NUEVO: aplicar portada pendiente (si hay)
+        // 3) portada pendiente
         if (_coverSelUid != null) {
           final imgNotifier = ref.read(modeloImagenesProvider.notifier);
           await imgNotifier.setCover(
@@ -717,14 +756,35 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           );
         }
 
-        // 🔒 Siempre asegurar que quede al menos una portada
+        // asegurar que quede al menos una portada
         final imgNotifier = ref.read(modeloImagenesProvider.notifier);
         await imgNotifier.ensureCover(nuevo.uid);
 
+        // si cambió la ruta de la ficha, limpia local
         await _limpiarFichaLocalSiRutaCambio(rutaRemota);
 
+        // ---------- Final ----------
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
+
+        // delay mínimo 1500 ms
+        const minSpin = Duration(milliseconds: 1500);
+        final elapsed = DateTime.now().difference(inicio);
+        if (elapsed < minSpin) {
+          await Future.delayed(minSpin - elapsed);
+        }
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.hide();
+        }
         if (mounted) Navigator.pop(context, true);
       } else {
+        // ---------- Crear modelo ----------
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Creando modelo…');
+        }
+
         final nuevo = await modelosNotifier.crearModelo(
           claveCatalogo: clave,
           marca: marca,
@@ -738,8 +798,12 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           fichaRutaRemota: rutaRemota,
         );
 
+        // ---------- Subir ficha PDF (si se seleccionó) ----------
         if (_archivoPDFSeleccionado != null &&
             await _archivoPDFSeleccionado!.exists()) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo ficha PDF…');
+          }
           await modelosNotifier.subirNuevaFicha(
             modelo: nuevo,
             archivo: _archivoPDFSeleccionado!,
@@ -747,26 +811,38 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           );
         }
 
-        // subimos las imágenes pendientes...
+        // ---------- Subir imágenes pendientes ----------
         if (_imagenesPendientes.isNotEmpty) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo imágenes…');
+          }
           await _subirImagenesParaModelo(nuevo.uid, _imagenesPendientes);
           setState(() => _imagenesPendientes.clear());
         }
 
-        // 1) aplicar eliminaciones pendientes
+        // ---------- Eliminar/Restaurar/Portada (si aplica) ----------
+        if (_imagenesPorEliminar.isNotEmpty ||
+            _imagenesParaRestaurar.isNotEmpty ||
+            _coverSelUid != null) {
+          if (context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Aplicando cambios en imágenes…');
+          }
+        }
+
+        // 1) eliminaciones
         if (_imagenesPorEliminar.isNotEmpty) {
           final imgNotifier = ref.read(modeloImagenesProvider.notifier);
           for (final uid in _imagenesPorEliminar.toList()) {
             final img = imgNotifier.obtenerPorUid(uid);
             if (img != null) {
-              await imgNotifier.eliminarImagen(img); // soft delete real
+              await imgNotifier.eliminarImagen(img);
             }
           }
           if (!mounted) return;
           setState(() => _imagenesPorEliminar.clear());
         }
 
-        // 2) aplicar restauraciones pendientes
+        // 2) restauraciones
         if (_imagenesParaRestaurar.isNotEmpty) {
           final imgNotifier = ref.read(modeloImagenesProvider.notifier);
           for (final uid in _imagenesParaRestaurar.toList()) {
@@ -781,17 +857,14 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
               );
               if (restaurada.rutaLocal.isEmpty ||
                   !File(restaurada.rutaLocal).existsSync()) {
-                await imgNotifier.descargarImagen(
-                  restaurada,
-                ); // opcional, pero nice-to-have
+                await imgNotifier.descargarImagen(restaurada);
               }
             }
           }
           setState(() => _imagenesParaRestaurar.clear());
         }
 
-        // 3) NUEVO: aplicar portada pendiente (si hay)
-        // 3) NUEVO: aplicar portada pendiente (si hay)
+        // 3) portada pendiente
         if (_coverSelUid != null) {
           final imgNotifier = ref.read(modeloImagenesProvider.notifier);
           await imgNotifier.setCover(
@@ -800,26 +873,59 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           );
         }
 
-        // 🔒 Siempre asegurar que quede al menos una portada
+        // asegurar que quede al menos una portada
         final imgNotifier = ref.read(modeloImagenesProvider.notifier);
         await imgNotifier.ensureCover(nuevo.uid);
 
+        // ---------- Final ----------
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
+
+        // delay mínimo 1500 ms
+        const minSpin = Duration(milliseconds: 1500);
+        final elapsed = DateTime.now().difference(inicio);
+        if (elapsed < minSpin) {
+          await Future.delayed(minSpin - elapsed);
+        }
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.hide();
+        }
         if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) setState(() => _guardando = false);
     }
   }
 
   Future<void> _seleccionarPDF() async {
+    if (_abriendoPickerPDF) return;
+    _abriendoPickerPDF = true;
+
     try {
+      if (mounted) {
+        context.loaderOverlay.show(progress: 'Abriendo selector…');
+      }
+
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
       );
       if (result == null || result.files.single.path == null) return;
+
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Preparando archivo…');
+      }
 
       _archivoPDFSeleccionado = File(result.files.single.path!);
       setState(() => _rutaRemotaController.text = _buildRutaRemota());
@@ -838,6 +944,11 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('❌ Error seleccionando PDF: $e')));
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      _abriendoPickerPDF = false;
     }
   }
 
@@ -926,32 +1037,67 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
   }
 
   Future<void> _pickImagenes() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowMultiple: true,
-      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
-    );
-    if (result == null || result.files.isEmpty) return;
+    if (_abriendoPickerImgs) return;
+    _abriendoPickerImgs = true;
 
-    final archivos = result.files
-        .map((f) => f.path)
-        .whereType<String>()
-        .map((p) => File(p))
-        .where(_esImagenSoportada)
-        .toList();
+    try {
+      if (mounted) {
+        context.loaderOverlay.show(progress: 'Abriendo selector…');
+      }
 
-    if (archivos.isEmpty) {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowMultiple: true,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Procesando imágenes…');
+      }
+
+      final archivos = result.files
+          .map((f) => f.path)
+          .whereType<String>()
+          .map((p) => File(p))
+          .where(_esImagenSoportada)
+          .toList();
+
+      if (archivos.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se seleccionaron imágenes válidas')),
+        );
+        return;
+      }
+
+      // SIEMPRE pendientiza (tanto en nuevo como en edición).
+      if (!mounted) return;
+      setState(() {
+        _imagenesPendientes.addAll(archivos);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Imágenes agregadas: ${archivos.length}')),
+        );
+      }
+    } on PlatformException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se seleccionaron imágenes válidas')),
+        SnackBar(content: Text('❌ No se pudo abrir el selector: ${e.code}')),
       );
-      return;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error seleccionando imágenes: $e')),
+      );
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      _abriendoPickerImgs = false;
     }
-
-    // 👉 SIEMPRE pendientiza (tanto en nuevo como en edición).
-    setState(() {
-      _imagenesPendientes.addAll(archivos);
-    });
   }
 
   Future<void> _subirImagenesParaModelo(
@@ -959,7 +1105,6 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
     List<File> files,
   ) async {
     if (!mounted) return;
-    setState(() => _subiendoImgs = true);
     int errores = 0, duplicadas = 0;
 
     try {
@@ -1013,7 +1158,6 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
       }
     } finally {
       if (!mounted) return;
-      setState(() => _subiendoImgs = false);
       if (errores > 0 || duplicadas > 0) {
         final msg = [
           if (duplicadas > 0) 'ℹ️ $duplicadas duplicada(s) omitida(s)',

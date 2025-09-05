@@ -99,7 +99,7 @@ class ModeloImagenesNotifier extends StateNotifier<List<ModeloImagenDb>> {
     String? modeloUid,
     int max = 200,
     bool incluirEliminadas = true,
-    bool debug = true, // 👈 para controlar verbosity de logs
+    bool debug = true, // para controlar verbosity de logs
   }) async {
     // ───────────────────────────── helpers ─────────────────────────────
     void log(String m) {

@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
@@ -26,6 +27,7 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
   // Foto
   File? _fotoSeleccionada;
   String _generoSel = '';
+  bool _abriendoPickerFoto = false;
 
   // Text controllers
   late TextEditingController _nombresController;
@@ -272,24 +274,48 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
   // ============================ Acciones =============================
 
   Future<void> _pickFoto() async {
+    if (_abriendoPickerFoto) return; // evita múltiples aperturas
+    _abriendoPickerFoto = true;
+
     try {
+      if (mounted) {
+        context.loaderOverlay.show(progress: 'Abriendo selector…');
+      }
+
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
       );
       if (result == null || result.files.single.path == null) return;
+
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Procesando imagen…');
+      }
+
       setState(() => _fotoSeleccionada = File(result.files.single.path!));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto preparada para subir')),
-      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto preparada para subir')),
+        );
+      }
     } on PlatformException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ No se pudo abrir el selector: ${e.code}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ No se pudo abrir el selector: ${e.code}')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error seleccionando imagen: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error seleccionando imagen: $e')),
+        );
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      _abriendoPickerFoto = false;
     }
   }
 
@@ -306,6 +332,20 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // 1) Overlay base
+    if (mounted) {
+      final msg = _esEdicion
+          ? 'Editando colaborador…'
+          : 'Guardando nuevo colaborador…';
+      context.loaderOverlay.show(progress: msg);
+    }
+    final inicio = DateTime.now(); // para delay mínimo
+
+    // 2) Validaciones previas
+    if (mounted && context.loaderOverlay.visible) {
+      context.loaderOverlay.progress('Validando datos…');
+    }
 
     final nombres = _nombresController.text.trim();
     final apPat = _apPatController.text.trim();
@@ -332,19 +372,28 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
     );
 
     if (duplicado) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            '❌ Ya existe un colaborador con estos datos (CURP/RFC/email/teléfono o nombre+fecha).',
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '❌ Ya existe un colaborador con estos datos (CURP/RFC/email/teléfono o nombre+fecha).',
+            ),
           ),
-        ),
-      );
+        );
+      }
       return;
     }
 
     try {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Aplicando cambios…');
+      }
+
       if (_esEdicion) {
-        // Editar datos básicos (LOCAL → isSynced=false)
+        // Editar datos básicos
         await notifier.editarColaborador(
           uid: widget.colaboradorEditar!.uid,
           nombres: nombres,
@@ -357,20 +406,36 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
           emailPersonal: email.isEmpty ? null : email,
           genero: genero.isEmpty ? null : genero,
           notas: notas.isEmpty ? null : notas,
-          // fotoRutaRemota/Local no se tocan aquí: van por subirNuevaFoto()
         );
 
-        // Si hay nueva foto, súbela y actualiza rutas
+        // Subir foto si corresponde
         if (_fotoSeleccionada != null && await _fotoSeleccionada!.exists()) {
+          if (mounted && context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo foto…');
+          }
           await notifier.subirNuevaFoto(
             colaborador: widget.colaboradorEditar!,
             archivo: _fotoSeleccionada!,
           );
         }
 
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
+
+        // delay mínimo 1500 ms antes de cerrar
+        const minSpin = Duration(milliseconds: 1500);
+        final elapsed = DateTime.now().difference(inicio);
+        if (elapsed < minSpin) {
+          await Future.delayed(minSpin - elapsed);
+        }
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.hide();
+        }
         if (mounted) Navigator.pop(context, true);
       } else {
-        // Crear primero el registro local
+        // Crear y luego (opcional) subir foto
         final nuevo = await notifier.crearColaborador(
           nombres: nombres,
           apellidoPaterno: apPat,
@@ -382,25 +447,47 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
           emailPersonal: email,
           genero: genero,
           notas: notas,
-          // fotoRutaRemota/Local: se llenan si subimos
         );
 
-        // Si seleccionó foto, súbela y vincula
         if (nuevo != null &&
             _fotoSeleccionada != null &&
             await _fotoSeleccionada!.exists()) {
+          if (mounted && context.loaderOverlay.visible) {
+            context.loaderOverlay.progress('Subiendo foto…');
+          }
           await notifier.subirNuevaFoto(
             colaborador: nuevo,
             archivo: _fotoSeleccionada!,
           );
         }
 
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
+
+        // delay mínimo 1500 ms antes de cerrar
+        const minSpin = Duration(milliseconds: 1500);
+        final elapsed = DateTime.now().difference(inicio);
+        if (elapsed < minSpin) {
+          await Future.delayed(minSpin - elapsed);
+        }
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.hide();
+        }
         if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
+      }
+    } finally {
+      // seguridad por si hubo early return/throw
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
     }
   }
 

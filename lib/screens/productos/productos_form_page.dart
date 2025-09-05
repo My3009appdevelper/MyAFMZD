@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
@@ -496,6 +497,14 @@ class _ProductoFormPageState extends ConsumerState<ProductoFormPage> {
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Cerrar teclado y mostrar overlay inicial
+    FocusScope.of(context).unfocus();
+    if (mounted) {
+      final msg = _esEdicion ? 'Editando producto…' : 'Creando producto…';
+      context.loaderOverlay.show(progress: msg);
+    }
+    final inicio = DateTime.now();
+
     // Parse
     final nombre = _nombreController.text.trim();
     final plazoMeses = _toInt(_plazoController.text, fallback: 60);
@@ -534,14 +543,20 @@ class _ProductoFormPageState extends ConsumerState<ProductoFormPage> {
 
     // Validaciones cruzadas
     if (adelantoMin > adelantoMax) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Adelanto mínimo no puede ser mayor que el máximo');
       return;
     }
     if (mesEntMin > mesEntMax) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Mes de entrega mínimo no puede ser mayor que el máximo');
       return;
     }
     if (mesEntMax > plazoMeses) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Mes de entrega máximo no puede exceder el plazo');
       return;
     }
@@ -557,6 +572,8 @@ class _ProductoFormPageState extends ConsumerState<ProductoFormPage> {
         _vigenteHasta!.day,
       );
       if (d1.isBefore(d0)) {
+        if (mounted && context.loaderOverlay.visible)
+          context.loaderOverlay.hide();
         _snack('❌ Vigente hasta no puede ser anterior a vigente desde');
         return;
       }
@@ -565,17 +582,26 @@ class _ProductoFormPageState extends ConsumerState<ProductoFormPage> {
     final productosNotifier = ref.read(productosProvider.notifier);
 
     // Duplicado por nombre
+    if (mounted && context.loaderOverlay.visible) {
+      context.loaderOverlay.progress('Validando duplicados…');
+    }
     final hayDuplicado = productosNotifier.existeDuplicado(
       uidActual: widget.productoEditar?.uid ?? '',
       nombre: nombre,
     );
     if (hayDuplicado) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Ya existe un producto con ese nombre');
       return;
     }
 
     try {
       if (_esEdicion) {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Aplicando cambios…');
+        }
+
         final actualizado = widget.productoEditar!.copyWith(
           nombre: nombre,
           activo: _activo,
@@ -599,8 +625,15 @@ class _ProductoFormPageState extends ConsumerState<ProductoFormPage> {
         );
 
         await productosNotifier.editarProducto(actualizado: actualizado);
-        if (mounted) Navigator.pop(context, true);
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
       } else {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Creando producto…');
+        }
+
         await productosNotifier.crearProductoLocal(
           nombre: nombre,
           activo: _activo,
@@ -620,9 +653,27 @@ class _ProductoFormPageState extends ConsumerState<ProductoFormPage> {
           vigenteDesde: _vigenteDesde,
           vigenteHasta: _vigenteHasta,
         );
-        if (mounted) Navigator.pop(context, true);
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
       }
+
+      // Delay mínimo para UX consistente
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      // Ocultar overlay ANTES de navegar
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       _snack('❌ Error al guardar: $e');
     }
   }

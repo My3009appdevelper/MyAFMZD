@@ -8,30 +8,30 @@ import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
-import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
-import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
-import 'package:myafmzd/screens/modelos/modelos_screen.dart';
-import 'package:myafmzd/screens/perfil_screen.dart';
-import 'package:myafmzd/screens/reportes/reportes_screen.dart';
+import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_screen.dart';
+import 'package:myafmzd/screens/colaboradores/colaboradores_screen.dart';
+import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
+import 'package:myafmzd/screens/productos/productos_screen.dart';
 import 'package:myafmzd/widgets/app_drawer.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+class AdminHomeScreen extends ConsumerStatefulWidget {
+  const AdminHomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<AdminHomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
   int _indiceActual = 0;
 
   // 👇 Nuevo orden
   final List<Widget> _pantallas = const [
-    PerfilScreen(), // 0
-    ModelosScreen(), // 1
-    DistribuidoresScreen(), // 2
-    ReportesScreen(), // 3
+    ColaboradoresScreen(), // 1
+    AsignacionesLaboralesScreen(), // 2
+    UsuariosScreen(), // 3
+    ProductosScreen(), // 4
   ];
 
   @override
@@ -62,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: Center(
           child: Text(
-            "MyAFMZD",
+            "Admin MyAFMZD",
             style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary),
           ),
         ),
@@ -97,29 +97,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         onTap: (index) => setState(() => _indiceActual = index),
         items: [
-          // 0 Perfil
+          // 1 Colaboradores
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.person),
-            label: 'Perfil',
+            icon: Icon(Icons.group),
+            label: 'Colaboradores',
           ),
-          // 1 Modelos
+          // 2 Asignaciones
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.directions_car),
-            label: 'Modelos',
+            icon: Icon(Icons.assignment_ind),
+            label: 'Asignaciones',
           ),
-          // 2 Distribuidoras
+          // 3 Usuarios
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.location_on),
-            label: 'Distribuidoras',
+            icon: Icon(Icons.manage_accounts),
+            label: 'Usuarios',
           ),
-          // 3 Reportes
+          // 4 Productos
           BottomNavigationBarItem(
             backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.picture_as_pdf),
-            label: 'Reportes',
+            icon: Icon(Icons.inventory_2),
+            label: 'Productos',
           ),
         ],
       ),

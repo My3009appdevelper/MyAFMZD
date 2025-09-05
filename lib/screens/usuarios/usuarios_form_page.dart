@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
@@ -173,18 +174,30 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
 
     setState(() => _enviando = true);
 
+    // Overlay: mensaje inicial según modo
+    if (mounted) {
+      final msg = _esEdicion ? 'Editando usuario…' : 'Creando usuario…';
+      context.loaderOverlay.show(progress: msg);
+    }
+    final inicio = DateTime.now();
+
     final userName = _userNameCtrl.text.trim();
     final correo = _correoCtrl.text.trim();
     final password = _passwordCtrl.text.trim();
     final usuariosNotifier = ref.read(usuariosProvider.notifier);
 
     // Validación local de duplicados
+    if (mounted && context.loaderOverlay.visible) {
+      context.loaderOverlay.progress('Validando duplicados…');
+    }
     final hayDuplicado = usuariosNotifier.existeDuplicado(
       uidActual: widget.usuarioEditar?.uid ?? '',
       userName: userName,
       correo: correo,
     );
     if (hayDuplicado) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       setState(() => _enviando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -196,23 +209,57 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
 
     try {
       if (_esEdicion) {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Aplicando cambios…');
+        }
         await usuariosNotifier.editarUsuario(
           uid: widget.usuarioEditar!.uid,
           userName: userName,
           correo: correo,
           colaboradorUid: _colaboradorUidSel,
         );
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
+        // Delay mínimo UX
+        const minSpin = Duration(milliseconds: 1500);
+        final elapsed = DateTime.now().difference(inicio);
+        if (elapsed < minSpin) {
+          await Future.delayed(minSpin - elapsed);
+        }
+
+        if (mounted && context.loaderOverlay.visible)
+          context.loaderOverlay.hide();
         if (mounted) Navigator.pop(context, true);
       } else {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Creando usuario…');
+        }
         await usuariosNotifier.crearUsuario(
           userName: userName,
           correo: correo,
           password: password,
           colaboradorUid: _colaboradorUidSel,
         );
+
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Finalizando…');
+        }
+        // Delay mínimo UX
+        const minSpin = Duration(milliseconds: 1500);
+        final elapsed = DateTime.now().difference(inicio);
+        if (elapsed < minSpin) {
+          await Future.delayed(minSpin - elapsed);
+        }
+
+        if (mounted && context.loaderOverlay.visible)
+          context.loaderOverlay.hide();
         if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
+      if (mounted && context.loaderOverlay.visible)
+        context.loaderOverlay.hide();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));

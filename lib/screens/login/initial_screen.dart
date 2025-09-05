@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
-
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
-import 'package:myafmzd/widgets/my_loader_overlay.dart';
-
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
+import 'package:myafmzd/database/productos/productos_provider.dart';
+import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
-
 import 'package:myafmzd/screens/home_screen.dart';
 import 'package:myafmzd/screens/login/login_screen.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InitialScreen extends ConsumerStatefulWidget {
@@ -57,37 +55,61 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
       }
 
       // Cargas secuenciales, con mensajes de progreso consistentes
-      if (mounted && context.loaderOverlay.visible) {
-        context.loaderOverlay.progress('Sincronizando usuarios…');
-      }
-      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
-
-      if (mounted && context.loaderOverlay.visible) {
-        context.loaderOverlay.progress('Cargando distribuidores…');
-      }
-      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
-
+      // PERFIL
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando perfil…');
       }
       await ref.read(perfilProvider.notifier).cargarUsuario();
 
+      // MODELOS
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando modelos…');
       }
       await ref.read(modelosProvider.notifier).cargarOfflineFirst();
 
+      // MODELOS IMAGENES
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando imagenes de modelos…');
+      }
+      await ref.read(modeloImagenesProvider.notifier).cargarOfflineFirst();
+
+      // DISTRIBUIDORES
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando distribuidores…');
+      }
+      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+
+      // REPORTES
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando reportes…');
+      }
+      await ref.read(reporteProvider.notifier).cargarOfflineFirst();
+
+      // COLABORADORES
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando colaboradores…');
       }
       await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
 
+      // ASIGNACIONES LABORALES
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando asignaciones…');
       }
       await ref
           .read(asignacionesLaboralesProvider.notifier)
           .cargarOfflineFirst();
+
+      // USUARIOS
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando usuarios…');
+      }
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
+
+      // PRODUCTOS
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando productos…');
+      }
+      await ref.read(productosProvider.notifier).cargarOfflineFirst();
 
       final usuario = ref.read(perfilProvider);
       if (usuario == null) {
@@ -147,8 +169,6 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Mantén mismo patrón visual que tus otras screens:
-    // el overlay muestra el estado; el body puede estar vacío.
-    return const MyLoaderOverlay(child: Scaffold(body: SizedBox.shrink()));
+    return Scaffold(body: SizedBox.shrink());
   }
 }

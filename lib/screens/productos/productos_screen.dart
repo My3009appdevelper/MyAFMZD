@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/screens/productos/productos_form_page.dart';
@@ -19,7 +20,10 @@ class _ProductosScreenState extends ConsumerState<ProductosScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarProductos();
+    // Asegura que el overlay ya está en el árbol antes de usarlo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarProductos();
+    });
   }
 
   @override
@@ -27,21 +31,15 @@ class _ProductosScreenState extends ConsumerState<ProductosScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    // Reacciona a cambios de conectividad
     ref.listen<bool>(connectivityProvider, (prev, next) async {
-      if (prev != next && mounted) {
-        await _cargarProductos();
-      }
+      if (!mounted || prev == next) return;
+      await _cargarProductos();
     });
 
     // Lista filtrada desde el notifier (orden por prioridad asc + updatedAt desc)
     final visibles = ref
         .watch(productosProvider.notifier)
-        .filtrar(
-          soloVigentes: false, // ← sin vigencia
-          incluirInactivos: true,
-          enFecha: null, // ← sin vigencia
-        );
+        .filtrar(soloVigentes: false, incluirInactivos: true, enFecha: null);
 
     return Scaffold(
       appBar: AppBar(
@@ -54,25 +52,27 @@ class _ProductosScreenState extends ConsumerState<ProductosScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final ok = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ProductoFormPage()),
-          );
-          if (mounted && ok == true) {
-            await _cargarProductos();
-          }
-        },
-        tooltip: 'Agregar producto',
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _cargandoInicial
+          ? null
+          : FloatingActionButton(
+              onPressed: () async {
+                final ok = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProductoFormPage()),
+                );
+                if (mounted && ok == true) {
+                  await _cargarProductos();
+                }
+              },
+              tooltip: 'Agregar producto',
+              child: const Icon(Icons.add),
+            ),
       body: Column(
         children: [
-          _buildFiltros(context, visibles.length),
+          if (!_cargandoInicial) _buildFiltros(context, visibles.length),
           Expanded(
             child: _cargandoInicial
-                ? Center(child: CircularProgressIndicator(color: cs.secondary))
+                ? const SizedBox.shrink() // overlay se encarga del “Cargando…”
                 : RefreshIndicator(
                     color: cs.secondary,
                     onRefresh: _cargarProductos,
@@ -105,8 +105,7 @@ class _ProductosScreenState extends ConsumerState<ProductosScreen> {
                                 child: ProductoItemTile(
                                   key: ValueKey(p.uid),
                                   producto: p,
-                                  onTap:
-                                      () {}, // acción rápida futura si quieres
+                                  onTap: () {},
                                   onActualizado: () async {
                                     await _cargarProductos();
                                   },
@@ -147,28 +146,43 @@ class _ProductosScreenState extends ConsumerState<ProductosScreen> {
     if (!mounted) return;
 
     setState(() => _cargandoInicial = true);
+
+    // UX: ocultar teclado si estaba abierto
+    FocusScope.of(context).unfocus();
+
+    // Mostrar overlay consistente
+    context.loaderOverlay.show(progress: 'Cargando productos…');
+
     final inicio = DateTime.now();
 
-    final hayInternet = ref.read(connectivityProvider);
-    await ref.read(productosProvider.notifier).cargarOfflineFirst();
+    try {
+      final hayInternet = ref.read(connectivityProvider);
 
-    // spinner mínimo para mantener consistencia visual
-    const duracionMinima = Duration(milliseconds: 1500);
-    final duracion = DateTime.now().difference(inicio);
-    if (duracion < duracionMinima) {
-      await Future.delayed(duracionMinima - duracion);
-    }
+      await ref.read(productosProvider.notifier).cargarOfflineFirst();
 
-    if (!mounted) return;
-    setState(() => _cargandoInicial = false);
+      // Mantener consistencia visual (mismo mínimo que otras screens)
+      const duracionMinima = Duration(milliseconds: 1500);
+      final duracion = DateTime.now().difference(inicio);
+      if (duracion < duracionMinima) {
+        await Future.delayed(duracionMinima - duracion);
+      }
 
-    if (!hayInternet) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('📴 Estás sin conexión. Solo información local.'),
-          duration: Duration(seconds: 3),
-        ),
-      );
+      if (!mounted) return;
+      if (!hayInternet) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📴 Estás sin conexión. Solo información local.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _cargandoInicial = false);
+      }
     }
   }
 }

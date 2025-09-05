@@ -95,23 +95,28 @@ class _VisorPDFState extends State<VisorPDF> {
             IconButton(
               tooltip: 'Ajustar a página',
               icon: const Icon(Icons.fit_screen),
-              onPressed: () async {
-                if (!_controller.isReady) return;
-                final m = _controller.calcMatrixForFit(
-                  pageNumber: _controller.pageNumber ?? 1,
-                );
-                if (m != null) await _controller.goTo(m);
-              },
+              onPressed: _controller.isReady
+                  ? () async {
+                      final m = _controller.calcMatrixForFit(
+                        pageNumber: _controller.pageNumber ?? 1,
+                      );
+                      if (m != null) await _controller.goTo(m);
+                    }
+                  : null,
             ),
             IconButton(
               tooltip: 'Alejar',
               icon: const Icon(Icons.zoom_out),
-              onPressed: () => _controller.zoomDown(),
+              onPressed: _controller.isReady
+                  ? () => _controller.zoomDown()
+                  : null,
             ),
             IconButton(
               tooltip: 'Acercar',
               icon: const Icon(Icons.zoom_in),
-              onPressed: () => _controller.zoomUp(),
+              onPressed: _controller.isReady
+                  ? () => _controller.zoomUp()
+                  : null,
             ),
           ],
           const SizedBox(width: 4),
@@ -236,7 +241,12 @@ class _VisorPDFState extends State<VisorPDF> {
         return const SizedBox.shrink();
       },
       errorBannerBuilder: (context, error, stack, docRef) {
-        // No apagamos el overlay aquí; lo hacemos por onDocumentChanged
+        // Además del banner, asegura apagar el overlay local
+        if (mounted && _cargando) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _cargando = false);
+          });
+        }
         final msg = error is PdfException ? error.message : error.toString();
         return Material(
           color: Colors.transparent,

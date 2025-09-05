@@ -28,8 +28,6 @@ class AsignacionLaboralItemTile extends ConsumerStatefulWidget {
 
 class _AsignacionLaboralItemTileState
     extends ConsumerState<AsignacionLaboralItemTile> {
-  bool _trabajando = false;
-
   @override
   Widget build(BuildContext context) {
     // versión viva desde provider
@@ -44,9 +42,6 @@ class _AsignacionLaboralItemTileState
     final colab = _buscarColab(a.colaboradorUid);
     final dist = _buscarDistribuidor(a.distribuidorUid);
     final manager = _buscarColab(a.managerColaboradorUid);
-
-    final isActiva = !a.deleted && a.fechaFin == null;
-    final isCerrada = !a.deleted && a.fechaFin != null;
 
     return ListTile(
       key: ValueKey(a.uid),
@@ -87,50 +82,7 @@ class _AsignacionLaboralItemTileState
         ],
       ),
       isThreeLine: true,
-      trailing: SizedBox(
-        width: 72,
-        height: 40,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            if (!_trabajando) ...[
-              // indicador de sync
-              if (!a.isSynced)
-                const Tooltip(
-                  message: 'Pendiente de sincronizar',
-                  child: Icon(
-                    Icons.cloud_upload,
-                    size: 20,
-                    color: Colors.orange,
-                  ),
-                ),
-              // acción rápida según estado
-              if (isActiva)
-                IconButton(
-                  tooltip: 'Cerrar asignación',
-                  icon: const Icon(Icons.lock_outline),
-                  onPressed: () => _cerrarAhora(a),
-                )
-              else if (isCerrada)
-                IconButton(
-                  tooltip: 'Reabrir asignación',
-                  icon: const Icon(Icons.lock_open),
-                  onPressed: () => _reabrirAhora(a),
-                )
-              else if (a.deleted)
-                const Tooltip(
-                  message: 'Eliminada',
-                  child: Icon(Icons.delete, color: Colors.redAccent),
-                ),
-            ] else
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-          ],
-        ),
-      ),
+
       onTap: widget.onTap,
       onLongPress: () =>
           _mostrarOpcionesAsignacion(context, a, colab, dist, manager),
@@ -138,48 +90,6 @@ class _AsignacionLaboralItemTileState
   }
 
   // ============================ Acciones =============================
-
-  Future<void> _cerrarAhora(AsignacionLaboralDb a) async {
-    setState(() => _trabajando = true);
-    try {
-      await ref
-          .read(asignacionesLaboralesProvider.notifier)
-          .cerrarAsignacion(
-            uid: a.uid,
-            closedByUsuarioUid: '', // si tienes auth, setéalo aquí
-            fechaFin: DateTime.now(),
-            notasAppend: null,
-          );
-      widget.onActualizado?.call();
-    } catch (_) {
-      // feedback simple
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ No se pudo cerrar la asignación')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _trabajando = false);
-    }
-  }
-
-  Future<void> _reabrirAhora(AsignacionLaboralDb a) async {
-    setState(() => _trabajando = true);
-    try {
-      await ref
-          .read(asignacionesLaboralesProvider.notifier)
-          .reabrirAsignacion(uid: a.uid);
-      widget.onActualizado?.call();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ No se pudo reabrir la asignación')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _trabajando = false);
-    }
-  }
 
   Future<void> _abrirEdicion(AsignacionLaboralDb a) async {
     final resultado = await Navigator.push(
@@ -209,18 +119,6 @@ class _AsignacionLaboralItemTileState
           icon: Icons.edit,
           label: 'Editar',
           onTap: () => _abrirEdicion(a),
-        ),
-      if (!a.deleted && a.fechaFin == null)
-        SheetAction(
-          icon: Icons.lock_outline,
-          label: 'Cerrar ahora',
-          onTap: () => _cerrarAhora(a),
-        ),
-      if (!a.deleted && a.fechaFin != null)
-        SheetAction(
-          icon: Icons.lock_open,
-          label: 'Reabrir',
-          onTap: () => _reabrirAhora(a),
         ),
     ];
 

@@ -2,10 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/productos/productos_provider.dart';
-import 'package:myafmzd/screens/modelos/cotizador.dart';
+import 'package:myafmzd/screens/modelos/cotizador_provider.dart';
 import 'package:myafmzd/widgets/visor_pdf.dart';
 import 'package:path_provider/path_provider.dart'; // Cotizador + provider
 import 'package:pdf/pdf.dart' as pdf;
@@ -493,38 +494,7 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
                   child: FilledButton.icon(
                     icon: const Icon(Icons.picture_as_pdf),
                     label: const Text('Generar PDF'),
-                    onPressed: () async {
-                      // intenta obtener la imagen de portada (o alguna descargada) del modelo
-                      final cover = ref
-                          .read(modeloImagenesProvider.notifier)
-                          .coverOrFallback(
-                            widget.modelo.uid,
-                            soloDescargadas: true,
-                          );
-
-                      String? portadaPath;
-                      if (cover != null &&
-                          cover.rutaLocal.isNotEmpty &&
-                          File(cover.rutaLocal).existsSync()) {
-                        portadaPath = cover.rutaLocal;
-                      }
-
-                      final path = await _generarPdf(
-                        params,
-                        portadaPath: portadaPath,
-                      );
-                      if (!mounted) return;
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => VisorPDF(
-                            assetPath: path,
-                            titulo: 'Cotización ${widget.modelo.modelo}',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => _generarYVerPdf(params),
                   ),
                 ),
               ],
@@ -880,5 +850,67 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
 
     await file.writeAsBytes(await doc.save(), flush: true);
     return file.path;
+  }
+
+  Future<void> _generarYVerPdf(CotizacionParams params) async {
+    if (!mounted) return;
+
+    // 1) Mostrar overlay
+    context.loaderOverlay.show(progress: 'Generando PDF…');
+    final inicio = DateTime.now();
+
+    try {
+      // (Opcional) mensaje de progreso intermedio
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Preparando portada…');
+      }
+
+      // Resolver portada local si existe
+      String? portadaPath;
+      final cover = ref
+          .read(modeloImagenesProvider.notifier)
+          .coverOrFallback(widget.modelo.uid, soloDescargadas: true);
+
+      if (cover != null &&
+          cover.rutaLocal.isNotEmpty &&
+          File(cover.rutaLocal).existsSync()) {
+        portadaPath = cover.rutaLocal;
+      }
+
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Generando PDF…');
+      }
+
+      // 2) Generar PDF
+      final path = await _generarPdf(params, portadaPath: portadaPath);
+      if (!mounted) return;
+
+      // 3) Delay mínimo para UX consistente
+      const minSpin = Duration(milliseconds: 1500);
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      // 4) Ocultar overlay ANTES de navegar
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VisorPDF(
+            assetPath: path,
+            titulo: 'Cotización ${widget.modelo.modelo}',
+          ),
+        ),
+      );
+    } finally {
+      // Seguridad extra
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+    }
   }
 }
