@@ -16,6 +16,9 @@ import 'package:myafmzd/screens/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
 import 'package:myafmzd/widgets/app_drawer.dart';
 
+// 👇 Asegúrate de importar tu provider de permisos
+import 'package:myafmzd/session/permisos.dart';
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -25,14 +28,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _indiceActual = 0;
-
-  // 👇 Nuevo orden
-  final List<Widget> _pantallas = const [
-    PerfilScreen(), // 0
-    ModelosScreen(), // 1
-    DistribuidoresScreen(), // 2
-    ReportesScreen(), // 3
-  ];
 
   @override
   void initState() {
@@ -58,6 +53,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // 👇 permisos derivados de la asignación activa
+    final perms = ref.watch(appPermissionsProvider);
+
+    // Construimos listas visibles según permisos (¡sin romper el orden!).
+    final pantallasVisibles = <Widget>[];
+    final itemsVisibles = <BottomNavigationBarItem>[];
+
+    if (perms.can(Feature.navPerfil)) {
+      pantallasVisibles.add(const PerfilScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.person),
+          label: 'Perfil',
+        ),
+      );
+    }
+    if (perms.can(Feature.navModelos)) {
+      pantallasVisibles.add(const ModelosScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.directions_car),
+          label: 'Modelos',
+        ),
+      );
+    }
+    if (perms.can(Feature.navDistribuidores)) {
+      pantallasVisibles.add(const DistribuidoresScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.location_on),
+          label: 'Distribuidoras',
+        ),
+      );
+    }
+    if (perms.can(Feature.navReportes)) {
+      pantallasVisibles.add(const ReportesScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.picture_as_pdf),
+          label: 'Reportes',
+        ),
+      );
+    }
+
+    // 🔒 Defensa anti-crash: si por permisos no hay tabs, mostramos un placeholder.
+    if (pantallasVisibles.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Center(
+            child: Text(
+              "MyAFMZD",
+              style: textTheme.titleLarge?.copyWith(
+                color: colorScheme.onPrimary,
+              ),
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: hayConexion
+                    ? 'Conectado a Internet'
+                    : 'Sin conexión a Internet',
+                child: Icon(
+                  hayConexion ? Icons.wifi : Icons.wifi_off,
+                  color: colorScheme.onPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        drawer: const AppDrawer(),
+        body: const Center(
+          child: Text('No tienes secciones disponibles para tu rol.'),
+        ),
+      );
+    }
+
+    // Si el índice actual queda fuera de rango por un cambio de rol/asignación, lo reajustamos.
+    if (_indiceActual >= pantallasVisibles.length) {
+      _indiceActual = 0;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Center(
@@ -82,7 +164,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       drawer: const AppDrawer(),
-      body: _pantallas[_indiceActual],
+      body: pantallasVisibles[_indiceActual],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceActual,
         backgroundColor: colorScheme.primary,
@@ -96,32 +178,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           color: colorScheme.secondary,
         ),
         onTap: (index) => setState(() => _indiceActual = index),
-        items: [
-          // 0 Perfil
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
-          // 1 Modelos
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.directions_car),
-            label: 'Modelos',
-          ),
-          // 2 Distribuidoras
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.location_on),
-            label: 'Distribuidoras',
-          ),
-          // 3 Reportes
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.picture_as_pdf),
-            label: 'Reportes',
-          ),
-        ],
+        items: itemsVisibles,
       ),
     );
   }

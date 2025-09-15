@@ -352,7 +352,12 @@ class _AsignacionLaboralFormPageState
       inicio: _fechaInicio,
       fin: _fechaFin,
       excluirUid: uidEditar,
+      mismoDistribuidorUid: _distribuidorUidSel.isEmpty
+          ? null
+          : _distribuidorUidSel,
+      mismoRol: _rolSel.isEmpty ? null : _rolSel,
     );
+
     if (traslapa) {
       if (mounted && context.loaderOverlay.visible)
         context.loaderOverlay.hide();

@@ -13,6 +13,7 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:myafmzd/screens/home_screen.dart';
 import 'package:myafmzd/screens/login/login_screen.dart';
+import 'package:myafmzd/session/sesion_asignacion_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InitialScreen extends ConsumerStatefulWidget {
@@ -99,6 +100,12 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
           .read(asignacionesLaboralesProvider.notifier)
           .cargarOfflineFirst();
 
+      final asg = ref.read(assignmentSessionProvider.notifier);
+      await asg.initFromStorage();
+      await asg.ensureActiveForUser(
+        colaboradorUid: ref.read(perfilProvider)?.colaboradorUid,
+      );
+
       // USUARIOS
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando usuarios…');
@@ -116,6 +123,13 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
         await supabase.auth.signOut();
         _redirigir(const LoginScreen());
         return;
+      }
+
+      // (opcional) feedback si quedó sin asignación
+      if (mounted && ref.read(assignmentSessionProvider) == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No tienes asignaciones registradas')),
+        );
       }
 
       // Aviso si no hay Internet (modo local)

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+import 'package:myafmzd/session/sesion_asignacion_provider.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
@@ -189,6 +191,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         context.loaderOverlay.progress('Cargando perfil…');
       }
       await ref.read(perfilProvider.notifier).cargarUsuario();
+
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Cargando asignaciones…');
+      }
+      await ref
+          .read(asignacionesLaboralesProvider.notifier)
+          .cargarOfflineFirst();
+
+      final asg = ref.read(assignmentSessionProvider.notifier);
+      await asg.initFromStorage();
+      await asg.ensureActiveForUser(
+        colaboradorUid: ref.read(perfilProvider)?.colaboradorUid,
+      );
 
       final usuario = ref.read(perfilProvider);
       if (usuario == null) {

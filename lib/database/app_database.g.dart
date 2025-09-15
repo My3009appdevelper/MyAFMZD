@@ -1114,6 +1114,563 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   }
 }
 
+class $GruposDistribuidoresTable extends GruposDistribuidores
+    with TableInfo<$GruposDistribuidoresTable, GrupoDistribuidorDb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GruposDistribuidoresTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
+  @override
+  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
+    'nombre',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _abreviaturaMeta = const VerificationMeta(
+    'abreviatura',
+  );
+  @override
+  late final GeneratedColumn<String> abreviatura = GeneratedColumn<String>(
+    'abreviatura',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _notasMeta = const VerificationMeta('notas');
+  @override
+  late final GeneratedColumn<String> notas = GeneratedColumn<String>(
+    'notas',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _activoMeta = const VerificationMeta('activo');
+  @override
+  late final GeneratedColumn<bool> activo = GeneratedColumn<bool>(
+    'activo',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("activo" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uid,
+    nombre,
+    abreviatura,
+    notas,
+    activo,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'grupos_distribuidores';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<GrupoDistribuidorDb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('nombre')) {
+      context.handle(
+        _nombreMeta,
+        nombre.isAcceptableOrUnknown(data['nombre']!, _nombreMeta),
+      );
+    }
+    if (data.containsKey('abreviatura')) {
+      context.handle(
+        _abreviaturaMeta,
+        abreviatura.isAcceptableOrUnknown(
+          data['abreviatura']!,
+          _abreviaturaMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notas')) {
+      context.handle(
+        _notasMeta,
+        notas.isAcceptableOrUnknown(data['notas']!, _notasMeta),
+      );
+    }
+    if (data.containsKey('activo')) {
+      context.handle(
+        _activoMeta,
+        activo.isAcceptableOrUnknown(data['activo']!, _activoMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  GrupoDistribuidorDb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GrupoDistribuidorDb(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      nombre: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nombre'],
+      )!,
+      abreviatura: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}abreviatura'],
+      )!,
+      notas: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notas'],
+      )!,
+      activo: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}activo'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $GruposDistribuidoresTable createAlias(String alias) {
+    return $GruposDistribuidoresTable(attachedDatabase, alias);
+  }
+}
+
+class GrupoDistribuidorDb extends DataClass
+    implements Insertable<GrupoDistribuidorDb> {
+  final String uid;
+  final String nombre;
+  final String abreviatura;
+  final String notas;
+  final bool activo;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool deleted;
+  final bool isSynced;
+  const GrupoDistribuidorDb({
+    required this.uid,
+    required this.nombre,
+    required this.abreviatura,
+    required this.notas,
+    required this.activo,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['nombre'] = Variable<String>(nombre);
+    map['abreviatura'] = Variable<String>(abreviatura);
+    map['notas'] = Variable<String>(notas);
+    map['activo'] = Variable<bool>(activo);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  GruposDistribuidoresCompanion toCompanion(bool nullToAbsent) {
+    return GruposDistribuidoresCompanion(
+      uid: Value(uid),
+      nombre: Value(nombre),
+      abreviatura: Value(abreviatura),
+      notas: Value(notas),
+      activo: Value(activo),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory GrupoDistribuidorDb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GrupoDistribuidorDb(
+      uid: serializer.fromJson<String>(json['uid']),
+      nombre: serializer.fromJson<String>(json['nombre']),
+      abreviatura: serializer.fromJson<String>(json['abreviatura']),
+      notas: serializer.fromJson<String>(json['notas']),
+      activo: serializer.fromJson<bool>(json['activo']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'nombre': serializer.toJson<String>(nombre),
+      'abreviatura': serializer.toJson<String>(abreviatura),
+      'notas': serializer.toJson<String>(notas),
+      'activo': serializer.toJson<bool>(activo),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  GrupoDistribuidorDb copyWith({
+    String? uid,
+    String? nombre,
+    String? abreviatura,
+    String? notas,
+    bool? activo,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? deleted,
+    bool? isSynced,
+  }) => GrupoDistribuidorDb(
+    uid: uid ?? this.uid,
+    nombre: nombre ?? this.nombre,
+    abreviatura: abreviatura ?? this.abreviatura,
+    notas: notas ?? this.notas,
+    activo: activo ?? this.activo,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  GrupoDistribuidorDb copyWithCompanion(GruposDistribuidoresCompanion data) {
+    return GrupoDistribuidorDb(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      nombre: data.nombre.present ? data.nombre.value : this.nombre,
+      abreviatura: data.abreviatura.present
+          ? data.abreviatura.value
+          : this.abreviatura,
+      notas: data.notas.present ? data.notas.value : this.notas,
+      activo: data.activo.present ? data.activo.value : this.activo,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GrupoDistribuidorDb(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('abreviatura: $abreviatura, ')
+          ..write('notas: $notas, ')
+          ..write('activo: $activo, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uid,
+    nombre,
+    abreviatura,
+    notas,
+    activo,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GrupoDistribuidorDb &&
+          other.uid == this.uid &&
+          other.nombre == this.nombre &&
+          other.abreviatura == this.abreviatura &&
+          other.notas == this.notas &&
+          other.activo == this.activo &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted &&
+          other.isSynced == this.isSynced);
+}
+
+class GruposDistribuidoresCompanion
+    extends UpdateCompanion<GrupoDistribuidorDb> {
+  final Value<String> uid;
+  final Value<String> nombre;
+  final Value<String> abreviatura;
+  final Value<String> notas;
+  final Value<bool> activo;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> deleted;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const GruposDistribuidoresCompanion({
+    this.uid = const Value.absent(),
+    this.nombre = const Value.absent(),
+    this.abreviatura = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.activo = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  GruposDistribuidoresCompanion.insert({
+    required String uid,
+    this.nombre = const Value.absent(),
+    this.abreviatura = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.activo = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid);
+  static Insertable<GrupoDistribuidorDb> custom({
+    Expression<String>? uid,
+    Expression<String>? nombre,
+    Expression<String>? abreviatura,
+    Expression<String>? notas,
+    Expression<bool>? activo,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? deleted,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (nombre != null) 'nombre': nombre,
+      if (abreviatura != null) 'abreviatura': abreviatura,
+      if (notas != null) 'notas': notas,
+      if (activo != null) 'activo': activo,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  GruposDistribuidoresCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? nombre,
+    Value<String>? abreviatura,
+    Value<String>? notas,
+    Value<bool>? activo,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? deleted,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return GruposDistribuidoresCompanion(
+      uid: uid ?? this.uid,
+      nombre: nombre ?? this.nombre,
+      abreviatura: abreviatura ?? this.abreviatura,
+      notas: notas ?? this.notas,
+      activo: activo ?? this.activo,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (nombre.present) {
+      map['nombre'] = Variable<String>(nombre.value);
+    }
+    if (abreviatura.present) {
+      map['abreviatura'] = Variable<String>(abreviatura.value);
+    }
+    if (notas.present) {
+      map['notas'] = Variable<String>(notas.value);
+    }
+    if (activo.present) {
+      map['activo'] = Variable<bool>(activo.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GruposDistribuidoresCompanion(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('abreviatura: $abreviatura, ')
+          ..write('notas: $notas, ')
+          ..write('activo: $activo, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ReportesTable extends Reportes
     with TableInfo<$ReportesTable, ReportesDb> {
   @override
@@ -6249,6 +6806,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $UsuariosTable usuarios = $UsuariosTable(this);
   late final $DistribuidoresTable distribuidores = $DistribuidoresTable(this);
+  late final $GruposDistribuidoresTable gruposDistribuidores =
+      $GruposDistribuidoresTable(this);
   late final $ReportesTable reportes = $ReportesTable(this);
   late final $ModelosTable modelos = $ModelosTable(this);
   late final $ModeloImagenesTable modeloImagenes = $ModeloImagenesTable(this);
@@ -6260,6 +6819,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final DistribuidoresDao distribuidoresDao = DistribuidoresDao(
     this as AppDatabase,
   );
+  late final GruposDistribuidoresDao gruposDistribuidoresDao =
+      GruposDistribuidoresDao(this as AppDatabase);
   late final ReportesDao reportesDao = ReportesDao(this as AppDatabase);
   late final ModelosDao modelosDao = ModelosDao(this as AppDatabase);
   late final ModeloImagenesDao modeloImagenesDao = ModeloImagenesDao(
@@ -6278,6 +6839,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     usuarios,
     distribuidores,
+    gruposDistribuidores,
     reportes,
     modelos,
     modeloImagenes,
@@ -6835,6 +7397,300 @@ typedef $$DistribuidoresTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $DistribuidoresTable, DistribuidorDb>,
       ),
       DistribuidorDb,
+      PrefetchHooks Function()
+    >;
+typedef $$GruposDistribuidoresTableCreateCompanionBuilder =
+    GruposDistribuidoresCompanion Function({
+      required String uid,
+      Value<String> nombre,
+      Value<String> abreviatura,
+      Value<String> notas,
+      Value<bool> activo,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$GruposDistribuidoresTableUpdateCompanionBuilder =
+    GruposDistribuidoresCompanion Function({
+      Value<String> uid,
+      Value<String> nombre,
+      Value<String> abreviatura,
+      Value<String> notas,
+      Value<bool> activo,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$GruposDistribuidoresTableFilterComposer
+    extends Composer<_$AppDatabase, $GruposDistribuidoresTable> {
+  $$GruposDistribuidoresTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get abreviatura => $composableBuilder(
+    column: $table.abreviatura,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get activo => $composableBuilder(
+    column: $table.activo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$GruposDistribuidoresTableOrderingComposer
+    extends Composer<_$AppDatabase, $GruposDistribuidoresTable> {
+  $$GruposDistribuidoresTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get abreviatura => $composableBuilder(
+    column: $table.abreviatura,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get activo => $composableBuilder(
+    column: $table.activo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$GruposDistribuidoresTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GruposDistribuidoresTable> {
+  $$GruposDistribuidoresTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get nombre =>
+      $composableBuilder(column: $table.nombre, builder: (column) => column);
+
+  GeneratedColumn<String> get abreviatura => $composableBuilder(
+    column: $table.abreviatura,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notas =>
+      $composableBuilder(column: $table.notas, builder: (column) => column);
+
+  GeneratedColumn<bool> get activo =>
+      $composableBuilder(column: $table.activo, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$GruposDistribuidoresTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $GruposDistribuidoresTable,
+          GrupoDistribuidorDb,
+          $$GruposDistribuidoresTableFilterComposer,
+          $$GruposDistribuidoresTableOrderingComposer,
+          $$GruposDistribuidoresTableAnnotationComposer,
+          $$GruposDistribuidoresTableCreateCompanionBuilder,
+          $$GruposDistribuidoresTableUpdateCompanionBuilder,
+          (
+            GrupoDistribuidorDb,
+            BaseReferences<
+              _$AppDatabase,
+              $GruposDistribuidoresTable,
+              GrupoDistribuidorDb
+            >,
+          ),
+          GrupoDistribuidorDb,
+          PrefetchHooks Function()
+        > {
+  $$GruposDistribuidoresTableTableManager(
+    _$AppDatabase db,
+    $GruposDistribuidoresTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GruposDistribuidoresTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GruposDistribuidoresTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$GruposDistribuidoresTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> nombre = const Value.absent(),
+                Value<String> abreviatura = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<bool> activo = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => GruposDistribuidoresCompanion(
+                uid: uid,
+                nombre: nombre,
+                abreviatura: abreviatura,
+                notas: notas,
+                activo: activo,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                Value<String> nombre = const Value.absent(),
+                Value<String> abreviatura = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<bool> activo = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => GruposDistribuidoresCompanion.insert(
+                uid: uid,
+                nombre: nombre,
+                abreviatura: abreviatura,
+                notas: notas,
+                activo: activo,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$GruposDistribuidoresTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $GruposDistribuidoresTable,
+      GrupoDistribuidorDb,
+      $$GruposDistribuidoresTableFilterComposer,
+      $$GruposDistribuidoresTableOrderingComposer,
+      $$GruposDistribuidoresTableAnnotationComposer,
+      $$GruposDistribuidoresTableCreateCompanionBuilder,
+      $$GruposDistribuidoresTableUpdateCompanionBuilder,
+      (
+        GrupoDistribuidorDb,
+        BaseReferences<
+          _$AppDatabase,
+          $GruposDistribuidoresTable,
+          GrupoDistribuidorDb
+        >,
+      ),
+      GrupoDistribuidorDb,
       PrefetchHooks Function()
     >;
 typedef $$ReportesTableCreateCompanionBuilder =
@@ -9243,6 +10099,8 @@ class $AppDatabaseManager {
       $$UsuariosTableTableManager(_db, _db.usuarios);
   $$DistribuidoresTableTableManager get distribuidores =>
       $$DistribuidoresTableTableManager(_db, _db.distribuidores);
+  $$GruposDistribuidoresTableTableManager get gruposDistribuidores =>
+      $$GruposDistribuidoresTableTableManager(_db, _db.gruposDistribuidores);
   $$ReportesTableTableManager get reportes =>
       $$ReportesTableTableManager(_db, _db.reportes);
   $$ModelosTableTableManager get modelos =>

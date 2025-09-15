@@ -92,20 +92,6 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
     try {
       final now = DateTime.now().toUtc();
 
-      // 1) Upsert ONLINE (no toca Drift)
-      final row = <String, dynamic>{
-        'uid': uid,
-        'nombre': nombre,
-        'grupo': grupo,
-        'direccion': direccion,
-        'activo': activo,
-        'latitud': latitud,
-        'longitud': longitud,
-        'deleted': false,
-        'updated_at': now.toIso8601String(),
-      };
-      await _servicio.upsertDistribuidorOnline(row);
-
       // 2) Upsert LOCAL (remoto ⇒ isSynced=true)
       final comp = DistribuidoresCompanion(
         uid: Value(uid),

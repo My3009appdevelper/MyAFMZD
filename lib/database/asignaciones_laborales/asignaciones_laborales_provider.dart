@@ -128,9 +128,12 @@ class AsignacionesLaboralesNotifier
         inicio: fechaInicio,
         fin: fechaFin,
         excluirUid: null,
+        // 👇 Solo bloquea si coincide MISMO distribuidor y MISMO rol
+        mismoDistribuidorUid: distribuidorUid.isEmpty ? null : distribuidorUid,
+        mismoRol: rol.isEmpty ? null : rol,
       )) {
         throw StateError(
-          'El colaborador ya tiene una asignación activa o traslapada en ese rango.',
+          'Ya existe una asignación traslapada con mismo rol/distribuidor.',
         );
       }
 
@@ -183,21 +186,25 @@ class AsignacionesLaboralesNotifier
   }) async {
     // Si tocas fechas, valida traslapes
     final current = obtenerPorUid(uid);
-    if (current == null) {
-      throw StateError('Asignación no encontrada: $uid');
-    }
+    if (current == null) throw StateError('Asignación no encontrada: $uid');
 
     final nuevoInicio = fechaInicio ?? current.fechaInicio;
     final nuevoFin = fechaFin ?? current.fechaFin;
+
+    // 👇 contexto efectivo (si no te pasan valor, usa el actual)
+    final ctxDistrib = (distribuidorUid ?? current.distribuidorUid);
+    final ctxRol = (rol ?? current.rol);
 
     if (tieneTraslapeEnRango(
       colaboradorUid: current.colaboradorUid,
       inicio: nuevoInicio,
       fin: nuevoFin,
       excluirUid: uid,
+      mismoDistribuidorUid: ctxDistrib.isEmpty ? null : ctxDistrib,
+      mismoRol: ctxRol.isEmpty ? null : ctxRol,
     )) {
       throw StateError(
-        'Este cambio generaría un traslape de asignaciones para el colaborador.',
+        'Este cambio generaría un traslape con mismo rol/distribuidor.',
       );
     }
 
@@ -413,40 +420,40 @@ class AsignacionesLaboralesNotifier
     required DateTime inicio,
     DateTime? fin, // null => abierta
     String? excluirUid,
+
+    // 👇 NUEVOS: sólo considerar traslape si además coinciden con este contexto
+    String? mismoDistribuidorUid,
+    String? mismoRol,
   }) {
     final start = inicio.toUtc();
-    final end = fin?.toUtc(); // null = abierto/activo
+    final end = fin?.toUtc(); // null = abierto
 
     for (final a in state) {
       if (a.deleted) continue;
       if (a.colaboradorUid != colaboradorUid) continue;
       if (excluirUid != null && a.uid == excluirUid) continue;
 
-      final aStart = a.fechaInicio.toUtc();
-      final aEnd = a.fechaFin?.toUtc(); // null = abierta
+      // 👇 SI SE PIDE CONTEXTO, filtra por coincidencia
+      if (mismoDistribuidorUid != null &&
+          a.distribuidorUid != mismoDistribuidorUid) {
+        continue;
+      }
+      if (mismoRol != null && a.rol != mismoRol) {
+        continue;
+      }
 
-      // Caso intervalos:
-      // [aStart, aEnd?] vs [start, end?] — hay traslape si:
-      // - si ambos cerrados: aStart <= end && start <= aEnd
-      // - si uno abierto: solapan si el inicio está dentro del otro
+      final aStart = a.fechaInicio.toUtc();
+      final aEnd = a.fechaFin?.toUtc(); // null = abierto
+
       final overlaps = () {
         if (aEnd != null && end != null) {
           return aStart.isBefore(end) && start.isBefore(aEnd) ||
               aStart.isAtSameMomentAs(end) ||
               start.isAtSameMomentAs(aEnd);
         }
-        if (aEnd == null && end == null) {
-          // ambos abiertos => traslape seguro
-          return true;
-        }
-        if (aEnd == null && end != null) {
-          // a abierto: solapa si aStart <= end
-          return !aStart.isAfter(end);
-        }
-        if (aEnd != null && end == null) {
-          // nuevo abierto: solapa si start <= aEnd
-          return !start.isAfter(aEnd);
-        }
+        if (aEnd == null && end == null) return true; // ambos abiertos
+        if (aEnd == null && end != null) return !aStart.isAfter(end);
+        if (aEnd != null && end == null) return !start.isAfter(aEnd);
         return false;
       }();
 

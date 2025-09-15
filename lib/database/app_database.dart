@@ -7,6 +7,8 @@ import 'package:myafmzd/database/colaboradores/colaboradores_dao.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_table.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_table.dart';
+import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_dao.dart';
+import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_table.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_dao.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_table.dart';
 import 'package:myafmzd/database/modelos/modelos_dao.dart';
@@ -26,6 +28,7 @@ part 'app_database.g.dart';
   tables: [
     Usuarios,
     Distribuidores,
+    GruposDistribuidores,
     Reportes,
     Modelos,
     ModeloImagenes,
@@ -36,6 +39,7 @@ part 'app_database.g.dart';
   daos: [
     UsuariosDao,
     DistribuidoresDao,
+    GruposDistribuidoresDao,
     ReportesDao,
     ModelosDao,
     ModeloImagenesDao,
@@ -80,7 +84,7 @@ LazyDatabase _openConnection() {
     final modelosImgDir = Directory(p.join(supportDir.path, 'modelos_img'));
 
     // ───────────────────────── toggle de limpieza ────────────────────
-    const bool wipeOnColdStart = false; // ⬅️ ponlo en false para producción
+    const bool wipeOnColdStart = true; // ⬅️ ponlo en false para producción
 
     // ─────────────────────── helpers de borrado ──────────────────────
     Future<int> deleteWhere(Directory dir, bool Function(File f) test) async {
