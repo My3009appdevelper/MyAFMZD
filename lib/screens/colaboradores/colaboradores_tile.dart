@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_form_page.dart';
-import 'package:myafmzd/widgets/sheet_action.dart';
-import 'package:myafmzd/widgets/show_detail_dialog.dart';
+import 'package:myafmzd/widgets/my_sheet_action.dart';
+import 'package:myafmzd/widgets/my_show_detail_dialog.dart';
 
 class ColaboradorItemTile extends ConsumerStatefulWidget {
   final ColaboradorDb colaborador;

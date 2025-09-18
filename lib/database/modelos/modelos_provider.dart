@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:io';
+import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
@@ -9,6 +10,7 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_dao.dart';
 import 'package:myafmzd/database/modelos/modelos_service.dart';
 import 'package:myafmzd/database/modelos/modelos_sync.dart';
+import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -495,5 +497,234 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
       final cmp = a.modelo.compareTo(b.modelo);
       return cmp != 0 ? cmp : b.anio.compareTo(a.anio);
     });
+  }
+
+  // ====================== CSV: helpers locales ======================
+
+  // Encabezado estable (SIN uid). Igual patrón que ventas/distribuidores:
+  // exporta con 'uid' como 1a columna extra, pero el import valida sin 'uid'.
+  static const List<String> _csvHeaderModelos = [
+    'claveCatalogo',
+    'marca',
+    'modelo',
+    'anio',
+    'tipo',
+    'transmision',
+    'descripcion',
+    'activo',
+    'precioBase',
+    'fichaRutaRemota',
+    'fichaRutaLocal',
+    'createdAt',
+    'updatedAt',
+    'deleted',
+    'isSynced',
+  ];
+
+  String _fmtIso(DateTime? d) => d == null ? '' : d.toUtc().toIso8601String();
+
+  // ====================== CSV: EXPORTAR ======================
+
+  /// Exporta todos los modelos (o solo NO eliminados) a CSV (String).
+  /// Orden: activos primero, luego modelo asc y año desc.
+  /// Header EXACTO con 'uid' como primera columna (misma convención que ventas/distribuidoras).
+  Future<String> exportarCsvModelos({bool incluirEliminados = false}) async {
+    final lista = incluirEliminados
+        ? await _dao.obtenerTodosDrift()
+        : (await _dao.obtenerTodosDrift()).where((m) => !m.deleted).toList();
+
+    lista.sort((a, b) {
+      if (a.activo != b.activo) return a.activo ? -1 : 1;
+      final cmp = a.modelo.compareTo(b.modelo);
+      return (cmp != 0) ? cmp : b.anio.compareTo(a.anio);
+    });
+
+    final rows = <List<dynamic>>[
+      ['uid', ..._csvHeaderModelos],
+    ];
+
+    for (final m in lista) {
+      rows.add([
+        m.uid,
+        m.claveCatalogo,
+        m.marca,
+        m.modelo,
+        m.anio,
+        m.tipo,
+        m.transmision,
+        m.descripcion,
+        m.activo.toString(),
+        m.precioBase,
+        m.fichaRutaRemota,
+        m.fichaRutaLocal,
+        _fmtIso(m.createdAt),
+        _fmtIso(m.updatedAt),
+        m.deleted.toString(),
+        m.isSynced.toString(),
+      ]);
+    }
+
+    return toCsvStringWithBom(rows);
+  }
+
+  /// Genera el archivo .csv y devuelve la ruta exacta (Downloads si existe; si no, appSupport).
+  Future<String> exportarCsvAArchivo({String? nombreArchivo}) async {
+    final csv = await exportarCsvModelos();
+
+    final now = DateTime.now().toUtc();
+    final ts = now.toIso8601String().replaceAll(':', '-');
+    final fileName = (nombreArchivo?.trim().isNotEmpty == true)
+        ? nombreArchivo!.trim()
+        : 'modelos_$ts.csv';
+
+    Directory dir;
+    try {
+      final downloads = await getDownloadsDirectory();
+      dir = downloads ?? await getApplicationSupportDirectory();
+    } catch (_) {
+      dir = await getApplicationSupportDirectory();
+    }
+
+    final file = File(p.join(dir.path, fileName));
+    await file.create(recursive: true);
+    await file.writeAsString(csv, flush: true);
+    return file.path;
+  }
+
+  // ====================== CSV: IMPORTAR ======================
+
+  /// Importa modelos desde CSV. SOLO INSERTA. Nunca edita existentes.
+  /// Duplicado si:
+  ///  - (claveCatalogo + anio) coincide (case-insensitive en claveCatalogo), o
+  ///  - ya apareció la misma llave dentro del mismo CSV (evita duplicados internos).
+  /// Nota: Aunque el export agrega 'uid' en el encabezado, este import espera
+  ///       el encabezado SIN 'uid' (patrón simétrico a ventas/distribuidoras).
+  Future<(int insertados, int saltados)> importarCsvModelos({
+    String? csvText,
+    List<int>? csvBytes,
+  }) async {
+    assert(
+      csvText != null || csvBytes != null,
+      'Proporciona csvText o csvBytes',
+    );
+
+    final text = csvText ?? decodeCsvBytes(csvBytes!);
+    final rows = const CsvToListConverter(
+      shouldParseNumbers: false,
+      eol: '\n',
+    ).convert(text);
+    if (rows.isEmpty) return (0, 0);
+
+    // Header EXACTO (SIN uid)
+    final header = rows.first.map((e) => (e ?? '').toString().trim()).toList();
+    final validHeader =
+        header.length == _csvHeaderModelos.length &&
+        _csvHeaderModelos.asMap().entries.every(
+          (e) => e.value == header[e.key],
+        );
+    if (!validHeader) {
+      throw const FormatException(
+        'Encabezado CSV inválido. Esperado: '
+        'claveCatalogo,marca,modelo,anio,tipo,transmision,descripcion,activo,precioBase,'
+        'fichaRutaRemota,fichaRutaLocal,createdAt,updatedAt,deleted,isSynced',
+      );
+    }
+
+    final dataRows = rows.skip(1);
+    final nowUtc = DateTime.now().toUtc();
+
+    // ===== Índices DB para lookup rápido (clave+anio) =====
+    final existentes = await _dao.obtenerTodosDrift();
+    final byClaveAnio = <String, bool>{};
+    String kClave(String s) => s.trim().toLowerCase();
+    String kAnio(int y) => y.toString();
+    String kKey(String clave, int anio) => '${kClave(clave)}|${kAnio(anio)}';
+
+    for (final m in existentes) {
+      if (m.deleted) continue;
+      byClaveAnio[kKey(m.claveCatalogo, m.anio)] = true;
+    }
+
+    // ===== Seen para evitar duplicado dentro del mismo CSV =====
+    final seenClaveAnio = <String, bool>{};
+
+    int insertados = 0, saltados = 0;
+
+    await _dao.db.transaction(() async {
+      for (final r in dataRows) {
+        if (r.isEmpty) continue;
+
+        final row = List<String>.generate(
+          _csvHeaderModelos.length,
+          (i) => (i < r.length ? (r[i] ?? '').toString() : '').trim(),
+        );
+
+        final claveCatalogo = row[0];
+        final marca = row[1];
+        final modelo = row[2];
+        final anio = int.tryParse(row[3]) ?? 0;
+        final tipo = row[4];
+        final transmision = row[5];
+        final descripcion = row[6];
+        final activo = parseBoolFlexible(row[7], defaultValue: true);
+        final precioBase = double.tryParse(row[8]) ?? 0.0;
+        final fichaRutaRemota = row[9];
+        final fichaRutaLocal = row[10];
+        final createdAt = parseDateFlexible(row[11]) ?? nowUtc;
+        final updatedAt = parseDateFlexible(row[12]) ?? nowUtc;
+        final deleted = parseBoolFlexible(row[13], defaultValue: false);
+        final isSynced = parseBoolFlexible(row[14], defaultValue: false);
+
+        // llave de duplicado
+        final key = kKey(claveCatalogo, anio);
+
+        final dupDb = key.isNotEmpty && byClaveAnio[key] == true;
+        final dupCsv = key.isNotEmpty && seenClaveAnio[key] == true;
+
+        if (dupDb || dupCsv || anio == 0) {
+          // anio==0: fila inválida → tratar como saltada
+          saltados++;
+          if (key.isNotEmpty) seenClaveAnio[key] = true;
+          continue;
+        }
+
+        // Inserta SIEMPRE con uid nuevo
+        final uid = const Uuid().v4();
+
+        final comp = ModelosCompanion(
+          uid: Value(uid),
+          claveCatalogo: Value(claveCatalogo),
+          marca: Value(marca),
+          modelo: Value(modelo),
+          anio: Value(anio),
+          tipo: Value(tipo),
+          transmision: Value(transmision),
+          descripcion: Value(descripcion),
+          activo: Value(activo),
+          precioBase: Value(precioBase),
+          fichaRutaRemota: Value(fichaRutaRemota),
+          fichaRutaLocal: Value(fichaRutaLocal),
+          createdAt: Value(createdAt),
+          updatedAt: Value(updatedAt),
+          deleted: Value(deleted),
+          isSynced: Value(isSynced),
+        );
+
+        await _dao.upsertModeloDrift(comp);
+        insertados++;
+
+        // Actualizar índices para siguientes filas
+        if (key.isNotEmpty) {
+          byClaveAnio[key] = true;
+          seenClaveAnio[key] = true;
+        }
+      }
+    });
+
+    state = await _dao.obtenerTodosDrift();
+    print(
+      '[🚗 MENSAJES MODELOS PROVIDER] CSV import → insertados:$insertados | saltados:$saltados',
+    );
+    return (insertados, saltados);
   }
 }

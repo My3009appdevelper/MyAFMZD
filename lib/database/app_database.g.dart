@@ -543,15 +543,17 @@ class $DistribuidoresTable extends Distribuidores
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
-  static const VerificationMeta _grupoMeta = const VerificationMeta('grupo');
+  static const VerificationMeta _uuidGrupoMeta = const VerificationMeta(
+    'uuidGrupo',
+  );
   @override
-  late final GeneratedColumn<String> grupo = GeneratedColumn<String>(
-    'grupo',
+  late final GeneratedColumn<String> uuidGrupo = GeneratedColumn<String>(
+    'uuid_grupo',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('AFMZD'),
+    defaultValue: const Constant(''),
   );
   static const VerificationMeta _direccionMeta = const VerificationMeta(
     'direccion',
@@ -602,6 +604,18 @@ class $DistribuidoresTable extends Distribuidores
     requiredDuringInsert: false,
     defaultValue: const Constant(0.0),
   );
+  static const VerificationMeta _concentradoraUidMeta = const VerificationMeta(
+    'concentradoraUid',
+  );
+  @override
+  late final GeneratedColumn<String> concentradoraUid = GeneratedColumn<String>(
+    'concentradora_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -648,11 +662,12 @@ class $DistribuidoresTable extends Distribuidores
   List<GeneratedColumn> get $columns => [
     uid,
     nombre,
-    grupo,
+    uuidGrupo,
     direccion,
     activo,
     latitud,
     longitud,
+    concentradoraUid,
     updatedAt,
     deleted,
     isSynced,
@@ -683,10 +698,10 @@ class $DistribuidoresTable extends Distribuidores
         nombre.isAcceptableOrUnknown(data['nombre']!, _nombreMeta),
       );
     }
-    if (data.containsKey('grupo')) {
+    if (data.containsKey('uuid_grupo')) {
       context.handle(
-        _grupoMeta,
-        grupo.isAcceptableOrUnknown(data['grupo']!, _grupoMeta),
+        _uuidGrupoMeta,
+        uuidGrupo.isAcceptableOrUnknown(data['uuid_grupo']!, _uuidGrupoMeta),
       );
     }
     if (data.containsKey('direccion')) {
@@ -711,6 +726,15 @@ class $DistribuidoresTable extends Distribuidores
       context.handle(
         _longitudMeta,
         longitud.isAcceptableOrUnknown(data['longitud']!, _longitudMeta),
+      );
+    }
+    if (data.containsKey('concentradora_uid')) {
+      context.handle(
+        _concentradoraUidMeta,
+        concentradoraUid.isAcceptableOrUnknown(
+          data['concentradora_uid']!,
+          _concentradoraUidMeta,
+        ),
       );
     }
     if (data.containsKey('updated_at')) {
@@ -748,9 +772,9 @@ class $DistribuidoresTable extends Distribuidores
         DriftSqlType.string,
         data['${effectivePrefix}nombre'],
       )!,
-      grupo: attachedDatabase.typeMapping.read(
+      uuidGrupo: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}grupo'],
+        data['${effectivePrefix}uuid_grupo'],
       )!,
       direccion: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -767,6 +791,10 @@ class $DistribuidoresTable extends Distribuidores
       longitud: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}longitud'],
+      )!,
+      concentradoraUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}concentradora_uid'],
       )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -792,22 +820,24 @@ class $DistribuidoresTable extends Distribuidores
 class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
   final String uid;
   final String nombre;
-  final String grupo;
+  final String uuidGrupo;
   final String direccion;
   final bool activo;
   final double latitud;
   final double longitud;
+  final String concentradoraUid;
   final DateTime updatedAt;
   final bool deleted;
   final bool isSynced;
   const DistribuidorDb({
     required this.uid,
     required this.nombre,
-    required this.grupo,
+    required this.uuidGrupo,
     required this.direccion,
     required this.activo,
     required this.latitud,
     required this.longitud,
+    required this.concentradoraUid,
     required this.updatedAt,
     required this.deleted,
     required this.isSynced,
@@ -817,11 +847,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     final map = <String, Expression>{};
     map['uid'] = Variable<String>(uid);
     map['nombre'] = Variable<String>(nombre);
-    map['grupo'] = Variable<String>(grupo);
+    map['uuid_grupo'] = Variable<String>(uuidGrupo);
     map['direccion'] = Variable<String>(direccion);
     map['activo'] = Variable<bool>(activo);
     map['latitud'] = Variable<double>(latitud);
     map['longitud'] = Variable<double>(longitud);
+    map['concentradora_uid'] = Variable<String>(concentradoraUid);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['deleted'] = Variable<bool>(deleted);
     map['is_synced'] = Variable<bool>(isSynced);
@@ -832,11 +863,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     return DistribuidoresCompanion(
       uid: Value(uid),
       nombre: Value(nombre),
-      grupo: Value(grupo),
+      uuidGrupo: Value(uuidGrupo),
       direccion: Value(direccion),
       activo: Value(activo),
       latitud: Value(latitud),
       longitud: Value(longitud),
+      concentradoraUid: Value(concentradoraUid),
       updatedAt: Value(updatedAt),
       deleted: Value(deleted),
       isSynced: Value(isSynced),
@@ -851,11 +883,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     return DistribuidorDb(
       uid: serializer.fromJson<String>(json['uid']),
       nombre: serializer.fromJson<String>(json['nombre']),
-      grupo: serializer.fromJson<String>(json['grupo']),
+      uuidGrupo: serializer.fromJson<String>(json['uuidGrupo']),
       direccion: serializer.fromJson<String>(json['direccion']),
       activo: serializer.fromJson<bool>(json['activo']),
       latitud: serializer.fromJson<double>(json['latitud']),
       longitud: serializer.fromJson<double>(json['longitud']),
+      concentradoraUid: serializer.fromJson<String>(json['concentradoraUid']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -867,11 +900,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     return <String, dynamic>{
       'uid': serializer.toJson<String>(uid),
       'nombre': serializer.toJson<String>(nombre),
-      'grupo': serializer.toJson<String>(grupo),
+      'uuidGrupo': serializer.toJson<String>(uuidGrupo),
       'direccion': serializer.toJson<String>(direccion),
       'activo': serializer.toJson<bool>(activo),
       'latitud': serializer.toJson<double>(latitud),
       'longitud': serializer.toJson<double>(longitud),
+      'concentradoraUid': serializer.toJson<String>(concentradoraUid),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deleted': serializer.toJson<bool>(deleted),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -881,22 +915,24 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
   DistribuidorDb copyWith({
     String? uid,
     String? nombre,
-    String? grupo,
+    String? uuidGrupo,
     String? direccion,
     bool? activo,
     double? latitud,
     double? longitud,
+    String? concentradoraUid,
     DateTime? updatedAt,
     bool? deleted,
     bool? isSynced,
   }) => DistribuidorDb(
     uid: uid ?? this.uid,
     nombre: nombre ?? this.nombre,
-    grupo: grupo ?? this.grupo,
+    uuidGrupo: uuidGrupo ?? this.uuidGrupo,
     direccion: direccion ?? this.direccion,
     activo: activo ?? this.activo,
     latitud: latitud ?? this.latitud,
     longitud: longitud ?? this.longitud,
+    concentradoraUid: concentradoraUid ?? this.concentradoraUid,
     updatedAt: updatedAt ?? this.updatedAt,
     deleted: deleted ?? this.deleted,
     isSynced: isSynced ?? this.isSynced,
@@ -905,11 +941,14 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     return DistribuidorDb(
       uid: data.uid.present ? data.uid.value : this.uid,
       nombre: data.nombre.present ? data.nombre.value : this.nombre,
-      grupo: data.grupo.present ? data.grupo.value : this.grupo,
+      uuidGrupo: data.uuidGrupo.present ? data.uuidGrupo.value : this.uuidGrupo,
       direccion: data.direccion.present ? data.direccion.value : this.direccion,
       activo: data.activo.present ? data.activo.value : this.activo,
       latitud: data.latitud.present ? data.latitud.value : this.latitud,
       longitud: data.longitud.present ? data.longitud.value : this.longitud,
+      concentradoraUid: data.concentradoraUid.present
+          ? data.concentradoraUid.value
+          : this.concentradoraUid,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
@@ -921,11 +960,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     return (StringBuffer('DistribuidorDb(')
           ..write('uid: $uid, ')
           ..write('nombre: $nombre, ')
-          ..write('grupo: $grupo, ')
+          ..write('uuidGrupo: $uuidGrupo, ')
           ..write('direccion: $direccion, ')
           ..write('activo: $activo, ')
           ..write('latitud: $latitud, ')
           ..write('longitud: $longitud, ')
+          ..write('concentradoraUid: $concentradoraUid, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
           ..write('isSynced: $isSynced')
@@ -937,11 +977,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
   int get hashCode => Object.hash(
     uid,
     nombre,
-    grupo,
+    uuidGrupo,
     direccion,
     activo,
     latitud,
     longitud,
+    concentradoraUid,
     updatedAt,
     deleted,
     isSynced,
@@ -952,11 +993,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
       (other is DistribuidorDb &&
           other.uid == this.uid &&
           other.nombre == this.nombre &&
-          other.grupo == this.grupo &&
+          other.uuidGrupo == this.uuidGrupo &&
           other.direccion == this.direccion &&
           other.activo == this.activo &&
           other.latitud == this.latitud &&
           other.longitud == this.longitud &&
+          other.concentradoraUid == this.concentradoraUid &&
           other.updatedAt == this.updatedAt &&
           other.deleted == this.deleted &&
           other.isSynced == this.isSynced);
@@ -965,11 +1007,12 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
 class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   final Value<String> uid;
   final Value<String> nombre;
-  final Value<String> grupo;
+  final Value<String> uuidGrupo;
   final Value<String> direccion;
   final Value<bool> activo;
   final Value<double> latitud;
   final Value<double> longitud;
+  final Value<String> concentradoraUid;
   final Value<DateTime> updatedAt;
   final Value<bool> deleted;
   final Value<bool> isSynced;
@@ -977,11 +1020,12 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   const DistribuidoresCompanion({
     this.uid = const Value.absent(),
     this.nombre = const Value.absent(),
-    this.grupo = const Value.absent(),
+    this.uuidGrupo = const Value.absent(),
     this.direccion = const Value.absent(),
     this.activo = const Value.absent(),
     this.latitud = const Value.absent(),
     this.longitud = const Value.absent(),
+    this.concentradoraUid = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -990,11 +1034,12 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   DistribuidoresCompanion.insert({
     required String uid,
     this.nombre = const Value.absent(),
-    this.grupo = const Value.absent(),
+    this.uuidGrupo = const Value.absent(),
     this.direccion = const Value.absent(),
     this.activo = const Value.absent(),
     this.latitud = const Value.absent(),
     this.longitud = const Value.absent(),
+    this.concentradoraUid = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -1003,11 +1048,12 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   static Insertable<DistribuidorDb> custom({
     Expression<String>? uid,
     Expression<String>? nombre,
-    Expression<String>? grupo,
+    Expression<String>? uuidGrupo,
     Expression<String>? direccion,
     Expression<bool>? activo,
     Expression<double>? latitud,
     Expression<double>? longitud,
+    Expression<String>? concentradoraUid,
     Expression<DateTime>? updatedAt,
     Expression<bool>? deleted,
     Expression<bool>? isSynced,
@@ -1016,11 +1062,12 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     return RawValuesInsertable({
       if (uid != null) 'uid': uid,
       if (nombre != null) 'nombre': nombre,
-      if (grupo != null) 'grupo': grupo,
+      if (uuidGrupo != null) 'uuid_grupo': uuidGrupo,
       if (direccion != null) 'direccion': direccion,
       if (activo != null) 'activo': activo,
       if (latitud != null) 'latitud': latitud,
       if (longitud != null) 'longitud': longitud,
+      if (concentradoraUid != null) 'concentradora_uid': concentradoraUid,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deleted != null) 'deleted': deleted,
       if (isSynced != null) 'is_synced': isSynced,
@@ -1031,11 +1078,12 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   DistribuidoresCompanion copyWith({
     Value<String>? uid,
     Value<String>? nombre,
-    Value<String>? grupo,
+    Value<String>? uuidGrupo,
     Value<String>? direccion,
     Value<bool>? activo,
     Value<double>? latitud,
     Value<double>? longitud,
+    Value<String>? concentradoraUid,
     Value<DateTime>? updatedAt,
     Value<bool>? deleted,
     Value<bool>? isSynced,
@@ -1044,11 +1092,12 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     return DistribuidoresCompanion(
       uid: uid ?? this.uid,
       nombre: nombre ?? this.nombre,
-      grupo: grupo ?? this.grupo,
+      uuidGrupo: uuidGrupo ?? this.uuidGrupo,
       direccion: direccion ?? this.direccion,
       activo: activo ?? this.activo,
       latitud: latitud ?? this.latitud,
       longitud: longitud ?? this.longitud,
+      concentradoraUid: concentradoraUid ?? this.concentradoraUid,
       updatedAt: updatedAt ?? this.updatedAt,
       deleted: deleted ?? this.deleted,
       isSynced: isSynced ?? this.isSynced,
@@ -1065,8 +1114,8 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     if (nombre.present) {
       map['nombre'] = Variable<String>(nombre.value);
     }
-    if (grupo.present) {
-      map['grupo'] = Variable<String>(grupo.value);
+    if (uuidGrupo.present) {
+      map['uuid_grupo'] = Variable<String>(uuidGrupo.value);
     }
     if (direccion.present) {
       map['direccion'] = Variable<String>(direccion.value);
@@ -1079,6 +1128,9 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     }
     if (longitud.present) {
       map['longitud'] = Variable<double>(longitud.value);
+    }
+    if (concentradoraUid.present) {
+      map['concentradora_uid'] = Variable<String>(concentradoraUid.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
@@ -1100,11 +1152,12 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     return (StringBuffer('DistribuidoresCompanion(')
           ..write('uid: $uid, ')
           ..write('nombre: $nombre, ')
-          ..write('grupo: $grupo, ')
+          ..write('uuidGrupo: $uuidGrupo, ')
           ..write('direccion: $direccion, ')
           ..write('activo: $activo, ')
           ..write('latitud: $latitud, ')
           ..write('longitud: $longitud, ')
+          ..write('concentradoraUid: $concentradoraUid, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
           ..write('isSynced: $isSynced, ')
@@ -6801,6 +6854,1826 @@ class AsignacionesLaboralesCompanion
   }
 }
 
+class $EstatusTable extends Estatus with TableInfo<$EstatusTable, EstatusDb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $EstatusTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
+  @override
+  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
+    'nombre',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoriaMeta = const VerificationMeta(
+    'categoria',
+  );
+  @override
+  late final GeneratedColumn<String> categoria = GeneratedColumn<String>(
+    'categoria',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('ciclo'),
+  );
+  static const VerificationMeta _ordenMeta = const VerificationMeta('orden');
+  @override
+  late final GeneratedColumn<int> orden = GeneratedColumn<int>(
+    'orden',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _esFinalMeta = const VerificationMeta(
+    'esFinal',
+  );
+  @override
+  late final GeneratedColumn<bool> esFinal = GeneratedColumn<bool>(
+    'es_final',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("es_final" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _esCancelatorioMeta = const VerificationMeta(
+    'esCancelatorio',
+  );
+  @override
+  late final GeneratedColumn<bool> esCancelatorio = GeneratedColumn<bool>(
+    'es_cancelatorio',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("es_cancelatorio" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _visibleMeta = const VerificationMeta(
+    'visible',
+  );
+  @override
+  late final GeneratedColumn<bool> visible = GeneratedColumn<bool>(
+    'visible',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("visible" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _colorHexMeta = const VerificationMeta(
+    'colorHex',
+  );
+  @override
+  late final GeneratedColumn<String> colorHex = GeneratedColumn<String>(
+    'color_hex',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _iconoMeta = const VerificationMeta('icono');
+  @override
+  late final GeneratedColumn<String> icono = GeneratedColumn<String>(
+    'icono',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _notasMeta = const VerificationMeta('notas');
+  @override
+  late final GeneratedColumn<String> notas = GeneratedColumn<String>(
+    'notas',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uid,
+    nombre,
+    categoria,
+    orden,
+    esFinal,
+    esCancelatorio,
+    visible,
+    colorHex,
+    icono,
+    notas,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'estatus';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<EstatusDb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('nombre')) {
+      context.handle(
+        _nombreMeta,
+        nombre.isAcceptableOrUnknown(data['nombre']!, _nombreMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nombreMeta);
+    }
+    if (data.containsKey('categoria')) {
+      context.handle(
+        _categoriaMeta,
+        categoria.isAcceptableOrUnknown(data['categoria']!, _categoriaMeta),
+      );
+    }
+    if (data.containsKey('orden')) {
+      context.handle(
+        _ordenMeta,
+        orden.isAcceptableOrUnknown(data['orden']!, _ordenMeta),
+      );
+    }
+    if (data.containsKey('es_final')) {
+      context.handle(
+        _esFinalMeta,
+        esFinal.isAcceptableOrUnknown(data['es_final']!, _esFinalMeta),
+      );
+    }
+    if (data.containsKey('es_cancelatorio')) {
+      context.handle(
+        _esCancelatorioMeta,
+        esCancelatorio.isAcceptableOrUnknown(
+          data['es_cancelatorio']!,
+          _esCancelatorioMeta,
+        ),
+      );
+    }
+    if (data.containsKey('visible')) {
+      context.handle(
+        _visibleMeta,
+        visible.isAcceptableOrUnknown(data['visible']!, _visibleMeta),
+      );
+    }
+    if (data.containsKey('color_hex')) {
+      context.handle(
+        _colorHexMeta,
+        colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta),
+      );
+    }
+    if (data.containsKey('icono')) {
+      context.handle(
+        _iconoMeta,
+        icono.isAcceptableOrUnknown(data['icono']!, _iconoMeta),
+      );
+    }
+    if (data.containsKey('notas')) {
+      context.handle(
+        _notasMeta,
+        notas.isAcceptableOrUnknown(data['notas']!, _notasMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  EstatusDb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return EstatusDb(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      nombre: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nombre'],
+      )!,
+      categoria: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}categoria'],
+      )!,
+      orden: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}orden'],
+      )!,
+      esFinal: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}es_final'],
+      )!,
+      esCancelatorio: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}es_cancelatorio'],
+      )!,
+      visible: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}visible'],
+      )!,
+      colorHex: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color_hex'],
+      )!,
+      icono: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icono'],
+      )!,
+      notas: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notas'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $EstatusTable createAlias(String alias) {
+    return $EstatusTable(attachedDatabase, alias);
+  }
+}
+
+class EstatusDb extends DataClass implements Insertable<EstatusDb> {
+  final String uid;
+  final String nombre;
+  final String categoria;
+  final int orden;
+  final bool esFinal;
+  final bool esCancelatorio;
+  final bool visible;
+  final String colorHex;
+  final String icono;
+  final String notas;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool deleted;
+  final bool isSynced;
+  const EstatusDb({
+    required this.uid,
+    required this.nombre,
+    required this.categoria,
+    required this.orden,
+    required this.esFinal,
+    required this.esCancelatorio,
+    required this.visible,
+    required this.colorHex,
+    required this.icono,
+    required this.notas,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['nombre'] = Variable<String>(nombre);
+    map['categoria'] = Variable<String>(categoria);
+    map['orden'] = Variable<int>(orden);
+    map['es_final'] = Variable<bool>(esFinal);
+    map['es_cancelatorio'] = Variable<bool>(esCancelatorio);
+    map['visible'] = Variable<bool>(visible);
+    map['color_hex'] = Variable<String>(colorHex);
+    map['icono'] = Variable<String>(icono);
+    map['notas'] = Variable<String>(notas);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  EstatusCompanion toCompanion(bool nullToAbsent) {
+    return EstatusCompanion(
+      uid: Value(uid),
+      nombre: Value(nombre),
+      categoria: Value(categoria),
+      orden: Value(orden),
+      esFinal: Value(esFinal),
+      esCancelatorio: Value(esCancelatorio),
+      visible: Value(visible),
+      colorHex: Value(colorHex),
+      icono: Value(icono),
+      notas: Value(notas),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory EstatusDb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return EstatusDb(
+      uid: serializer.fromJson<String>(json['uid']),
+      nombre: serializer.fromJson<String>(json['nombre']),
+      categoria: serializer.fromJson<String>(json['categoria']),
+      orden: serializer.fromJson<int>(json['orden']),
+      esFinal: serializer.fromJson<bool>(json['esFinal']),
+      esCancelatorio: serializer.fromJson<bool>(json['esCancelatorio']),
+      visible: serializer.fromJson<bool>(json['visible']),
+      colorHex: serializer.fromJson<String>(json['colorHex']),
+      icono: serializer.fromJson<String>(json['icono']),
+      notas: serializer.fromJson<String>(json['notas']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'nombre': serializer.toJson<String>(nombre),
+      'categoria': serializer.toJson<String>(categoria),
+      'orden': serializer.toJson<int>(orden),
+      'esFinal': serializer.toJson<bool>(esFinal),
+      'esCancelatorio': serializer.toJson<bool>(esCancelatorio),
+      'visible': serializer.toJson<bool>(visible),
+      'colorHex': serializer.toJson<String>(colorHex),
+      'icono': serializer.toJson<String>(icono),
+      'notas': serializer.toJson<String>(notas),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  EstatusDb copyWith({
+    String? uid,
+    String? nombre,
+    String? categoria,
+    int? orden,
+    bool? esFinal,
+    bool? esCancelatorio,
+    bool? visible,
+    String? colorHex,
+    String? icono,
+    String? notas,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? deleted,
+    bool? isSynced,
+  }) => EstatusDb(
+    uid: uid ?? this.uid,
+    nombre: nombre ?? this.nombre,
+    categoria: categoria ?? this.categoria,
+    orden: orden ?? this.orden,
+    esFinal: esFinal ?? this.esFinal,
+    esCancelatorio: esCancelatorio ?? this.esCancelatorio,
+    visible: visible ?? this.visible,
+    colorHex: colorHex ?? this.colorHex,
+    icono: icono ?? this.icono,
+    notas: notas ?? this.notas,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  EstatusDb copyWithCompanion(EstatusCompanion data) {
+    return EstatusDb(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      nombre: data.nombre.present ? data.nombre.value : this.nombre,
+      categoria: data.categoria.present ? data.categoria.value : this.categoria,
+      orden: data.orden.present ? data.orden.value : this.orden,
+      esFinal: data.esFinal.present ? data.esFinal.value : this.esFinal,
+      esCancelatorio: data.esCancelatorio.present
+          ? data.esCancelatorio.value
+          : this.esCancelatorio,
+      visible: data.visible.present ? data.visible.value : this.visible,
+      colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      icono: data.icono.present ? data.icono.value : this.icono,
+      notas: data.notas.present ? data.notas.value : this.notas,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EstatusDb(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('categoria: $categoria, ')
+          ..write('orden: $orden, ')
+          ..write('esFinal: $esFinal, ')
+          ..write('esCancelatorio: $esCancelatorio, ')
+          ..write('visible: $visible, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('icono: $icono, ')
+          ..write('notas: $notas, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uid,
+    nombre,
+    categoria,
+    orden,
+    esFinal,
+    esCancelatorio,
+    visible,
+    colorHex,
+    icono,
+    notas,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EstatusDb &&
+          other.uid == this.uid &&
+          other.nombre == this.nombre &&
+          other.categoria == this.categoria &&
+          other.orden == this.orden &&
+          other.esFinal == this.esFinal &&
+          other.esCancelatorio == this.esCancelatorio &&
+          other.visible == this.visible &&
+          other.colorHex == this.colorHex &&
+          other.icono == this.icono &&
+          other.notas == this.notas &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted &&
+          other.isSynced == this.isSynced);
+}
+
+class EstatusCompanion extends UpdateCompanion<EstatusDb> {
+  final Value<String> uid;
+  final Value<String> nombre;
+  final Value<String> categoria;
+  final Value<int> orden;
+  final Value<bool> esFinal;
+  final Value<bool> esCancelatorio;
+  final Value<bool> visible;
+  final Value<String> colorHex;
+  final Value<String> icono;
+  final Value<String> notas;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> deleted;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const EstatusCompanion({
+    this.uid = const Value.absent(),
+    this.nombre = const Value.absent(),
+    this.categoria = const Value.absent(),
+    this.orden = const Value.absent(),
+    this.esFinal = const Value.absent(),
+    this.esCancelatorio = const Value.absent(),
+    this.visible = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.icono = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EstatusCompanion.insert({
+    required String uid,
+    required String nombre,
+    this.categoria = const Value.absent(),
+    this.orden = const Value.absent(),
+    this.esFinal = const Value.absent(),
+    this.esCancelatorio = const Value.absent(),
+    this.visible = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.icono = const Value.absent(),
+    this.notas = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid),
+       nombre = Value(nombre);
+  static Insertable<EstatusDb> custom({
+    Expression<String>? uid,
+    Expression<String>? nombre,
+    Expression<String>? categoria,
+    Expression<int>? orden,
+    Expression<bool>? esFinal,
+    Expression<bool>? esCancelatorio,
+    Expression<bool>? visible,
+    Expression<String>? colorHex,
+    Expression<String>? icono,
+    Expression<String>? notas,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? deleted,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (nombre != null) 'nombre': nombre,
+      if (categoria != null) 'categoria': categoria,
+      if (orden != null) 'orden': orden,
+      if (esFinal != null) 'es_final': esFinal,
+      if (esCancelatorio != null) 'es_cancelatorio': esCancelatorio,
+      if (visible != null) 'visible': visible,
+      if (colorHex != null) 'color_hex': colorHex,
+      if (icono != null) 'icono': icono,
+      if (notas != null) 'notas': notas,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EstatusCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? nombre,
+    Value<String>? categoria,
+    Value<int>? orden,
+    Value<bool>? esFinal,
+    Value<bool>? esCancelatorio,
+    Value<bool>? visible,
+    Value<String>? colorHex,
+    Value<String>? icono,
+    Value<String>? notas,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? deleted,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return EstatusCompanion(
+      uid: uid ?? this.uid,
+      nombre: nombre ?? this.nombre,
+      categoria: categoria ?? this.categoria,
+      orden: orden ?? this.orden,
+      esFinal: esFinal ?? this.esFinal,
+      esCancelatorio: esCancelatorio ?? this.esCancelatorio,
+      visible: visible ?? this.visible,
+      colorHex: colorHex ?? this.colorHex,
+      icono: icono ?? this.icono,
+      notas: notas ?? this.notas,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (nombre.present) {
+      map['nombre'] = Variable<String>(nombre.value);
+    }
+    if (categoria.present) {
+      map['categoria'] = Variable<String>(categoria.value);
+    }
+    if (orden.present) {
+      map['orden'] = Variable<int>(orden.value);
+    }
+    if (esFinal.present) {
+      map['es_final'] = Variable<bool>(esFinal.value);
+    }
+    if (esCancelatorio.present) {
+      map['es_cancelatorio'] = Variable<bool>(esCancelatorio.value);
+    }
+    if (visible.present) {
+      map['visible'] = Variable<bool>(visible.value);
+    }
+    if (colorHex.present) {
+      map['color_hex'] = Variable<String>(colorHex.value);
+    }
+    if (icono.present) {
+      map['icono'] = Variable<String>(icono.value);
+    }
+    if (notas.present) {
+      map['notas'] = Variable<String>(notas.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EstatusCompanion(')
+          ..write('uid: $uid, ')
+          ..write('nombre: $nombre, ')
+          ..write('categoria: $categoria, ')
+          ..write('orden: $orden, ')
+          ..write('esFinal: $esFinal, ')
+          ..write('esCancelatorio: $esCancelatorio, ')
+          ..write('visible: $visible, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('icono: $icono, ')
+          ..write('notas: $notas, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $VentasTable extends Ventas with TableInfo<$VentasTable, VentaDb> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $VentasTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _distribuidoraOrigenUidMeta =
+      const VerificationMeta('distribuidoraOrigenUid');
+  @override
+  late final GeneratedColumn<String> distribuidoraOrigenUid =
+      GeneratedColumn<String>(
+        'distribuidora_origen_uid',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _distribuidoraUidMeta = const VerificationMeta(
+    'distribuidoraUid',
+  );
+  @override
+  late final GeneratedColumn<String> distribuidoraUid = GeneratedColumn<String>(
+    'distribuidora_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _gerenteGrupoUidMeta = const VerificationMeta(
+    'gerenteGrupoUid',
+  );
+  @override
+  late final GeneratedColumn<String> gerenteGrupoUid = GeneratedColumn<String>(
+    'gerente_grupo_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _vendedorUidMeta = const VerificationMeta(
+    'vendedorUid',
+  );
+  @override
+  late final GeneratedColumn<String> vendedorUid = GeneratedColumn<String>(
+    'vendedor_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _folioContratoMeta = const VerificationMeta(
+    'folioContrato',
+  );
+  @override
+  late final GeneratedColumn<String> folioContrato = GeneratedColumn<String>(
+    'folio_contrato',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _modeloUidMeta = const VerificationMeta(
+    'modeloUid',
+  );
+  @override
+  late final GeneratedColumn<String> modeloUid = GeneratedColumn<String>(
+    'modelo_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _estatusUidMeta = const VerificationMeta(
+    'estatusUid',
+  );
+  @override
+  late final GeneratedColumn<String> estatusUid = GeneratedColumn<String>(
+    'estatus_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _grupoMeta = const VerificationMeta('grupo');
+  @override
+  late final GeneratedColumn<int> grupo = GeneratedColumn<int>(
+    'grupo',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _integranteMeta = const VerificationMeta(
+    'integrante',
+  );
+  @override
+  late final GeneratedColumn<int> integrante = GeneratedColumn<int>(
+    'integrante',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _fechaContratoMeta = const VerificationMeta(
+    'fechaContrato',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fechaContrato =
+      GeneratedColumn<DateTime>(
+        'fecha_contrato',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _fechaVentaMeta = const VerificationMeta(
+    'fechaVenta',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fechaVenta = GeneratedColumn<DateTime>(
+    'fecha_venta',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mesVentaMeta = const VerificationMeta(
+    'mesVenta',
+  );
+  @override
+  late final GeneratedColumn<int> mesVenta = GeneratedColumn<int>(
+    'mes_venta',
+    aliasedName,
+    true,
+    check: () => ComparableExpr(mesVenta).isBetweenValues(1, 12),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _anioVentaMeta = const VerificationMeta(
+    'anioVenta',
+  );
+  @override
+  late final GeneratedColumn<int> anioVenta = GeneratedColumn<int>(
+    'anio_venta',
+    aliasedName,
+    true,
+    check: () => ComparableExpr(anioVenta).isBetweenValues(1990, 2100),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uid,
+    distribuidoraOrigenUid,
+    distribuidoraUid,
+    gerenteGrupoUid,
+    vendedorUid,
+    folioContrato,
+    modeloUid,
+    estatusUid,
+    grupo,
+    integrante,
+    fechaContrato,
+    fechaVenta,
+    mesVenta,
+    anioVenta,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ventas';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<VentaDb> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('distribuidora_origen_uid')) {
+      context.handle(
+        _distribuidoraOrigenUidMeta,
+        distribuidoraOrigenUid.isAcceptableOrUnknown(
+          data['distribuidora_origen_uid']!,
+          _distribuidoraOrigenUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('distribuidora_uid')) {
+      context.handle(
+        _distribuidoraUidMeta,
+        distribuidoraUid.isAcceptableOrUnknown(
+          data['distribuidora_uid']!,
+          _distribuidoraUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('gerente_grupo_uid')) {
+      context.handle(
+        _gerenteGrupoUidMeta,
+        gerenteGrupoUid.isAcceptableOrUnknown(
+          data['gerente_grupo_uid']!,
+          _gerenteGrupoUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('vendedor_uid')) {
+      context.handle(
+        _vendedorUidMeta,
+        vendedorUid.isAcceptableOrUnknown(
+          data['vendedor_uid']!,
+          _vendedorUidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('folio_contrato')) {
+      context.handle(
+        _folioContratoMeta,
+        folioContrato.isAcceptableOrUnknown(
+          data['folio_contrato']!,
+          _folioContratoMeta,
+        ),
+      );
+    }
+    if (data.containsKey('modelo_uid')) {
+      context.handle(
+        _modeloUidMeta,
+        modeloUid.isAcceptableOrUnknown(data['modelo_uid']!, _modeloUidMeta),
+      );
+    }
+    if (data.containsKey('estatus_uid')) {
+      context.handle(
+        _estatusUidMeta,
+        estatusUid.isAcceptableOrUnknown(data['estatus_uid']!, _estatusUidMeta),
+      );
+    }
+    if (data.containsKey('grupo')) {
+      context.handle(
+        _grupoMeta,
+        grupo.isAcceptableOrUnknown(data['grupo']!, _grupoMeta),
+      );
+    }
+    if (data.containsKey('integrante')) {
+      context.handle(
+        _integranteMeta,
+        integrante.isAcceptableOrUnknown(data['integrante']!, _integranteMeta),
+      );
+    }
+    if (data.containsKey('fecha_contrato')) {
+      context.handle(
+        _fechaContratoMeta,
+        fechaContrato.isAcceptableOrUnknown(
+          data['fecha_contrato']!,
+          _fechaContratoMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fecha_venta')) {
+      context.handle(
+        _fechaVentaMeta,
+        fechaVenta.isAcceptableOrUnknown(data['fecha_venta']!, _fechaVentaMeta),
+      );
+    }
+    if (data.containsKey('mes_venta')) {
+      context.handle(
+        _mesVentaMeta,
+        mesVenta.isAcceptableOrUnknown(data['mes_venta']!, _mesVentaMeta),
+      );
+    }
+    if (data.containsKey('anio_venta')) {
+      context.handle(
+        _anioVentaMeta,
+        anioVenta.isAcceptableOrUnknown(data['anio_venta']!, _anioVentaMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  VentaDb map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return VentaDb(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      distribuidoraOrigenUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}distribuidora_origen_uid'],
+      )!,
+      distribuidoraUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}distribuidora_uid'],
+      )!,
+      gerenteGrupoUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gerente_grupo_uid'],
+      )!,
+      vendedorUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vendedor_uid'],
+      )!,
+      folioContrato: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folio_contrato'],
+      )!,
+      modeloUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}modelo_uid'],
+      )!,
+      estatusUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}estatus_uid'],
+      )!,
+      grupo: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}grupo'],
+      )!,
+      integrante: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}integrante'],
+      )!,
+      fechaContrato: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fecha_contrato'],
+      ),
+      fechaVenta: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fecha_venta'],
+      ),
+      mesVenta: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mes_venta'],
+      ),
+      anioVenta: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}anio_venta'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $VentasTable createAlias(String alias) {
+    return $VentasTable(attachedDatabase, alias);
+  }
+}
+
+class VentaDb extends DataClass implements Insertable<VentaDb> {
+  final String uid;
+  final String distribuidoraOrigenUid;
+  final String distribuidoraUid;
+  final String gerenteGrupoUid;
+  final String vendedorUid;
+  final String folioContrato;
+  final String modeloUid;
+  final String estatusUid;
+  final int grupo;
+  final int integrante;
+  final DateTime? fechaContrato;
+  final DateTime? fechaVenta;
+
+  /// Mes de venta [1..12] — opcional (útil para filtros/reportes)
+  final int? mesVenta;
+
+  /// Año de venta [1990..2100] — opcional (útil para filtros/reportes)
+  final int? anioVenta;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool deleted;
+  final bool isSynced;
+  const VentaDb({
+    required this.uid,
+    required this.distribuidoraOrigenUid,
+    required this.distribuidoraUid,
+    required this.gerenteGrupoUid,
+    required this.vendedorUid,
+    required this.folioContrato,
+    required this.modeloUid,
+    required this.estatusUid,
+    required this.grupo,
+    required this.integrante,
+    this.fechaContrato,
+    this.fechaVenta,
+    this.mesVenta,
+    this.anioVenta,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.deleted,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['distribuidora_origen_uid'] = Variable<String>(distribuidoraOrigenUid);
+    map['distribuidora_uid'] = Variable<String>(distribuidoraUid);
+    map['gerente_grupo_uid'] = Variable<String>(gerenteGrupoUid);
+    map['vendedor_uid'] = Variable<String>(vendedorUid);
+    map['folio_contrato'] = Variable<String>(folioContrato);
+    map['modelo_uid'] = Variable<String>(modeloUid);
+    map['estatus_uid'] = Variable<String>(estatusUid);
+    map['grupo'] = Variable<int>(grupo);
+    map['integrante'] = Variable<int>(integrante);
+    if (!nullToAbsent || fechaContrato != null) {
+      map['fecha_contrato'] = Variable<DateTime>(fechaContrato);
+    }
+    if (!nullToAbsent || fechaVenta != null) {
+      map['fecha_venta'] = Variable<DateTime>(fechaVenta);
+    }
+    if (!nullToAbsent || mesVenta != null) {
+      map['mes_venta'] = Variable<int>(mesVenta);
+    }
+    if (!nullToAbsent || anioVenta != null) {
+      map['anio_venta'] = Variable<int>(anioVenta);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  VentasCompanion toCompanion(bool nullToAbsent) {
+    return VentasCompanion(
+      uid: Value(uid),
+      distribuidoraOrigenUid: Value(distribuidoraOrigenUid),
+      distribuidoraUid: Value(distribuidoraUid),
+      gerenteGrupoUid: Value(gerenteGrupoUid),
+      vendedorUid: Value(vendedorUid),
+      folioContrato: Value(folioContrato),
+      modeloUid: Value(modeloUid),
+      estatusUid: Value(estatusUid),
+      grupo: Value(grupo),
+      integrante: Value(integrante),
+      fechaContrato: fechaContrato == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fechaContrato),
+      fechaVenta: fechaVenta == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fechaVenta),
+      mesVenta: mesVenta == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mesVenta),
+      anioVenta: anioVenta == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anioVenta),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory VentaDb.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return VentaDb(
+      uid: serializer.fromJson<String>(json['uid']),
+      distribuidoraOrigenUid: serializer.fromJson<String>(
+        json['distribuidoraOrigenUid'],
+      ),
+      distribuidoraUid: serializer.fromJson<String>(json['distribuidoraUid']),
+      gerenteGrupoUid: serializer.fromJson<String>(json['gerenteGrupoUid']),
+      vendedorUid: serializer.fromJson<String>(json['vendedorUid']),
+      folioContrato: serializer.fromJson<String>(json['folioContrato']),
+      modeloUid: serializer.fromJson<String>(json['modeloUid']),
+      estatusUid: serializer.fromJson<String>(json['estatusUid']),
+      grupo: serializer.fromJson<int>(json['grupo']),
+      integrante: serializer.fromJson<int>(json['integrante']),
+      fechaContrato: serializer.fromJson<DateTime?>(json['fechaContrato']),
+      fechaVenta: serializer.fromJson<DateTime?>(json['fechaVenta']),
+      mesVenta: serializer.fromJson<int?>(json['mesVenta']),
+      anioVenta: serializer.fromJson<int?>(json['anioVenta']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'distribuidoraOrigenUid': serializer.toJson<String>(
+        distribuidoraOrigenUid,
+      ),
+      'distribuidoraUid': serializer.toJson<String>(distribuidoraUid),
+      'gerenteGrupoUid': serializer.toJson<String>(gerenteGrupoUid),
+      'vendedorUid': serializer.toJson<String>(vendedorUid),
+      'folioContrato': serializer.toJson<String>(folioContrato),
+      'modeloUid': serializer.toJson<String>(modeloUid),
+      'estatusUid': serializer.toJson<String>(estatusUid),
+      'grupo': serializer.toJson<int>(grupo),
+      'integrante': serializer.toJson<int>(integrante),
+      'fechaContrato': serializer.toJson<DateTime?>(fechaContrato),
+      'fechaVenta': serializer.toJson<DateTime?>(fechaVenta),
+      'mesVenta': serializer.toJson<int?>(mesVenta),
+      'anioVenta': serializer.toJson<int?>(anioVenta),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  VentaDb copyWith({
+    String? uid,
+    String? distribuidoraOrigenUid,
+    String? distribuidoraUid,
+    String? gerenteGrupoUid,
+    String? vendedorUid,
+    String? folioContrato,
+    String? modeloUid,
+    String? estatusUid,
+    int? grupo,
+    int? integrante,
+    Value<DateTime?> fechaContrato = const Value.absent(),
+    Value<DateTime?> fechaVenta = const Value.absent(),
+    Value<int?> mesVenta = const Value.absent(),
+    Value<int?> anioVenta = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? deleted,
+    bool? isSynced,
+  }) => VentaDb(
+    uid: uid ?? this.uid,
+    distribuidoraOrigenUid:
+        distribuidoraOrigenUid ?? this.distribuidoraOrigenUid,
+    distribuidoraUid: distribuidoraUid ?? this.distribuidoraUid,
+    gerenteGrupoUid: gerenteGrupoUid ?? this.gerenteGrupoUid,
+    vendedorUid: vendedorUid ?? this.vendedorUid,
+    folioContrato: folioContrato ?? this.folioContrato,
+    modeloUid: modeloUid ?? this.modeloUid,
+    estatusUid: estatusUid ?? this.estatusUid,
+    grupo: grupo ?? this.grupo,
+    integrante: integrante ?? this.integrante,
+    fechaContrato: fechaContrato.present
+        ? fechaContrato.value
+        : this.fechaContrato,
+    fechaVenta: fechaVenta.present ? fechaVenta.value : this.fechaVenta,
+    mesVenta: mesVenta.present ? mesVenta.value : this.mesVenta,
+    anioVenta: anioVenta.present ? anioVenta.value : this.anioVenta,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  VentaDb copyWithCompanion(VentasCompanion data) {
+    return VentaDb(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      distribuidoraOrigenUid: data.distribuidoraOrigenUid.present
+          ? data.distribuidoraOrigenUid.value
+          : this.distribuidoraOrigenUid,
+      distribuidoraUid: data.distribuidoraUid.present
+          ? data.distribuidoraUid.value
+          : this.distribuidoraUid,
+      gerenteGrupoUid: data.gerenteGrupoUid.present
+          ? data.gerenteGrupoUid.value
+          : this.gerenteGrupoUid,
+      vendedorUid: data.vendedorUid.present
+          ? data.vendedorUid.value
+          : this.vendedorUid,
+      folioContrato: data.folioContrato.present
+          ? data.folioContrato.value
+          : this.folioContrato,
+      modeloUid: data.modeloUid.present ? data.modeloUid.value : this.modeloUid,
+      estatusUid: data.estatusUid.present
+          ? data.estatusUid.value
+          : this.estatusUid,
+      grupo: data.grupo.present ? data.grupo.value : this.grupo,
+      integrante: data.integrante.present
+          ? data.integrante.value
+          : this.integrante,
+      fechaContrato: data.fechaContrato.present
+          ? data.fechaContrato.value
+          : this.fechaContrato,
+      fechaVenta: data.fechaVenta.present
+          ? data.fechaVenta.value
+          : this.fechaVenta,
+      mesVenta: data.mesVenta.present ? data.mesVenta.value : this.mesVenta,
+      anioVenta: data.anioVenta.present ? data.anioVenta.value : this.anioVenta,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VentaDb(')
+          ..write('uid: $uid, ')
+          ..write('distribuidoraOrigenUid: $distribuidoraOrigenUid, ')
+          ..write('distribuidoraUid: $distribuidoraUid, ')
+          ..write('gerenteGrupoUid: $gerenteGrupoUid, ')
+          ..write('vendedorUid: $vendedorUid, ')
+          ..write('folioContrato: $folioContrato, ')
+          ..write('modeloUid: $modeloUid, ')
+          ..write('estatusUid: $estatusUid, ')
+          ..write('grupo: $grupo, ')
+          ..write('integrante: $integrante, ')
+          ..write('fechaContrato: $fechaContrato, ')
+          ..write('fechaVenta: $fechaVenta, ')
+          ..write('mesVenta: $mesVenta, ')
+          ..write('anioVenta: $anioVenta, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uid,
+    distribuidoraOrigenUid,
+    distribuidoraUid,
+    gerenteGrupoUid,
+    vendedorUid,
+    folioContrato,
+    modeloUid,
+    estatusUid,
+    grupo,
+    integrante,
+    fechaContrato,
+    fechaVenta,
+    mesVenta,
+    anioVenta,
+    createdAt,
+    updatedAt,
+    deleted,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is VentaDb &&
+          other.uid == this.uid &&
+          other.distribuidoraOrigenUid == this.distribuidoraOrigenUid &&
+          other.distribuidoraUid == this.distribuidoraUid &&
+          other.gerenteGrupoUid == this.gerenteGrupoUid &&
+          other.vendedorUid == this.vendedorUid &&
+          other.folioContrato == this.folioContrato &&
+          other.modeloUid == this.modeloUid &&
+          other.estatusUid == this.estatusUid &&
+          other.grupo == this.grupo &&
+          other.integrante == this.integrante &&
+          other.fechaContrato == this.fechaContrato &&
+          other.fechaVenta == this.fechaVenta &&
+          other.mesVenta == this.mesVenta &&
+          other.anioVenta == this.anioVenta &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted &&
+          other.isSynced == this.isSynced);
+}
+
+class VentasCompanion extends UpdateCompanion<VentaDb> {
+  final Value<String> uid;
+  final Value<String> distribuidoraOrigenUid;
+  final Value<String> distribuidoraUid;
+  final Value<String> gerenteGrupoUid;
+  final Value<String> vendedorUid;
+  final Value<String> folioContrato;
+  final Value<String> modeloUid;
+  final Value<String> estatusUid;
+  final Value<int> grupo;
+  final Value<int> integrante;
+  final Value<DateTime?> fechaContrato;
+  final Value<DateTime?> fechaVenta;
+  final Value<int?> mesVenta;
+  final Value<int?> anioVenta;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> deleted;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const VentasCompanion({
+    this.uid = const Value.absent(),
+    this.distribuidoraOrigenUid = const Value.absent(),
+    this.distribuidoraUid = const Value.absent(),
+    this.gerenteGrupoUid = const Value.absent(),
+    this.vendedorUid = const Value.absent(),
+    this.folioContrato = const Value.absent(),
+    this.modeloUid = const Value.absent(),
+    this.estatusUid = const Value.absent(),
+    this.grupo = const Value.absent(),
+    this.integrante = const Value.absent(),
+    this.fechaContrato = const Value.absent(),
+    this.fechaVenta = const Value.absent(),
+    this.mesVenta = const Value.absent(),
+    this.anioVenta = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  VentasCompanion.insert({
+    required String uid,
+    this.distribuidoraOrigenUid = const Value.absent(),
+    this.distribuidoraUid = const Value.absent(),
+    this.gerenteGrupoUid = const Value.absent(),
+    this.vendedorUid = const Value.absent(),
+    this.folioContrato = const Value.absent(),
+    this.modeloUid = const Value.absent(),
+    this.estatusUid = const Value.absent(),
+    this.grupo = const Value.absent(),
+    this.integrante = const Value.absent(),
+    this.fechaContrato = const Value.absent(),
+    this.fechaVenta = const Value.absent(),
+    this.mesVenta = const Value.absent(),
+    this.anioVenta = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid);
+  static Insertable<VentaDb> custom({
+    Expression<String>? uid,
+    Expression<String>? distribuidoraOrigenUid,
+    Expression<String>? distribuidoraUid,
+    Expression<String>? gerenteGrupoUid,
+    Expression<String>? vendedorUid,
+    Expression<String>? folioContrato,
+    Expression<String>? modeloUid,
+    Expression<String>? estatusUid,
+    Expression<int>? grupo,
+    Expression<int>? integrante,
+    Expression<DateTime>? fechaContrato,
+    Expression<DateTime>? fechaVenta,
+    Expression<int>? mesVenta,
+    Expression<int>? anioVenta,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? deleted,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (distribuidoraOrigenUid != null)
+        'distribuidora_origen_uid': distribuidoraOrigenUid,
+      if (distribuidoraUid != null) 'distribuidora_uid': distribuidoraUid,
+      if (gerenteGrupoUid != null) 'gerente_grupo_uid': gerenteGrupoUid,
+      if (vendedorUid != null) 'vendedor_uid': vendedorUid,
+      if (folioContrato != null) 'folio_contrato': folioContrato,
+      if (modeloUid != null) 'modelo_uid': modeloUid,
+      if (estatusUid != null) 'estatus_uid': estatusUid,
+      if (grupo != null) 'grupo': grupo,
+      if (integrante != null) 'integrante': integrante,
+      if (fechaContrato != null) 'fecha_contrato': fechaContrato,
+      if (fechaVenta != null) 'fecha_venta': fechaVenta,
+      if (mesVenta != null) 'mes_venta': mesVenta,
+      if (anioVenta != null) 'anio_venta': anioVenta,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  VentasCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? distribuidoraOrigenUid,
+    Value<String>? distribuidoraUid,
+    Value<String>? gerenteGrupoUid,
+    Value<String>? vendedorUid,
+    Value<String>? folioContrato,
+    Value<String>? modeloUid,
+    Value<String>? estatusUid,
+    Value<int>? grupo,
+    Value<int>? integrante,
+    Value<DateTime?>? fechaContrato,
+    Value<DateTime?>? fechaVenta,
+    Value<int?>? mesVenta,
+    Value<int?>? anioVenta,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? deleted,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return VentasCompanion(
+      uid: uid ?? this.uid,
+      distribuidoraOrigenUid:
+          distribuidoraOrigenUid ?? this.distribuidoraOrigenUid,
+      distribuidoraUid: distribuidoraUid ?? this.distribuidoraUid,
+      gerenteGrupoUid: gerenteGrupoUid ?? this.gerenteGrupoUid,
+      vendedorUid: vendedorUid ?? this.vendedorUid,
+      folioContrato: folioContrato ?? this.folioContrato,
+      modeloUid: modeloUid ?? this.modeloUid,
+      estatusUid: estatusUid ?? this.estatusUid,
+      grupo: grupo ?? this.grupo,
+      integrante: integrante ?? this.integrante,
+      fechaContrato: fechaContrato ?? this.fechaContrato,
+      fechaVenta: fechaVenta ?? this.fechaVenta,
+      mesVenta: mesVenta ?? this.mesVenta,
+      anioVenta: anioVenta ?? this.anioVenta,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (distribuidoraOrigenUid.present) {
+      map['distribuidora_origen_uid'] = Variable<String>(
+        distribuidoraOrigenUid.value,
+      );
+    }
+    if (distribuidoraUid.present) {
+      map['distribuidora_uid'] = Variable<String>(distribuidoraUid.value);
+    }
+    if (gerenteGrupoUid.present) {
+      map['gerente_grupo_uid'] = Variable<String>(gerenteGrupoUid.value);
+    }
+    if (vendedorUid.present) {
+      map['vendedor_uid'] = Variable<String>(vendedorUid.value);
+    }
+    if (folioContrato.present) {
+      map['folio_contrato'] = Variable<String>(folioContrato.value);
+    }
+    if (modeloUid.present) {
+      map['modelo_uid'] = Variable<String>(modeloUid.value);
+    }
+    if (estatusUid.present) {
+      map['estatus_uid'] = Variable<String>(estatusUid.value);
+    }
+    if (grupo.present) {
+      map['grupo'] = Variable<int>(grupo.value);
+    }
+    if (integrante.present) {
+      map['integrante'] = Variable<int>(integrante.value);
+    }
+    if (fechaContrato.present) {
+      map['fecha_contrato'] = Variable<DateTime>(fechaContrato.value);
+    }
+    if (fechaVenta.present) {
+      map['fecha_venta'] = Variable<DateTime>(fechaVenta.value);
+    }
+    if (mesVenta.present) {
+      map['mes_venta'] = Variable<int>(mesVenta.value);
+    }
+    if (anioVenta.present) {
+      map['anio_venta'] = Variable<int>(anioVenta.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VentasCompanion(')
+          ..write('uid: $uid, ')
+          ..write('distribuidoraOrigenUid: $distribuidoraOrigenUid, ')
+          ..write('distribuidoraUid: $distribuidoraUid, ')
+          ..write('gerenteGrupoUid: $gerenteGrupoUid, ')
+          ..write('vendedorUid: $vendedorUid, ')
+          ..write('folioContrato: $folioContrato, ')
+          ..write('modeloUid: $modeloUid, ')
+          ..write('estatusUid: $estatusUid, ')
+          ..write('grupo: $grupo, ')
+          ..write('integrante: $integrante, ')
+          ..write('fechaContrato: $fechaContrato, ')
+          ..write('fechaVenta: $fechaVenta, ')
+          ..write('mesVenta: $mesVenta, ')
+          ..write('anioVenta: $anioVenta, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6815,6 +8688,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ColaboradoresTable colaboradores = $ColaboradoresTable(this);
   late final $AsignacionesLaboralesTable asignacionesLaborales =
       $AsignacionesLaboralesTable(this);
+  late final $EstatusTable estatus = $EstatusTable(this);
+  late final $VentasTable ventas = $VentasTable(this);
   late final UsuariosDao usuariosDao = UsuariosDao(this as AppDatabase);
   late final DistribuidoresDao distribuidoresDao = DistribuidoresDao(
     this as AppDatabase,
@@ -6832,6 +8707,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final AsignacionesLaboralesDao asignacionesLaboralesDao =
       AsignacionesLaboralesDao(this as AppDatabase);
+  late final EstatusDao estatusDao = EstatusDao(this as AppDatabase);
+  late final VentasDao ventasDao = VentasDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6846,6 +8723,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     productos,
     colaboradores,
     asignacionesLaborales,
+    estatus,
+    ventas,
   ];
 }
 
@@ -7106,11 +8985,12 @@ typedef $$DistribuidoresTableCreateCompanionBuilder =
     DistribuidoresCompanion Function({
       required String uid,
       Value<String> nombre,
-      Value<String> grupo,
+      Value<String> uuidGrupo,
       Value<String> direccion,
       Value<bool> activo,
       Value<double> latitud,
       Value<double> longitud,
+      Value<String> concentradoraUid,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
       Value<bool> isSynced,
@@ -7120,11 +9000,12 @@ typedef $$DistribuidoresTableUpdateCompanionBuilder =
     DistribuidoresCompanion Function({
       Value<String> uid,
       Value<String> nombre,
-      Value<String> grupo,
+      Value<String> uuidGrupo,
       Value<String> direccion,
       Value<bool> activo,
       Value<double> latitud,
       Value<double> longitud,
+      Value<String> concentradoraUid,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
       Value<bool> isSynced,
@@ -7150,8 +9031,8 @@ class $$DistribuidoresTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get grupo => $composableBuilder(
-    column: $table.grupo,
+  ColumnFilters<String> get uuidGrupo => $composableBuilder(
+    column: $table.uuidGrupo,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7172,6 +9053,11 @@ class $$DistribuidoresTableFilterComposer
 
   ColumnFilters<double> get longitud => $composableBuilder(
     column: $table.longitud,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get concentradoraUid => $composableBuilder(
+    column: $table.concentradoraUid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7210,8 +9096,8 @@ class $$DistribuidoresTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get grupo => $composableBuilder(
-    column: $table.grupo,
+  ColumnOrderings<String> get uuidGrupo => $composableBuilder(
+    column: $table.uuidGrupo,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7232,6 +9118,11 @@ class $$DistribuidoresTableOrderingComposer
 
   ColumnOrderings<double> get longitud => $composableBuilder(
     column: $table.longitud,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get concentradoraUid => $composableBuilder(
+    column: $table.concentradoraUid,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7266,8 +9157,8 @@ class $$DistribuidoresTableAnnotationComposer
   GeneratedColumn<String> get nombre =>
       $composableBuilder(column: $table.nombre, builder: (column) => column);
 
-  GeneratedColumn<String> get grupo =>
-      $composableBuilder(column: $table.grupo, builder: (column) => column);
+  GeneratedColumn<String> get uuidGrupo =>
+      $composableBuilder(column: $table.uuidGrupo, builder: (column) => column);
 
   GeneratedColumn<String> get direccion =>
       $composableBuilder(column: $table.direccion, builder: (column) => column);
@@ -7280,6 +9171,11 @@ class $$DistribuidoresTableAnnotationComposer
 
   GeneratedColumn<double> get longitud =>
       $composableBuilder(column: $table.longitud, builder: (column) => column);
+
+  GeneratedColumn<String> get concentradoraUid => $composableBuilder(
+    column: $table.concentradoraUid,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -7326,11 +9222,12 @@ class $$DistribuidoresTableTableManager
               ({
                 Value<String> uid = const Value.absent(),
                 Value<String> nombre = const Value.absent(),
-                Value<String> grupo = const Value.absent(),
+                Value<String> uuidGrupo = const Value.absent(),
                 Value<String> direccion = const Value.absent(),
                 Value<bool> activo = const Value.absent(),
                 Value<double> latitud = const Value.absent(),
                 Value<double> longitud = const Value.absent(),
+                Value<String> concentradoraUid = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -7338,11 +9235,12 @@ class $$DistribuidoresTableTableManager
               }) => DistribuidoresCompanion(
                 uid: uid,
                 nombre: nombre,
-                grupo: grupo,
+                uuidGrupo: uuidGrupo,
                 direccion: direccion,
                 activo: activo,
                 latitud: latitud,
                 longitud: longitud,
+                concentradoraUid: concentradoraUid,
                 updatedAt: updatedAt,
                 deleted: deleted,
                 isSynced: isSynced,
@@ -7352,11 +9250,12 @@ class $$DistribuidoresTableTableManager
               ({
                 required String uid,
                 Value<String> nombre = const Value.absent(),
-                Value<String> grupo = const Value.absent(),
+                Value<String> uuidGrupo = const Value.absent(),
                 Value<String> direccion = const Value.absent(),
                 Value<bool> activo = const Value.absent(),
                 Value<double> latitud = const Value.absent(),
                 Value<double> longitud = const Value.absent(),
+                Value<String> concentradoraUid = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -7364,11 +9263,12 @@ class $$DistribuidoresTableTableManager
               }) => DistribuidoresCompanion.insert(
                 uid: uid,
                 nombre: nombre,
-                grupo: grupo,
+                uuidGrupo: uuidGrupo,
                 direccion: direccion,
                 activo: activo,
                 latitud: latitud,
                 longitud: longitud,
+                concentradoraUid: concentradoraUid,
                 updatedAt: updatedAt,
                 deleted: deleted,
                 isSynced: isSynced,
@@ -10091,6 +11991,832 @@ typedef $$AsignacionesLaboralesTableProcessedTableManager =
       AsignacionLaboralDb,
       PrefetchHooks Function()
     >;
+typedef $$EstatusTableCreateCompanionBuilder =
+    EstatusCompanion Function({
+      required String uid,
+      required String nombre,
+      Value<String> categoria,
+      Value<int> orden,
+      Value<bool> esFinal,
+      Value<bool> esCancelatorio,
+      Value<bool> visible,
+      Value<String> colorHex,
+      Value<String> icono,
+      Value<String> notas,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$EstatusTableUpdateCompanionBuilder =
+    EstatusCompanion Function({
+      Value<String> uid,
+      Value<String> nombre,
+      Value<String> categoria,
+      Value<int> orden,
+      Value<bool> esFinal,
+      Value<bool> esCancelatorio,
+      Value<bool> visible,
+      Value<String> colorHex,
+      Value<String> icono,
+      Value<String> notas,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$EstatusTableFilterComposer
+    extends Composer<_$AppDatabase, $EstatusTable> {
+  $$EstatusTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoria => $composableBuilder(
+    column: $table.categoria,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get orden => $composableBuilder(
+    column: $table.orden,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get esFinal => $composableBuilder(
+    column: $table.esFinal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get esCancelatorio => $composableBuilder(
+    column: $table.esCancelatorio,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get visible => $composableBuilder(
+    column: $table.visible,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get colorHex => $composableBuilder(
+    column: $table.colorHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get icono => $composableBuilder(
+    column: $table.icono,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EstatusTableOrderingComposer
+    extends Composer<_$AppDatabase, $EstatusTable> {
+  $$EstatusTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nombre => $composableBuilder(
+    column: $table.nombre,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoria => $composableBuilder(
+    column: $table.categoria,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get orden => $composableBuilder(
+    column: $table.orden,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get esFinal => $composableBuilder(
+    column: $table.esFinal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get esCancelatorio => $composableBuilder(
+    column: $table.esCancelatorio,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get visible => $composableBuilder(
+    column: $table.visible,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get colorHex => $composableBuilder(
+    column: $table.colorHex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get icono => $composableBuilder(
+    column: $table.icono,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notas => $composableBuilder(
+    column: $table.notas,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EstatusTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EstatusTable> {
+  $$EstatusTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get nombre =>
+      $composableBuilder(column: $table.nombre, builder: (column) => column);
+
+  GeneratedColumn<String> get categoria =>
+      $composableBuilder(column: $table.categoria, builder: (column) => column);
+
+  GeneratedColumn<int> get orden =>
+      $composableBuilder(column: $table.orden, builder: (column) => column);
+
+  GeneratedColumn<bool> get esFinal =>
+      $composableBuilder(column: $table.esFinal, builder: (column) => column);
+
+  GeneratedColumn<bool> get esCancelatorio => $composableBuilder(
+    column: $table.esCancelatorio,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get visible =>
+      $composableBuilder(column: $table.visible, builder: (column) => column);
+
+  GeneratedColumn<String> get colorHex =>
+      $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
+  GeneratedColumn<String> get icono =>
+      $composableBuilder(column: $table.icono, builder: (column) => column);
+
+  GeneratedColumn<String> get notas =>
+      $composableBuilder(column: $table.notas, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$EstatusTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EstatusTable,
+          EstatusDb,
+          $$EstatusTableFilterComposer,
+          $$EstatusTableOrderingComposer,
+          $$EstatusTableAnnotationComposer,
+          $$EstatusTableCreateCompanionBuilder,
+          $$EstatusTableUpdateCompanionBuilder,
+          (EstatusDb, BaseReferences<_$AppDatabase, $EstatusTable, EstatusDb>),
+          EstatusDb,
+          PrefetchHooks Function()
+        > {
+  $$EstatusTableTableManager(_$AppDatabase db, $EstatusTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EstatusTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EstatusTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EstatusTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> nombre = const Value.absent(),
+                Value<String> categoria = const Value.absent(),
+                Value<int> orden = const Value.absent(),
+                Value<bool> esFinal = const Value.absent(),
+                Value<bool> esCancelatorio = const Value.absent(),
+                Value<bool> visible = const Value.absent(),
+                Value<String> colorHex = const Value.absent(),
+                Value<String> icono = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EstatusCompanion(
+                uid: uid,
+                nombre: nombre,
+                categoria: categoria,
+                orden: orden,
+                esFinal: esFinal,
+                esCancelatorio: esCancelatorio,
+                visible: visible,
+                colorHex: colorHex,
+                icono: icono,
+                notas: notas,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                required String nombre,
+                Value<String> categoria = const Value.absent(),
+                Value<int> orden = const Value.absent(),
+                Value<bool> esFinal = const Value.absent(),
+                Value<bool> esCancelatorio = const Value.absent(),
+                Value<bool> visible = const Value.absent(),
+                Value<String> colorHex = const Value.absent(),
+                Value<String> icono = const Value.absent(),
+                Value<String> notas = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EstatusCompanion.insert(
+                uid: uid,
+                nombre: nombre,
+                categoria: categoria,
+                orden: orden,
+                esFinal: esFinal,
+                esCancelatorio: esCancelatorio,
+                visible: visible,
+                colorHex: colorHex,
+                icono: icono,
+                notas: notas,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EstatusTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EstatusTable,
+      EstatusDb,
+      $$EstatusTableFilterComposer,
+      $$EstatusTableOrderingComposer,
+      $$EstatusTableAnnotationComposer,
+      $$EstatusTableCreateCompanionBuilder,
+      $$EstatusTableUpdateCompanionBuilder,
+      (EstatusDb, BaseReferences<_$AppDatabase, $EstatusTable, EstatusDb>),
+      EstatusDb,
+      PrefetchHooks Function()
+    >;
+typedef $$VentasTableCreateCompanionBuilder =
+    VentasCompanion Function({
+      required String uid,
+      Value<String> distribuidoraOrigenUid,
+      Value<String> distribuidoraUid,
+      Value<String> gerenteGrupoUid,
+      Value<String> vendedorUid,
+      Value<String> folioContrato,
+      Value<String> modeloUid,
+      Value<String> estatusUid,
+      Value<int> grupo,
+      Value<int> integrante,
+      Value<DateTime?> fechaContrato,
+      Value<DateTime?> fechaVenta,
+      Value<int?> mesVenta,
+      Value<int?> anioVenta,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$VentasTableUpdateCompanionBuilder =
+    VentasCompanion Function({
+      Value<String> uid,
+      Value<String> distribuidoraOrigenUid,
+      Value<String> distribuidoraUid,
+      Value<String> gerenteGrupoUid,
+      Value<String> vendedorUid,
+      Value<String> folioContrato,
+      Value<String> modeloUid,
+      Value<String> estatusUid,
+      Value<int> grupo,
+      Value<int> integrante,
+      Value<DateTime?> fechaContrato,
+      Value<DateTime?> fechaVenta,
+      Value<int?> mesVenta,
+      Value<int?> anioVenta,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> deleted,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$VentasTableFilterComposer
+    extends Composer<_$AppDatabase, $VentasTable> {
+  $$VentasTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get distribuidoraOrigenUid => $composableBuilder(
+    column: $table.distribuidoraOrigenUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get distribuidoraUid => $composableBuilder(
+    column: $table.distribuidoraUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get gerenteGrupoUid => $composableBuilder(
+    column: $table.gerenteGrupoUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vendedorUid => $composableBuilder(
+    column: $table.vendedorUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get folioContrato => $composableBuilder(
+    column: $table.folioContrato,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modeloUid => $composableBuilder(
+    column: $table.modeloUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get estatusUid => $composableBuilder(
+    column: $table.estatusUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get grupo => $composableBuilder(
+    column: $table.grupo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get integrante => $composableBuilder(
+    column: $table.integrante,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fechaContrato => $composableBuilder(
+    column: $table.fechaContrato,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fechaVenta => $composableBuilder(
+    column: $table.fechaVenta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get mesVenta => $composableBuilder(
+    column: $table.mesVenta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get anioVenta => $composableBuilder(
+    column: $table.anioVenta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$VentasTableOrderingComposer
+    extends Composer<_$AppDatabase, $VentasTable> {
+  $$VentasTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get distribuidoraOrigenUid => $composableBuilder(
+    column: $table.distribuidoraOrigenUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get distribuidoraUid => $composableBuilder(
+    column: $table.distribuidoraUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get gerenteGrupoUid => $composableBuilder(
+    column: $table.gerenteGrupoUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vendedorUid => $composableBuilder(
+    column: $table.vendedorUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get folioContrato => $composableBuilder(
+    column: $table.folioContrato,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modeloUid => $composableBuilder(
+    column: $table.modeloUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get estatusUid => $composableBuilder(
+    column: $table.estatusUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get grupo => $composableBuilder(
+    column: $table.grupo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get integrante => $composableBuilder(
+    column: $table.integrante,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fechaContrato => $composableBuilder(
+    column: $table.fechaContrato,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fechaVenta => $composableBuilder(
+    column: $table.fechaVenta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get mesVenta => $composableBuilder(
+    column: $table.mesVenta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get anioVenta => $composableBuilder(
+    column: $table.anioVenta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$VentasTableAnnotationComposer
+    extends Composer<_$AppDatabase, $VentasTable> {
+  $$VentasTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get distribuidoraOrigenUid => $composableBuilder(
+    column: $table.distribuidoraOrigenUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get distribuidoraUid => $composableBuilder(
+    column: $table.distribuidoraUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get gerenteGrupoUid => $composableBuilder(
+    column: $table.gerenteGrupoUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get vendedorUid => $composableBuilder(
+    column: $table.vendedorUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get folioContrato => $composableBuilder(
+    column: $table.folioContrato,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get modeloUid =>
+      $composableBuilder(column: $table.modeloUid, builder: (column) => column);
+
+  GeneratedColumn<String> get estatusUid => $composableBuilder(
+    column: $table.estatusUid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get grupo =>
+      $composableBuilder(column: $table.grupo, builder: (column) => column);
+
+  GeneratedColumn<int> get integrante => $composableBuilder(
+    column: $table.integrante,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get fechaContrato => $composableBuilder(
+    column: $table.fechaContrato,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get fechaVenta => $composableBuilder(
+    column: $table.fechaVenta,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get mesVenta =>
+      $composableBuilder(column: $table.mesVenta, builder: (column) => column);
+
+  GeneratedColumn<int> get anioVenta =>
+      $composableBuilder(column: $table.anioVenta, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$VentasTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $VentasTable,
+          VentaDb,
+          $$VentasTableFilterComposer,
+          $$VentasTableOrderingComposer,
+          $$VentasTableAnnotationComposer,
+          $$VentasTableCreateCompanionBuilder,
+          $$VentasTableUpdateCompanionBuilder,
+          (VentaDb, BaseReferences<_$AppDatabase, $VentasTable, VentaDb>),
+          VentaDb,
+          PrefetchHooks Function()
+        > {
+  $$VentasTableTableManager(_$AppDatabase db, $VentasTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$VentasTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$VentasTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$VentasTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> distribuidoraOrigenUid = const Value.absent(),
+                Value<String> distribuidoraUid = const Value.absent(),
+                Value<String> gerenteGrupoUid = const Value.absent(),
+                Value<String> vendedorUid = const Value.absent(),
+                Value<String> folioContrato = const Value.absent(),
+                Value<String> modeloUid = const Value.absent(),
+                Value<String> estatusUid = const Value.absent(),
+                Value<int> grupo = const Value.absent(),
+                Value<int> integrante = const Value.absent(),
+                Value<DateTime?> fechaContrato = const Value.absent(),
+                Value<DateTime?> fechaVenta = const Value.absent(),
+                Value<int?> mesVenta = const Value.absent(),
+                Value<int?> anioVenta = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => VentasCompanion(
+                uid: uid,
+                distribuidoraOrigenUid: distribuidoraOrigenUid,
+                distribuidoraUid: distribuidoraUid,
+                gerenteGrupoUid: gerenteGrupoUid,
+                vendedorUid: vendedorUid,
+                folioContrato: folioContrato,
+                modeloUid: modeloUid,
+                estatusUid: estatusUid,
+                grupo: grupo,
+                integrante: integrante,
+                fechaContrato: fechaContrato,
+                fechaVenta: fechaVenta,
+                mesVenta: mesVenta,
+                anioVenta: anioVenta,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                Value<String> distribuidoraOrigenUid = const Value.absent(),
+                Value<String> distribuidoraUid = const Value.absent(),
+                Value<String> gerenteGrupoUid = const Value.absent(),
+                Value<String> vendedorUid = const Value.absent(),
+                Value<String> folioContrato = const Value.absent(),
+                Value<String> modeloUid = const Value.absent(),
+                Value<String> estatusUid = const Value.absent(),
+                Value<int> grupo = const Value.absent(),
+                Value<int> integrante = const Value.absent(),
+                Value<DateTime?> fechaContrato = const Value.absent(),
+                Value<DateTime?> fechaVenta = const Value.absent(),
+                Value<int?> mesVenta = const Value.absent(),
+                Value<int?> anioVenta = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => VentasCompanion.insert(
+                uid: uid,
+                distribuidoraOrigenUid: distribuidoraOrigenUid,
+                distribuidoraUid: distribuidoraUid,
+                gerenteGrupoUid: gerenteGrupoUid,
+                vendedorUid: vendedorUid,
+                folioContrato: folioContrato,
+                modeloUid: modeloUid,
+                estatusUid: estatusUid,
+                grupo: grupo,
+                integrante: integrante,
+                fechaContrato: fechaContrato,
+                fechaVenta: fechaVenta,
+                mesVenta: mesVenta,
+                anioVenta: anioVenta,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deleted: deleted,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$VentasTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $VentasTable,
+      VentaDb,
+      $$VentasTableFilterComposer,
+      $$VentasTableOrderingComposer,
+      $$VentasTableAnnotationComposer,
+      $$VentasTableCreateCompanionBuilder,
+      $$VentasTableUpdateCompanionBuilder,
+      (VentaDb, BaseReferences<_$AppDatabase, $VentasTable, VentaDb>),
+      VentaDb,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10113,4 +12839,8 @@ class $AppDatabaseManager {
       $$ColaboradoresTableTableManager(_db, _db.colaboradores);
   $$AsignacionesLaboralesTableTableManager get asignacionesLaborales =>
       $$AsignacionesLaboralesTableTableManager(_db, _db.asignacionesLaborales);
+  $$EstatusTableTableManager get estatus =>
+      $$EstatusTableTableManager(_db, _db.estatus);
+  $$VentasTableTableManager get ventas =>
+      $$VentasTableTableManager(_db, _db.ventas);
 }

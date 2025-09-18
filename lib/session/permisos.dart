@@ -7,7 +7,9 @@ import 'package:myafmzd/session/sesion_asignacion_selectors.dart';
 enum Feature {
   navDashboard,
   navPerfil,
+  navVentas,
   navDistribuidores,
+  navGruposDistribuidores,
   navModelos,
   navProductos,
   navUsuarios,
@@ -28,30 +30,28 @@ Set<Feature> _roleToFeatures(String rol) {
       return {
         Feature.navDashboard,
         Feature.navPerfil,
+        Feature.navVentas,
         Feature.navDistribuidores,
         Feature.navModelos,
-        Feature.navReportes,
-        Feature.navUsuarios,
-        Feature.editUsuarios,
-        Feature.navAdminHome, // 👈 puede ver Administración
       };
     case 'coordinador':
     case 'administrativo':
       return {
         Feature.navDashboard,
         Feature.navPerfil,
+        Feature.navVentas,
         Feature.navDistribuidores,
+        Feature.navGruposDistribuidores,
         Feature.navModelos,
         Feature.navReportes,
-        Feature.navAdminHome, // 👈 si quieres que también lo vean
       };
     case 'vendedor':
     default:
       return {
         Feature.navPerfil,
+        Feature.navVentas,
         Feature.navDistribuidores,
         Feature.navModelos,
-        // sin navAdminHome → no ve el tile Administración
       };
   }
 }

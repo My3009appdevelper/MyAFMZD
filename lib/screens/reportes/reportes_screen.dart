@@ -1,3 +1,5 @@
+// lib/screens/reportes/reportes_screen.dart
+// ignore_for_file: avoid_print
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -37,6 +39,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
     final mesesDisponibles = reportesNotifier.mesesDisponibles;
     final mesSeleccionado = reportesNotifier.mesSeleccionado;
+
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -45,8 +48,15 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       await _cargarReportes();
     });
 
+    // 🔁 Fallback de meses para UI si el provider no trae nada
+    final mesesUI = _mesesParaUI(mesesDisponibles);
+    // value solo si existe entre los items; si no, null + hint
+    final valueUI =
+        (mesSeleccionado != null && mesesUI.contains(mesSeleccionado))
+        ? mesSeleccionado
+        : null;
+
     return _cargandoInicial
-        // Estado inicial: sin tabs, sin filtro, sin FAB (solo el overlay visible)
         ? Scaffold(
             appBar: AppBar(
               title: Text(
@@ -59,14 +69,11 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               scrolledUnderElevation: 0,
-              // OJO: sin bottom mientras carga
             ),
-            body: const SizedBox.shrink(), // el overlay ya muestra “Cargando…”
-            // sin FAB mientras carga
+            body: const SizedBox.shrink(),
           )
-        // Ya cargado: ahora sí TabController + Tabs + FAB
         : (tipos.isEmpty
-              // Sin tipos: estado vacío (sin TabController para evitar length=0)
+              // ====== Estado sin tipos: mostramos SIEMPRE filtros arriba ======
               ? Scaffold(
                   appBar: AppBar(
                     title: Text(
@@ -80,13 +87,22 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                     elevation: 0,
                     scrolledUnderElevation: 0,
                   ),
-                  body: Center(
-                    child: Text(
-                      'No hay reportes para mostrar',
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurface,
+                  body: Column(
+                    children: [
+                      // 👇 Filtros SIEMPRE visibles (con fallback de meses)
+                      _buildFiltroMes(mesesUI, valueUI, totalMes),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            'No hay reportes para mostrar',
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                   floatingActionButton: FloatingActionButton(
                     onPressed: () async {
@@ -104,7 +120,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                     child: const Icon(Icons.add),
                   ),
                 )
-              // Con tipos: TabController, TabBar y TabBarView sincronizados
+              // ====== Con tipos: TabController + filtros SIEMPRE visibles ======
               : DefaultTabController(
                   length: tipos.length,
                   child: Scaffold(
@@ -149,12 +165,8 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                     ),
                     body: Column(
                       children: [
-                        if (mesesDisponibles.length > 1)
-                          _buildFiltroMes(
-                            mesesDisponibles,
-                            mesSeleccionado,
-                            totalMes,
-                          ),
+                        // 👇 SIEMPRE visible (antes estaba condicionado)
+                        _buildFiltroMes(mesesUI, valueUI, totalMes),
 
                         Expanded(
                           child: TabBarView(
@@ -195,6 +207,18 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                 ));
   }
 
+  /// Genera lista de meses para UI. Si `backend` viene vacío, usa fallback
+  /// (últimos 12 meses) en formato `YYYY-MM`, p. ej. "2025-09".
+  List<String> _mesesParaUI(List<String> backend) {
+    if (backend.isNotEmpty) return backend;
+    final now = DateTime.now();
+    return List<String>.generate(12, (i) {
+      final d = DateTime(now.year, now.month - i, 1);
+      final mm = d.month.toString().padLeft(2, '0');
+      return '${d.year}-$mm';
+    });
+  }
+
   Widget _buildFiltroMes(
     List<String> meses,
     String? seleccionado,
@@ -208,7 +232,8 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           DropdownButton<String>(
-            value: seleccionado,
+            value: seleccionado, // puede ser null → muestra hint
+            hint: const Text('Selecciona mes'),
             onChanged: _descargandoTodos
                 ? null
                 : (value) {
@@ -222,7 +247,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                 .toList(),
           ),
           const SizedBox(width: 12),
-          // 👇 Chip con el total del mes filtrado
           Chip(
             label: Text('Total reportes: $totalMes'),
             backgroundColor: colorScheme.surface,
@@ -237,7 +261,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   Widget _buildAccionDescarga() {
     final notifier = ref.read(reporteProvider.notifier);
     final filtrados = notifier.filtrados;
-
     final todos = notifier.todosDescargados(filtrados);
 
     return _descargandoTodos
@@ -284,10 +307,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
     setState(() => _cargandoInicial = true);
 
-    // UX opcional
     FocusScope.of(context).unfocus();
-
-    // Overlay
     context.loaderOverlay.show(progress: 'Cargando reportes…');
 
     final inicio = DateTime.now();
@@ -297,7 +317,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
       await ref.read(reporteProvider.notifier).cargarOfflineFirst();
 
-      // delay mínimo (tu mismo patrón)
       const duracionMinima = Duration(milliseconds: 1500);
       final duracion = DateTime.now().difference(inicio);
       if (duracion < duracionMinima) {
@@ -337,12 +356,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     File? archivo;
 
     try {
-      // 1) Intentar local
       if (reporte.rutaLocal.isNotEmpty &&
           await File(reporte.rutaLocal).exists()) {
         archivo = File(reporte.rutaLocal);
       } else {
-        // 2) Descargar si no existe local
         if (!mounted) return;
         context.loaderOverlay.progress('Descargando PDF…');
 
@@ -357,26 +374,22 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       if (!mounted) return;
 
       if (archivo == null) {
-        // Feedback si no se pudo abrir/descargar
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No se pudo abrir el reporte.')),
         );
         return;
       }
 
-      // Delay mínimo de 1500 ms para UX consistente
       const minSpin = Duration(milliseconds: 1500);
       final elapsed = DateTime.now().difference(inicio);
       if (elapsed < minSpin) {
         await Future.delayed(minSpin - elapsed);
       }
 
-      // Oculta overlay ANTES de navegar
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }
 
-      // Navegar al visor
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -385,7 +398,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         ),
       );
     } finally {
-      // Por si hubo excepción o return temprano
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }

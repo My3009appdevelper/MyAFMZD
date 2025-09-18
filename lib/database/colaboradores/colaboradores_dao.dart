@@ -119,4 +119,11 @@ class ColaboradoresDao extends DatabaseAccessor<AppDatabase>
             .getSingleOrNull();
     return ultimo?.updatedAt;
   }
+
+  Future<bool> existePorUid(String uid) async {
+    final row = await (select(
+      colaboradores,
+    )..where((t) => t.uid.equals(uid))).getSingleOrNull();
+    return row != null;
+  }
 }

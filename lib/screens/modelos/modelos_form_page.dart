@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
-import 'package:myafmzd/widgets/chip_picker.dart';
+import 'package:myafmzd/widgets/my_chip_picker.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 import 'package:crypto/crypto.dart' show sha256;

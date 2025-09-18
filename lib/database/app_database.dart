@@ -7,6 +7,8 @@ import 'package:myafmzd/database/colaboradores/colaboradores_dao.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_table.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_table.dart';
+import 'package:myafmzd/database/estatus/estatus_dao.dart';
+import 'package:myafmzd/database/estatus/estatus_table.dart';
 import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_dao.dart';
 import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_table.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_dao.dart';
@@ -19,6 +21,8 @@ import 'package:myafmzd/database/reportes/reportes_dao.dart';
 import 'package:myafmzd/database/reportes/reportes_table.dart';
 import 'package:myafmzd/database/usuarios/usuarios_dao.dart';
 import 'package:myafmzd/database/usuarios/usuarios_table.dart';
+import 'package:myafmzd/database/ventas/ventas_dao.dart';
+import 'package:myafmzd/database/ventas/ventas_table.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -35,6 +39,8 @@ part 'app_database.g.dart';
     Productos,
     Colaboradores,
     AsignacionesLaborales,
+    Estatus,
+    Ventas,
   ],
   daos: [
     UsuariosDao,
@@ -46,6 +52,8 @@ part 'app_database.g.dart';
     ProductosDao,
     ColaboradoresDao,
     AsignacionesLaboralesDao,
+    EstatusDao,
+    VentasDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {

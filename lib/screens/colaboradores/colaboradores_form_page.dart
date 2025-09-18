@@ -360,15 +360,15 @@ class _ColaboradorFormPageState extends ConsumerState<ColaboradorFormPage> {
     final notifier = ref.read(colaboradoresProvider.notifier);
 
     final duplicado = notifier.existeDuplicado(
-      uidActual: widget.colaboradorEditar?.uid ?? '',
-      nombres: nombres,
-      apellidoPaterno: apPat,
-      apellidoMaterno: apMat,
-      fechaNacimiento: _fechaNac,
       curp: curp,
       rfc: rfc,
       telefonoMovil: tel,
       emailPersonal: email,
+      nombres: nombres,
+      apellidoPaterno: apPat,
+      apellidoMaterno: apMat,
+      fechaNacimiento: _fechaNac,
+      excluirUid: _esEdicion ? widget.colaboradorEditar!.uid : null,
     );
 
     if (duplicado) {

@@ -136,8 +136,4 @@ class GruposDistribuidoresDao extends DatabaseAccessor<AppDatabase>
             .getSingleOrNull();
     return row?.updatedAt;
   }
-
-  // ---------------------------------------------------------------------------
-  // 🔧 UTILIDADES
-  // ---------------------------------------------------------------------------
 }

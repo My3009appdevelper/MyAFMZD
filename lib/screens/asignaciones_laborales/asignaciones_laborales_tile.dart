@@ -6,8 +6,8 @@ import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_p
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_form_page.dart';
-import 'package:myafmzd/widgets/sheet_action.dart';
-import 'package:myafmzd/widgets/show_detail_dialog.dart';
+import 'package:myafmzd/widgets/my_sheet_action.dart';
+import 'package:myafmzd/widgets/my_show_detail_dialog.dart';
 
 class AsignacionLaboralItemTile extends ConsumerStatefulWidget {
   final AsignacionLaboralDb asignacion;

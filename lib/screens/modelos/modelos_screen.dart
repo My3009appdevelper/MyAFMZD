@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -11,6 +12,7 @@ import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/screens/modelos/modelo_detalle_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_form_page.dart';
 import 'package:myafmzd/screens/modelos/modelos_tile.dart';
+import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
 
 class ModelosScreen extends ConsumerStatefulWidget {
   const ModelosScreen({super.key});
@@ -91,18 +93,15 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
         ),
         floatingActionButton: _cargandoInicial
             ? null
-            : FloatingActionButton(
-                onPressed: () async {
-                  final ok = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ModelosFormPage()),
-                  );
-                  if (mounted && ok == true) {
-                    await _cargarModelos();
-                  }
-                },
-                tooltip: 'Agregar nuevo modelo',
-                child: const Icon(Icons.add),
+            : FabConMenuAnchor(
+                onAgregar: _abrirFormNuevoModelo,
+                onExportar: _exportarModelos,
+                txtAgregar: 'Agregar modelo',
+                txtExportar: 'Exportar a CSV',
+                iconMain: Icons.apps,
+                iconAgregar: Icons.directions_car_filled_outlined,
+                iconExportar: Icons.download,
+                fabTooltip: 'Acciones de modelos',
               ),
         body: _cargandoInicial
             ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
@@ -360,6 +359,75 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
       }
       if (mounted) {
         setState(() => _cargandoInicial = false);
+      }
+    }
+  }
+
+  Future<void> _abrirFormNuevoModelo() async {
+    final ok = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ModelosFormPage()),
+    );
+    if (mounted && ok == true) {
+      await _cargarModelos();
+    }
+  }
+
+  // ignore: unused_element
+  Future<void> _importarModelos() async {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+      withData: true,
+    );
+    if (res == null || res.files.single.bytes == null) return;
+
+    context.loaderOverlay.show(progress: 'Importando modelos…');
+    try {
+      final (ins, skip) = await ref
+          .read(modelosProvider.notifier)
+          .importarCsvModelos(csvBytes: res.files.single.bytes!);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Importados: $ins • Saltados (duplicados): $skip'),
+        ),
+      );
+      await _cargarModelos();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al importar CSV: $e')));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+    }
+  }
+
+  Future<void> _exportarModelos() async {
+    context.loaderOverlay.show(progress: 'Generando CSV…');
+    try {
+      final path = await ref
+          .read(modelosProvider.notifier)
+          .exportarCsvAArchivo();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('CSV guardado en:\n$path')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al exportar: $e')));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
       }
     }
   }

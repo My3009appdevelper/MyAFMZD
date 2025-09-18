@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_print
-
 import 'dart:io';
+import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
@@ -9,6 +9,7 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_dao.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_service.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_sync.dart';
+import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -503,55 +504,64 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   //     3) Email o Teléfono móvil coinciden (normalizados)
   //     4) Nombre completo + Fecha de nacimiento (si ambos presentes)
   // ---------------------------------------------------------------------------
+  // 🔎 Duplicados (DB) — ahora con opción de nombre+fecha y excluir al propio uid.
   bool existeDuplicado({
-    required String uidActual,
-    required String nombres,
-    String apellidoPaterno = '',
-    String apellidoMaterno = '',
-    DateTime? fechaNacimiento,
     String curp = '',
     String rfc = '',
     String telefonoMovil = '',
     String emailPersonal = '',
+    String nombres = '',
+    String apellidoPaterno = '',
+    String apellidoMaterno = '',
+    DateTime? fechaNacimiento,
+    String? excluirUid, // 👈 nuevo
   }) {
-    final fullNameInput = _norm('$nombres $apellidoPaterno $apellidoMaterno');
-    final dobInput = fechaNacimiento == null
-        ? null
-        : _dateOnlyUtc(fechaNacimiento);
+    final curpIn = curp.trim().toLowerCase();
+    final rfcIn = rfc.trim().toLowerCase();
     final emailIn = emailPersonal.trim().toLowerCase();
     final phoneIn = _digits(telefonoMovil);
+    final fullNameIn = _norm('$nombres $apellidoPaterno $apellidoMaterno');
 
     for (final c in state) {
       if (c.deleted) continue;
-      if (c.uid == uidActual) continue;
 
-      // 1) CURP exacta (si aplica)
-      final cCurp = (c.curp ?? '').trim().toLowerCase();
-      if (curp.trim().isNotEmpty && cCurp.isNotEmpty) {
-        if (cCurp == curp.trim().toLowerCase()) return true;
+      // 👇 evita compararte contra ti mismo cuando editas
+      if (excluirUid != null && excluirUid.isNotEmpty && c.uid == excluirUid) {
+        continue;
       }
 
-      // 2) RFC exacto (si aplica)
-      final cRfc = (c.rfc ?? '').trim().toLowerCase();
-      if (rfc.trim().isNotEmpty && cRfc.isNotEmpty) {
-        if (cRfc == rfc.trim().toLowerCase()) return true;
+      // 1) CURP
+      final curpDb = (c.curp ?? '').trim().toLowerCase();
+      if (curpIn.isNotEmpty && curpDb.isNotEmpty && curpDb == curpIn)
+        return true;
+
+      // 2) RFC
+      final rfcDb = (c.rfc ?? '').trim().toLowerCase();
+      if (rfcIn.isNotEmpty && rfcDb.isNotEmpty && rfcDb == rfcIn) return true;
+
+      // 3) Email
+      final emailDb = c.emailPersonal.trim().toLowerCase();
+      if (emailIn.isNotEmpty && emailDb.isNotEmpty && emailDb == emailIn) {
+        return true;
       }
 
-      // 3) Email / Tel (normalizados)
-      if (emailIn.isNotEmpty && c.emailPersonal.trim().isNotEmpty) {
-        if (c.emailPersonal.trim().toLowerCase() == emailIn) return true;
-      }
-      if (phoneIn.isNotEmpty && c.telefonoMovil.trim().isNotEmpty) {
-        if (_digits(c.telefonoMovil) == phoneIn) return true;
+      // 4) Teléfono
+      final telDb = _digits(c.telefonoMovil);
+      if (phoneIn.isNotEmpty && telDb.isNotEmpty && telDb == phoneIn) {
+        return true;
       }
 
-      // 4) Nombre completo + fecha de nacimiento
-      if (dobInput != null && c.fechaNacimiento != null) {
-        final cFull = _norm(
+      // 5) Nombre completo + fecha (si ambos presentes)
+      if (fullNameIn.isNotEmpty && fechaNacimiento != null) {
+        final fullNameDb = _norm(
           '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}',
         );
-        final cDob = _dateOnlyUtc(c.fechaNacimiento!);
-        if (cFull == fullNameInput && cDob == dobInput) return true;
+        final fDb = c.fechaNacimiento?.toUtc();
+        if (fullNameDb == fullNameIn &&
+            fDb != null &&
+            fDb == fechaNacimiento.toUtc()) {
+          return true;
+        }
       }
     }
     return false;
@@ -574,6 +584,301 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
 
   String _digits(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
 
-  DateTime _dateOnlyUtc(DateTime d) =>
-      DateTime.utc(d.toUtc().year, d.toUtc().month, d.toUtc().day);
+  // ====================== CSV: helpers locales ======================
+
+  // Encabezado estable (mismo orden en import/export).
+  static const List<String> _csvHeaderColabs = [
+    'nombres',
+    'apellidoPaterno',
+    'apellidoMaterno',
+    'fechaNacimiento', // ISO o dd/MM/yyyy, se guarda en UTC
+    'curp',
+    'rfc',
+    'telefonoMovil',
+    'emailPersonal',
+    'fotoRutaLocal',
+    'fotoRutaRemota',
+    'genero',
+    'notas',
+    'createdAt', // opcional; si vacío: nowUtc
+    'updatedAt', // opcional; si vacío: nowUtc
+    'deleted', // true/false/1/0/yes/no/si
+    'isSynced', // true/false/1/0/yes/no/si
+  ];
+
+  // Formatea DateTime a ISO-UTC o cadena vacía
+  String _fmtIso(DateTime? d) => d == null ? '' : d.toUtc().toIso8601String();
+
+  // ====================== CSV: EXPORTAR ======================
+
+  /// Exporta todos los colaboradores (o solo NO eliminados) a CSV (String).
+  Future<String> exportarCsvColaboradores({
+    bool incluirEliminados = false,
+  }) async {
+    final lista = incluirEliminados
+        ? await _dao.obtenerTodosDrift()
+        : (await _dao.obtenerTodosDrift()).where((c) => !c.deleted).toList();
+
+    // Orden consistente
+    lista.sort((a, b) => a.nombres.compareTo(b.nombres));
+
+    // 1) Header EXACTO (sin uid)
+    final rows = <List<dynamic>>[
+      ['uid', ..._csvHeaderColabs],
+    ];
+
+    // 2) Filas (sin uid)
+    for (final c in lista) {
+      rows.add([
+        c.uid,
+        c.nombres,
+        c.apellidoPaterno,
+        c.apellidoMaterno,
+        _fmtIso(c.fechaNacimiento),
+        c.curp ?? '',
+        c.rfc ?? '',
+        c.telefonoMovil,
+        c.emailPersonal,
+        c.fotoRutaLocal,
+        c.fotoRutaRemota,
+        c.genero ?? '',
+        c.notas,
+        _fmtIso(c.createdAt),
+        _fmtIso(c.updatedAt),
+        c.deleted.toString(),
+        c.isSynced.toString(),
+      ]);
+    }
+
+    return toCsvStringWithBom(rows);
+  }
+
+  Future<String> exportarCsvAArchivo({String? nombreArchivo}) async {
+    final csv = await exportarCsvColaboradores();
+
+    final now = DateTime.now().toUtc();
+    final ts = now.toIso8601String().replaceAll(':', '-');
+    final fileName = (nombreArchivo?.trim().isNotEmpty == true)
+        ? nombreArchivo!.trim()
+        : 'colaboradores_$ts.csv';
+
+    // Preferir Descargas en desktop si está disponible; soporte app en mobile
+    Directory dir;
+    try {
+      // Sólo desktop expone Downloads de forma estándar
+      final downloads = await getDownloadsDirectory();
+      dir = downloads ?? await getApplicationSupportDirectory();
+    } catch (_) {
+      dir = await getApplicationSupportDirectory();
+    }
+
+    final file = File(p.join(dir.path, fileName));
+    await file.create(recursive: true);
+    await file.writeAsString(csv, flush: true);
+
+    return file.path; // 👈 Devuelve la ruta exacta donde quedó el export
+  }
+
+  /// Importa colaboradores desde CSV. SOLO INSERTA. Nunca edita existentes.
+  /// Reglas duplicado (en este orden): CURP, RFC, Email, Tel, Nombre+Fecha.
+  /// Además evita repetir filas duplicadas dentro del mismo CSV.
+  Future<(int insertados, int saltados)> importarCsvColaboradores({
+    String? csvText,
+    List<int>? csvBytes,
+  }) async {
+    assert(
+      csvText != null || csvBytes != null,
+      'Proporciona csvText o csvBytes',
+    );
+
+    final text = csvText ?? decodeCsvBytes(csvBytes!);
+    final rows = const CsvToListConverter(
+      shouldParseNumbers: false,
+      eol: '\n',
+    ).convert(text);
+    if (rows.isEmpty) return (0, 0);
+
+    // Header EXACTO (sin uid)
+    final header = rows.first.map((e) => (e ?? '').toString().trim()).toList();
+    final validHeader =
+        header.length == _csvHeaderColabs.length &&
+        _csvHeaderColabs.asMap().entries.every((e) => e.value == header[e.key]);
+    if (!validHeader) {
+      throw const FormatException(
+        'Encabezado CSV inválido. Esperado: '
+        'nombres,apellidoPaterno,apellidoMaterno,fechaNacimiento,curp,rfc,'
+        'telefonoMovil,emailPersonal,fotoRutaLocal,fotoRutaRemota,genero,notas,'
+        'createdAt,updatedAt,deleted,isSynced',
+      );
+    }
+
+    final dataRows = rows.skip(1);
+    final nowUtc = DateTime.now().toUtc();
+
+    // === Índices de existentes (DB) para lookup rápido ===
+    final existentes = await _dao.obtenerTodosDrift();
+    final byCurp = <String, bool>{};
+    final byRfc = <String, bool>{};
+    final byEmail = <String, bool>{};
+    final byPhone = <String, bool>{};
+    final byNameDob = <String, bool>{}; // key: "<fullName>|<yyyy-mm-dd>"
+
+    String kCurp(String s) => s.trim().toLowerCase();
+    String kRfc(String s) => s.trim().toLowerCase();
+    String kEmail(String s) => s.trim().toLowerCase();
+    String kPhone(String s) => _digits(s);
+    String kNameDob(String n, String ap, String am, DateTime? f) {
+      final name = _norm('$n $ap $am');
+      final d = f == null
+          ? ''
+          : '${f.toUtc().year}-${f.toUtc().month.toString().padLeft(2, '0')}-${f.toUtc().day.toString().padLeft(2, '0')}';
+      return '$name|$d';
+    }
+
+    for (final c in existentes) {
+      if (c.deleted) continue;
+      if ((c.curp ?? '').trim().isNotEmpty) byCurp[kCurp(c.curp!)] = true;
+      if ((c.rfc ?? '').trim().isNotEmpty) byRfc[kRfc(c.rfc!)] = true;
+      if (c.emailPersonal.trim().isNotEmpty)
+        byEmail[kEmail(c.emailPersonal)] = true;
+      if (c.telefonoMovil.trim().isNotEmpty)
+        byPhone[kPhone(c.telefonoMovil)] = true;
+      byNameDob[kNameDob(
+            c.nombres,
+            c.apellidoPaterno,
+            c.apellidoMaterno,
+            c.fechaNacimiento,
+          )] =
+          true;
+    }
+
+    // === Seen maps para evitar duplicado DENTRO del CSV ===
+    final seenCurp = <String, bool>{};
+    final seenRfc = <String, bool>{};
+    final seenEmail = <String, bool>{};
+    final seenPhone = <String, bool>{};
+    final seenNameDob = <String, bool>{};
+
+    int insertados = 0, saltados = 0;
+
+    await _dao.db.transaction(() async {
+      for (final r in dataRows) {
+        if (r.isEmpty) continue;
+
+        final row = List<String>.generate(
+          _csvHeaderColabs.length,
+          (i) => (i < r.length ? (r[i] ?? '').toString() : '').trim(),
+        );
+
+        final nombres = row[0];
+        final apP = row[1];
+        final apM = row[2];
+        final fNacStr = row[3];
+        final curp = row[4];
+        final rfc = row[5];
+        final tel = row[6];
+        final email = row[7];
+        final fotoLocal = row[8];
+        final fotoRem = row[9];
+        final genero = row[10];
+        final notas = row[11];
+        final createdStr = row[12];
+        final updatedStr = row[13];
+        final deletedStr = row[14];
+        final syncedStr = row[15];
+
+        final fNac = parseDateFlexible(fNacStr); // UTC o null
+        final createdAt = parseDateFlexible(createdStr) ?? nowUtc;
+        final updatedAt = parseDateFlexible(updatedStr) ?? nowUtc;
+        final deleted = parseBoolFlexible(deletedStr, defaultValue: false);
+        final isSynced = parseBoolFlexible(syncedStr, defaultValue: false);
+
+        // --- Normaliza llaves
+        final curpK = kCurp(curp);
+        final rfcK = kRfc(rfc);
+        final emailK = kEmail(email);
+        final phoneK = kPhone(tel);
+        final nameDobK = kNameDob(nombres, apP, apM, fNac);
+
+        // --- ¿Duplicado en DB?
+        final dupDb =
+            (curpK.isNotEmpty && byCurp[curpK] == true) ||
+            (rfcK.isNotEmpty && byRfc[rfcK] == true) ||
+            (emailK.isNotEmpty && byEmail[emailK] == true) ||
+            (phoneK.isNotEmpty && byPhone[phoneK] == true) ||
+            (nameDobK.isNotEmpty && byNameDob[nameDobK] == true);
+
+        // --- ¿Duplicado en el propio CSV (ya procesado)?
+        final dupCsv =
+            (curpK.isNotEmpty && seenCurp[curpK] == true) ||
+            (rfcK.isNotEmpty && seenRfc[rfcK] == true) ||
+            (emailK.isNotEmpty && seenEmail[emailK] == true) ||
+            (phoneK.isNotEmpty && seenPhone[phoneK] == true) ||
+            (nameDobK.isNotEmpty && seenNameDob[nameDobK] == true);
+
+        if (dupDb || dupCsv) {
+          saltados++;
+          // Marca como vistos (para cascada de duplicados dentro del CSV)
+          if (curpK.isNotEmpty) seenCurp[curpK] = true;
+          if (rfcK.isNotEmpty) seenRfc[rfcK] = true;
+          if (emailK.isNotEmpty) seenEmail[emailK] = true;
+          if (phoneK.isNotEmpty) seenPhone[phoneK] = true;
+          if (nameDobK.isNotEmpty) seenNameDob[nameDobK] = true;
+          continue; // 👈 NO insertes, NO actualices
+        }
+
+        // --- Insertar SIEMPRE (uid nuevo)
+        final uid = const Uuid().v4();
+        final comp = ColaboradoresCompanion(
+          uid: Value(uid),
+          nombres: Value(nombres),
+          apellidoPaterno: Value(apP),
+          apellidoMaterno: Value(apM),
+          fechaNacimiento: fNac == null
+              ? const Value.absent()
+              : Value(fNac.toUtc()),
+          curp: curp.isEmpty ? const Value.absent() : Value(curp),
+          rfc: rfc.isEmpty ? const Value.absent() : Value(rfc),
+          telefonoMovil: Value(tel),
+          emailPersonal: Value(email),
+          fotoRutaLocal: Value(fotoLocal),
+          fotoRutaRemota: Value(fotoRem),
+          genero: genero.isEmpty ? const Value.absent() : Value(genero),
+          notas: Value(notas),
+          createdAt: Value(createdAt),
+          updatedAt: Value(updatedAt),
+          deleted: Value(deleted),
+          isSynced: Value(isSynced),
+        );
+
+        await _dao.upsertColaboradorDrift(comp); // uid nuevo → inserta
+        insertados++;
+
+        // Actualiza índices para siguientes filas (DB y CSV)
+        if (curpK.isNotEmpty) {
+          byCurp[curpK] = true;
+          seenCurp[curpK] = true;
+        }
+        if (rfcK.isNotEmpty) {
+          byRfc[rfcK] = true;
+          seenRfc[rfcK] = true;
+        }
+        if (emailK.isNotEmpty) {
+          byEmail[emailK] = true;
+          seenEmail[emailK] = true;
+        }
+        if (phoneK.isNotEmpty) {
+          byPhone[phoneK] = true;
+          seenPhone[phoneK] = true;
+        }
+        if (nameDobK.isNotEmpty) {
+          byNameDob[nameDobK] = true;
+          seenNameDob[nameDobK] = true;
+        }
+      }
+    });
+
+    state = await _dao.obtenerTodosDrift();
+    return (insertados, saltados);
+  }
 }

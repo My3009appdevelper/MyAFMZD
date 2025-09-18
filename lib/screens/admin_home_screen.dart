@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/estatus/estatus_provider.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
@@ -12,9 +13,10 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_screen.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_screen.dart';
+import 'package:myafmzd/screens/estatus/estatus_screen.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
 import 'package:myafmzd/screens/productos/productos_screen.dart';
-import 'package:myafmzd/widgets/app_drawer.dart';
+import 'package:myafmzd/widgets/my_app_drawer.dart';
 
 class AdminHomeScreen extends ConsumerStatefulWidget {
   const AdminHomeScreen({super.key});
@@ -32,6 +34,7 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
     AsignacionesLaboralesScreen(), // 2
     UsuariosScreen(), // 3
     ProductosScreen(), // 4
+    EstatusScreen(), // 5
   ];
 
   @override
@@ -49,6 +52,7 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
           .cargarOfflineFirst();
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       await ref.read(productosProvider.notifier).cargarOfflineFirst();
+      await ref.read(estatusProvider.notifier).cargarOfflineFirst();
     });
   }
 
@@ -81,7 +85,7 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
           ),
         ],
       ),
-      drawer: const AppDrawer(),
+      drawer: const MyAppDrawer(),
       body: _pantallas[_indiceActual],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceActual,
@@ -120,6 +124,11 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
             backgroundColor: colorScheme.primary,
             icon: Icon(Icons.inventory_2),
             label: 'Productos',
+          ),
+          BottomNavigationBarItem(
+            backgroundColor: colorScheme.primary,
+            icon: Icon(Icons.label_important_outline),
+            label: 'Estatus',
           ),
         ],
       ),

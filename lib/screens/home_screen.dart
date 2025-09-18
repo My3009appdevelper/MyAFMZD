@@ -10,11 +10,14 @@ import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+import 'package:myafmzd/database/ventas/ventas_provider.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
+import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_screen.dart';
 import 'package:myafmzd/screens/modelos/modelos_screen.dart';
 import 'package:myafmzd/screens/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
-import 'package:myafmzd/widgets/app_drawer.dart';
+import 'package:myafmzd/screens/ventas/ventas_screen.dart';
+import 'package:myafmzd/widgets/my_app_drawer.dart';
 
 // 👇 Asegúrate de importar tu provider de permisos
 import 'package:myafmzd/session/permisos.dart';
@@ -44,6 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           .cargarOfflineFirst();
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       await ref.read(productosProvider.notifier).cargarOfflineFirst();
+      await ref.read(ventasProvider.notifier).cargarOfflineFirst();
     });
   }
 
@@ -70,6 +74,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
     }
+    if (perms.can(Feature.navVentas)) {
+      pantallasVisibles.add(const VentasScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.attach_money),
+          label: 'Ventas',
+        ),
+      );
+    }
+
     if (perms.can(Feature.navModelos)) {
       pantallasVisibles.add(const ModelosScreen());
       itemsVisibles.add(
@@ -87,6 +102,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           backgroundColor: colorScheme.primary,
           icon: const Icon(Icons.location_on),
           label: 'Distribuidoras',
+        ),
+      );
+      pantallasVisibles.add(const GruposDistribuidoresScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.groups),
+          label: 'Grupos Distribuidores',
         ),
       );
     }
@@ -128,7 +151,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-        drawer: const AppDrawer(),
+        drawer: const MyAppDrawer(),
         body: const Center(
           child: Text('No tienes secciones disponibles para tu rol.'),
         ),
@@ -163,7 +186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      drawer: const AppDrawer(),
+      drawer: const MyAppDrawer(),
       body: pantallasVisibles[_indiceActual],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceActual,

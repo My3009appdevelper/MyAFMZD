@@ -5,8 +5,8 @@ import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/screens/modelos/modelos_form_page.dart';
-import 'package:myafmzd/widgets/sheet_action.dart';
-import 'package:myafmzd/widgets/show_detail_dialog.dart';
+import 'package:myafmzd/widgets/my_sheet_action.dart';
+import 'package:myafmzd/widgets/my_show_detail_dialog.dart';
 
 class ModeloItemTile extends ConsumerStatefulWidget {
   final ModeloDb modelo;

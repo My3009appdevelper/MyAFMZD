@@ -5,8 +5,8 @@ import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_form_page.dart';
-import 'package:myafmzd/widgets/sheet_action.dart';
-import 'package:myafmzd/widgets/show_detail_dialog.dart';
+import 'package:myafmzd/widgets/my_sheet_action.dart';
+import 'package:myafmzd/widgets/my_show_detail_dialog.dart';
 
 class UsuariosItemTile extends ConsumerStatefulWidget {
   final UsuarioDb usuario;

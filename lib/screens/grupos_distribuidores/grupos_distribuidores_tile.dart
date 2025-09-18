@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
 import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_form_page.dart';
-import 'package:myafmzd/widgets/sheet_action.dart';
-import 'package:myafmzd/widgets/show_detail_dialog.dart';
+import 'package:myafmzd/widgets/my_sheet_action.dart';
+import 'package:myafmzd/widgets/my_show_detail_dialog.dart';
 
 class GrupoDistribuidorItemTile extends ConsumerStatefulWidget {
   final GrupoDistribuidorDb grupo;

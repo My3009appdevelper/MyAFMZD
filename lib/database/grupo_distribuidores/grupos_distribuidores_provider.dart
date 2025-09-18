@@ -102,7 +102,7 @@ class GruposDistribuidoresNotifier
         createdAt: Value(now),
         updatedAt: Value(now),
         deleted: const Value(false),
-        isSynced: const Value(true),
+        isSynced: const Value(false),
       );
       await _dao.upsertGruposDrift([comp]);
 
@@ -234,4 +234,24 @@ class GruposDistribuidoresNotifier
     });
     return lst;
   }
+
+  /// Devuelve el nombre del grupo por UID.
+  /// Reglas:
+  /// - uid vacío o null => "AFMZD" (tu default histórico)
+  /// - uid no encontrado => "—"
+  String nombrePorUid(String? uid) {
+    final id = (uid ?? '').trim();
+    if (id.isEmpty) return 'AFMZD';
+
+    try {
+      final g = state.firstWhere((e) => e.uid == id && !e.deleted);
+      final n = g.nombre.trim();
+      return n.isEmpty ? '—' : n;
+    } catch (_) {
+      return '—';
+    }
+  }
+
+  /// True si el UID corresponde (por nombre) al grupo "AFMZD".
+  bool esAfmzd(String? uid) => nombrePorUid(uid) == 'AFMZD';
 }

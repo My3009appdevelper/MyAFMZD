@@ -13,8 +13,8 @@ import 'package:myafmzd/screens/admin_home_screen.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 
-class AppDrawer extends ConsumerWidget {
-  const AppDrawer({super.key});
+class MyAppDrawer extends ConsumerWidget {
+  const MyAppDrawer({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

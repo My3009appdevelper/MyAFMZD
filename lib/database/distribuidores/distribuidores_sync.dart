@@ -120,11 +120,12 @@ class DistribuidoresSync {
         return DistribuidoresCompanion(
           uid: Value(m['uid'] as String),
           nombre: Value((m['nombre'] as String?) ?? ''),
-          grupo: Value((m['grupo'] as String?) ?? 'AFMZD'),
+          uuidGrupo: Value((m['uuid_grupo'] as String?) ?? ''),
           direccion: Value((m['direccion'] as String?) ?? ''),
           activo: Value((m['activo'] as bool?) ?? true),
           latitud: Value(toDouble(m['latitud'])),
           longitud: Value(toDouble(m['longitud'])),
+          concentradoraUid: Value((m['concentradora_uid'] as String?) ?? ''),
           updatedAt: Value(dt(m['updated_at']) ?? DateTime.now().toUtc()),
           deleted: Value((m['deleted'] as bool?) ?? false),
           isSynced: const Value(true),
@@ -149,11 +150,12 @@ class DistribuidoresSync {
     return {
       'uid': d.uid,
       'nombre': d.nombre,
-      'grupo': d.grupo,
+      'uuid_grupo': d.uuidGrupo,
       'direccion': d.direccion,
       'activo': d.activo,
       'latitud': d.latitud,
       'longitud': d.longitud,
+      'concentradora_uid': d.concentradoraUid,
       'updated_at': iso(d.updatedAt),
       'deleted': d.deleted,
     };

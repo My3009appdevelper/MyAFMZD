@@ -1,32 +1,26 @@
-import 'dart:async';
+// lib/screens/ventas/ventas_screen.dart
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
-import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
-import 'package:myafmzd/screens/colaboradores/colaboradores_form_page.dart';
-import 'package:myafmzd/screens/colaboradores/colaboradores_tile.dart';
+import 'package:myafmzd/database/ventas/ventas_provider.dart';
 import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
 
-class ColaboradoresScreen extends ConsumerStatefulWidget {
-  const ColaboradoresScreen({super.key});
+class VentasScreen extends ConsumerStatefulWidget {
+  const VentasScreen({super.key});
 
   @override
-  ConsumerState<ColaboradoresScreen> createState() =>
-      _ColaboradoresScreenState();
+  ConsumerState<VentasScreen> createState() => _VentasScreenState();
 }
 
-class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
+class _VentasScreenState extends ConsumerState<VentasScreen> {
   bool _cargandoInicial = true;
 
   @override
   void initState() {
     super.initState();
-    // Igual que en las demás: correr carga tras el primer frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarColaboradores();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _cargarVentas());
   }
 
   @override
@@ -34,18 +28,17 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    // Reacciona a cambios de conectividad (mismo patrón)
     ref.listen<bool>(connectivityProvider, (prev, next) async {
       if (!mounted || prev == next) return;
-      await _cargarColaboradores();
+      await _cargarVentas();
     });
 
-    final colaboradores = ref.watch(colaboradoresProvider);
+    final ventas = ref.watch(ventasProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Colaboradores",
+          'Ventas',
           style: tt.titleLarge?.copyWith(color: cs.onSurface),
         ),
         centerTitle: true,
@@ -54,35 +47,33 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
         scrolledUnderElevation: 0,
       ),
       floatingActionButton: FabConMenuAnchor(
-        onAgregar: _abrirFormNuevoColaborador,
-        onImportar: _importarColaboradores,
-        onExportar: _exportarColaboradores,
-        // Personaliza textos/íconos si quieres:
-        txtAgregar: 'Agregar colaborador',
+        onAgregar: null, // por ahora no hay alta desde aquí
+        onImportar: _importarVentas,
+        onExportar: _exportarVentas,
+        txtAgregar: 'Agregar venta',
         txtImportar: 'Importar desde CSV',
         txtExportar: 'Exportar a CSV',
-        iconMain: Icons.apps, // o Icons.menu
-        iconAgregar: Icons.person_add_alt_1,
+        iconMain: Icons.apps,
+        iconAgregar: Icons.playlist_add,
         iconImportar: Icons.upload,
         iconExportar: Icons.download,
-        fabTooltip: 'Acciones de colaboradores',
+        fabTooltip: 'Acciones de ventas',
       ),
-
       body: Column(
         children: [
-          if (!_cargandoInicial) _buildResumen(context, colaboradores.length),
+          if (!_cargandoInicial) _buildResumen(context, ventas.length),
           Expanded(
             child: _cargandoInicial
-                ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
+                ? const SizedBox.shrink()
                 : RefreshIndicator(
                     color: cs.secondary,
-                    onRefresh: _cargarColaboradores,
-                    child: colaboradores.isEmpty
+                    onRefresh: _cargarVentas,
+                    child: ventas.isEmpty
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: const [
                               SizedBox(height: 80),
-                              Center(child: Text('No hay colaboradores')),
+                              Center(child: Text('No hay ventas')),
                             ],
                           )
                         : ListView.builder(
@@ -93,9 +84,9 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
                               horizontal: 16,
                               vertical: 24,
                             ),
-                            itemCount: colaboradores.length,
+                            itemCount: ventas.length,
                             itemBuilder: (context, index) {
-                              final c = colaboradores[index];
+                              final v = ventas[index];
                               return Card(
                                 color: cs.surface,
                                 margin: const EdgeInsets.only(bottom: 12),
@@ -103,13 +94,15 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 elevation: 2,
-                                child: ColaboradorItemTile(
-                                  key: ValueKey(c.uid),
-                                  colaborador: c,
-                                  onTap: () {},
-                                  onActualizado: () async {
-                                    await _cargarColaboradores();
-                                  },
+                                child: ListTile(
+                                  title: Text(
+                                    v.folioContrato.isEmpty
+                                        ? '(sin folio)'
+                                        : v.folioContrato,
+                                  ),
+                                  subtitle: Text(
+                                    'Vendedor: ${v.vendedorUid} • Modelo: ${v.modeloUid}',
+                                  ),
                                 ),
                               );
                             },
@@ -123,7 +116,6 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
 
   Widget _buildResumen(BuildContext context, int totalActual) {
     final colorScheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Row(
@@ -138,33 +130,24 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     );
   }
 
-  Future<void> _cargarColaboradores() async {
+  Future<void> _cargarVentas() async {
     if (!mounted) return;
-
     setState(() => _cargandoInicial = true);
-
-    // UX opcional, igual que en otras screens
     FocusScope.of(context).unfocus();
-
-    // OVERLAY (mismo patrón)
-    context.loaderOverlay.show(progress: 'Cargando colaboradores…');
+    context.loaderOverlay.show(progress: 'Cargando ventas…');
 
     final inicio = DateTime.now();
-
     try {
       final hayInternet = ref.read(connectivityProvider);
+      await ref.read(ventasProvider.notifier).cargarOfflineFirst();
 
-      await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
-
-      // delay mínimo para consistencia
-      const duracionMinima = Duration(milliseconds: 1500);
-      final duracion = DateTime.now().difference(inicio);
-      if (duracion < duracionMinima) {
-        await Future.delayed(duracionMinima - duracion);
+      const duracionMin = Duration(milliseconds: 1500);
+      final trans = DateTime.now().difference(inicio);
+      if (trans < duracionMin) {
+        await Future.delayed(duracionMin - trans);
       }
 
       if (!mounted) return;
-
       if (!hayInternet) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -177,28 +160,12 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }
-      if (mounted) {
-        setState(() => _cargandoInicial = false);
-      }
-    }
-  }
-
-  Future<void> _abrirFormNuevoColaborador() async {
-    // Navega al formulario de creación.
-    final resultado = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const ColaboradorFormPage(), // modo "crear"
-      ),
-    );
-
-    // Si la página regresa true (guardado) o simplemente para asegurar, recarga.
-    if (mounted && (resultado == true || resultado == null)) {
-      await _cargarColaboradores();
+      if (mounted) setState(() => _cargandoInicial = false);
     }
   }
 
   // IMPORTAR (solo inserta; muestra duplicados saltados)
-  Future<void> _importarColaboradores() async {
+  Future<void> _importarVentas() async {
     final res = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
@@ -206,19 +173,19 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     );
     if (res == null || res.files.single.bytes == null) return;
 
-    context.loaderOverlay.show(progress: 'Importando colaboradores…');
+    context.loaderOverlay.show(progress: 'Importando ventas…');
     try {
       final (ins, skip) = await ref
-          .read(colaboradoresProvider.notifier)
-          .importarCsvColaboradores(csvBytes: res.files.single.bytes!);
+          .read(ventasProvider.notifier)
+          .importarCsvVentas(csvBytes: res.files.single.bytes!);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Importados: $ins • Saltados (duplicados): $skip'),
+          content: Text('Importadas: $ins • Saltadas (duplicadas): $skip'),
         ),
       );
-      await _cargarColaboradores();
+      await _cargarVentas();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -232,14 +199,13 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     }
   }
 
-  // EXPORTAR (ejemplo: guardar a archivo o compartir)
-  Future<void> _exportarColaboradores() async {
+  // EXPORTAR
+  Future<void> _exportarVentas() async {
     context.loaderOverlay.show(progress: 'Generando CSV…');
     try {
       final path = await ref
-          .read(colaboradoresProvider.notifier)
+          .read(ventasProvider.notifier)
           .exportarCsvAArchivo();
-
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,

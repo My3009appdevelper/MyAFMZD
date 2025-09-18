@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart'; // 👈 NUEVO
 import 'package:myafmzd/widgets/my_elevated_button.dart';
 import 'package:myafmzd/widgets/my_picker_search_field.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
@@ -19,10 +20,11 @@ class DistribuidorFormPage extends ConsumerStatefulWidget {
 class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nombreController;
-  late TextEditingController _grupoController;
+  late TextEditingController _uuidGrupoController; // almacena el UID del grupo
   late TextEditingController _direccionController;
   late TextEditingController _latController;
   late TextEditingController _lngController;
+  late TextEditingController _concentradoraUidController;
   bool _activo = true;
   bool _esEdicion = false;
 
@@ -33,8 +35,8 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     _esEdicion = distribuidor != null;
 
     _nombreController = TextEditingController(text: distribuidor?.nombre ?? '');
-    _grupoController = TextEditingController(
-      text: distribuidor?.grupo ?? 'AFMZD',
+    _uuidGrupoController = TextEditingController(
+      text: distribuidor?.uuidGrupo ?? '',
     );
     _direccionController = TextEditingController(
       text: distribuidor?.direccion ?? '',
@@ -46,21 +48,60 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
       text: (distribuidor?.longitud)?.toString() ?? '',
     );
     _activo = distribuidor?.activo ?? true;
+
+    _concentradoraUidController = TextEditingController(
+      text: _esEdicion
+          ? ((distribuidor!.concentradoraUid.isNotEmpty)
+                ? distribuidor.concentradoraUid
+                : distribuidor.uid)
+          : '',
+    );
   }
 
   @override
   void dispose() {
     _nombreController.dispose();
-    _grupoController.dispose();
+    _uuidGrupoController.dispose();
     _direccionController.dispose();
     _latController.dispose();
     _lngController.dispose();
+    _concentradoraUidController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final grupos = ref.watch(distribuidoresProvider.notifier).gruposUnicos;
+    // Trae los grupos desde su provider y ordénalos por nombre
+    final grupos =
+        ref
+            .watch(gruposDistribuidoresProvider)
+            .where((g) => !g.deleted)
+            .toList()
+          ..sort((a, b) => a.nombre.compareTo(b.nombre));
+
+    // Resuelve el valor inicial (objeto) a partir del uid guardado en el controller
+    final initialGrupo = grupos.firstWhere(
+      (g) => g.uid == _uuidGrupoController.text,
+      orElse: () => grupos.firstWhere((g) => g.nombre == 'AFMZD'),
+    );
+
+    // Distribuidoras disponibles (muestra nombres). Filtra eliminadas.
+    final distribuidoras =
+        ref.watch(distribuidoresProvider).where((d) => !d.deleted).toList()
+          ..sort((a, b) => a.nombre.compareTo(b.nombre));
+
+    // Valor inicial: busca por uid en el controller (si existe)
+    final initialConcentradora = _concentradoraUidController.text.isEmpty
+        ? null
+        : distribuidoras.firstWhere(
+            (d) => d.uid == _concentradoraUidController.text,
+            orElse: () => _esEdicion
+                ? distribuidoras.firstWhere(
+                    (d) => d.uid == (widget.distribuidorEditar?.uid ?? ''),
+                    orElse: () => distribuidoras.first,
+                  )
+                : distribuidoras.first,
+          );
 
     return Scaffold(
       appBar: AppBar(
@@ -86,19 +127,34 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Grupo
-                  MyPickerSearchField<String>(
+                  // Grupo: muestra NOMBRE, guarda UID
+                  MyPickerSearchField<GrupoDistribuidorDb>(
                     items: grupos,
-                    initialValue: _grupoController.text.isEmpty
+                    initialValue: _uuidGrupoController.text.isEmpty
                         ? null
-                        : _grupoController.text,
-                    itemAsString: (s) => s,
-                    compareFn: (a, b) => a.toLowerCase() == b.toLowerCase(),
+                        : initialGrupo,
+                    itemAsString: (g) => g.nombre, // 👈 muestra el nombre
+                    compareFn: (a, b) => a.uid == b.uid, // 👈 compara por uid
                     labelText: 'Grupo',
                     hintText: 'Toca para elegir…',
                     bottomSheetTitle: 'Seleccionar grupo',
                     searchHintText: 'Buscar grupo…',
-                    onChanged: (value) => _grupoController.text = value ?? '',
+                    onChanged: (g) => _uuidGrupoController.text = g?.uid ?? '',
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Distribuidora CONCENTRADORA: muestra NOMBRE, guarda UID
+                  MyPickerSearchField<DistribuidorDb>(
+                    items: distribuidoras,
+                    initialValue: initialConcentradora,
+                    itemAsString: (d) => d.nombre, // 👈 muestra nombre
+                    compareFn: (a, b) => a.uid == b.uid, // 👈 compara por uid
+                    labelText: 'Distribuidora concentradora',
+                    hintText: 'Toca para elegir…',
+                    bottomSheetTitle: 'Seleccionar distribuidora concentradora',
+                    searchHintText: 'Buscar distribuidora…',
+                    onChanged: (d) =>
+                        _concentradoraUidController.text = d?.uid ?? '',
                   ),
                   const SizedBox(height: 12),
 
@@ -113,7 +169,6 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                   Row(
                     children: [
                       Expanded(
-                        // Lat
                         child: MyTextFormField(
                           controller: _latController,
                           labelText: 'Latitud',
@@ -121,14 +176,12 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                             decimal: true,
                             signed: true,
                           ),
-
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
                               return 'Campo obligatorio';
                             }
                             final n = double.tryParse(v.trim());
                             if (n == null) return 'Número inválido';
-                            // (Opcional) validar rango de latitudes
                             if (n < -90 || n > 90) {
                               return 'Rango válido: -90 a 90';
                             }
@@ -138,7 +191,6 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        // Lng
                         child: MyTextFormField(
                           controller: _lngController,
                           labelText: 'Longitud',
@@ -146,14 +198,12 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                             decimal: true,
                             signed: true,
                           ),
-
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
                               return 'Campo obligatorio';
                             }
                             final n = double.tryParse(v.trim());
                             if (n == null) return 'Número inválido';
-                            // (Opcional) validar rango de longitudes
                             if (n < -180 || n > 180) {
                               return 'Rango válido: -180 a 180';
                             }
@@ -193,10 +243,8 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     if (!_formKey.currentState!.validate()) return;
     if (!mounted) return;
 
-    // UX: cerrar teclado antes de mostrar overlay
     FocusScope.of(context).unfocus();
 
-    // Overlay base + timer para delay mínimo
     context.loaderOverlay.show(
       progress: _esEdicion
           ? 'Editando distribuidor…'
@@ -204,23 +252,22 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     );
     final inicio = DateTime.now();
 
-    // ---- Lee valores de forma defensiva ----
+    // Lectura de valores
     final nombre = _nombreController.text.trim();
-    final grupo = _grupoController.text.trim();
+    final uuidGrupo = _uuidGrupoController.text.trim(); // uid del grupo
     final direccion = _direccionController.text.trim();
     double toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
     final lat = toDouble(_latController.text);
     final lng = toDouble(_lngController.text);
+    final concentradoraUid = _concentradoraUidController.text.trim();
 
     final distribuidoresNotifier = ref.read(distribuidoresProvider.notifier);
 
     try {
-      // Paso intermedio (consistente con tus Screens/FormPages)
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Validando datos…');
       }
 
-      // Validación de duplicados (con overlay)
       final duplicado = distribuidoresNotifier.existeDuplicado(
         uidActual: widget.distribuidorEditar?.uid ?? '',
         nombre: nombre,
@@ -238,7 +285,6 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
         return;
       }
 
-      // Persistencia
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.progress(
           _esEdicion ? 'Aplicando cambios…' : 'Creando distribuidor…',
@@ -249,43 +295,40 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
         await distribuidoresNotifier.editarDistribuidor(
           uid: widget.distribuidorEditar!.uid,
           nombre: nombre,
-          grupo: grupo.isEmpty ? null : grupo,
+          uuidGrupo: uuidGrupo.isEmpty ? null : uuidGrupo,
           direccion: direccion.isEmpty ? null : direccion,
           activo: _activo,
           latitud: lat,
           longitud: lng,
+          concentradoraUid: concentradoraUid.isEmpty ? null : concentradoraUid,
         );
       } else {
         await distribuidoresNotifier.crearDistribuidor(
           nombre: nombre,
-          grupo: grupo.isEmpty ? 'AFMZD' : grupo,
+          uuidGrupo: uuidGrupo, // puede ir vacío si no selecciona
           direccion: direccion,
           activo: _activo,
           latitud: lat,
           longitud: lng,
+          concentradoraUid: concentradoraUid.isEmpty ? null : concentradoraUid,
         );
       }
 
-      // Delay mínimo para consistencia visual
       const minSpin = Duration(milliseconds: 1500);
       final elapsed = DateTime.now().difference(inicio);
       if (elapsed < minSpin) {
         await Future.delayed(minSpin - elapsed);
       }
 
-      // Ocultar overlay ANTES de navegar (UX consistente)
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }
-
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      // Error: feedback + seguridad
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
     } finally {
-      // Por si hubo un early return/throw
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }

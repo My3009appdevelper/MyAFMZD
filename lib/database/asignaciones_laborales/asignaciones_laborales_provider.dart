@@ -41,6 +41,7 @@ class AsignacionesLaboralesNotifier
 
   // Opciones por defecto para el Form (puedes moverlas a config si quieres)
   static const List<String> rolesDisponibles = <String>[
+    'admin',
     'vendedor',
     'coordinador',
     'gerente',
