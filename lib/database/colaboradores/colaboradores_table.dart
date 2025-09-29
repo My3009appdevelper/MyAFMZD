@@ -5,17 +5,23 @@ class Colaboradores extends Table {
   // Identidad básica
   TextColumn get uid => text()(); // PK
   TextColumn get nombres => text()();
-  TextColumn get apellidoPaterno => text().withDefault(const Constant(''))();
-  TextColumn get apellidoMaterno => text().withDefault(const Constant(''))();
+  TextColumn get apellidoPaterno =>
+      text().withDefault(const Constant('')).nullable()();
+  TextColumn get apellidoMaterno =>
+      text().withDefault(const Constant('')).nullable()();
   DateTimeColumn get fechaNacimiento => dateTime().nullable()();
   TextColumn get curp => text().nullable()();
   TextColumn get rfc => text().nullable()();
-  TextColumn get telefonoMovil => text().withDefault(const Constant(''))();
-  TextColumn get emailPersonal => text().withDefault(const Constant(''))();
-  TextColumn get fotoRutaLocal => text().withDefault(const Constant(''))();
-  TextColumn get fotoRutaRemota => text().withDefault(const Constant(''))();
+  TextColumn get telefonoMovil =>
+      text().withDefault(const Constant('')).nullable()();
+  TextColumn get emailPersonal =>
+      text().withDefault(const Constant('')).nullable()();
+  TextColumn get fotoRutaLocal =>
+      text().withDefault(const Constant('')).nullable()();
+  TextColumn get fotoRutaRemota =>
+      text().withDefault(const Constant('')).nullable()();
   TextColumn get genero => text().withDefault(const Constant('')).nullable()();
-  TextColumn get notas => text().withDefault(const Constant(''))();
+  TextColumn get notas => text().withDefault(const Constant('')).nullable()();
 
   // Sync
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

@@ -147,8 +147,6 @@ class _InitialScreenState extends ConsumerState<InitialScreen> {
       _redirigir(const HomeScreen());
     } catch (e) {
       // Log y salida segura a Login
-      // ignore: avoid_print
-      print('[🏁 INITIAL SCREEN]❌ Error al verificar usuario: $e');
       await supabase.auth.signOut();
       _redirigir(const LoginScreen());
     } finally {

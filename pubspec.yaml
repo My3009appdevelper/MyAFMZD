@@ -41,6 +41,7 @@ dependencies:
   loader_overlay: ^5.0.0
   flutter_expandable_fab: ^2.5.2
   csv: ^6.0.0
+  fl_chart: ^1.1.1
 
 
   # ✅ Drift actualizado

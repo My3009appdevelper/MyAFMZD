@@ -5,15 +5,17 @@ import 'package:myafmzd/database/app_database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Service exclusivo de acceso ONLINE (Supabase) para `ventas`.
-/// - No toca Drift.
-/// - Devuelve payloads (Map) para que el Sync/Provider decidan la persistencia local.
-/// - Campos en snake_case, alineados a la tabla remota `ventas`.
 class VentasService {
   final SupabaseClient supabase;
 
   VentasService(AppDatabase db) : supabase = Supabase.instance.client;
 
   String _iso(DateTime d) => d.toUtc().toIso8601String();
+
+  // Tamaños de bloque conservadores para móviles/redes lentas.
+  // No creamos métodos nuevos; solo constantes internas de clase.
+  static const int _pageSize = 1000; // recomendado para PostgREST + Cloudflare
+  static const int _uidsChunk = 200; // reduce riesgo de 414 al usar inFilter
 
   // ---------------------------------------------------------------------------
   // 📌 COMPROBAR ACTUALIZACIONES ONLINE
@@ -46,33 +48,77 @@ class VentasService {
   // 📌 OBTENER ONLINE
   // ---------------------------------------------------------------------------
 
-  /// Obtener TODAS las ventas (usa con cautela).
+  /// Obtener TODAS las ventas (paginado con range()).
   Future<List<Map<String, dynamic>>> obtenerTodosOnline() async {
-    print('[💸 MENSAJES VENTAS SERVICE] 📥 Obteniendo TODAS las ventas…');
+    print(
+      '[💸 MENSAJES VENTAS SERVICE] 📥 Obteniendo TODAS las ventas (paginado)…',
+    );
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase.from('ventas').select();
-      print('[💸 MENSAJES VENTAS SERVICE] ✅ ${res.length} ventas');
-      return List<Map<String, dynamic>>.from(res);
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1; // range es inclusivo
+        final page = await supabase
+            .from('ventas')
+            .select()
+            .order('updated_at', ascending: true) // orden estable para paginar
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[💸 MENSAJES VENTAS SERVICE]   Página ${from}..$to -> ${batch.length} filas',
+        );
+        if (batch.length < _pageSize) break; // última página
+        from += _pageSize;
+      }
+
+      print('[💸 MENSAJES VENTAS SERVICE] ✅ Total acumulado: ${out.length}');
+      return out;
     } catch (e) {
-      print('[💸 MENSAJES VENTAS SERVICE] ❌ Error obtener todos: $e');
+      print(
+        '[💸 MENSAJES VENTAS SERVICE] ❌ Error obtener todos (paginado): $e',
+      );
       rethrow;
     }
   }
 
   /// Pull incremental simple: filas con `updated_at` estrictamente posterior.
+  /// Ahora paginado con range().
   Future<List<Map<String, dynamic>>> obtenerFiltradasOnline(
     DateTime ultimaSync,
   ) async {
-    print('[💸 MENSAJES VENTAS SERVICE] 📥 Filtrando > ${_iso(ultimaSync)}');
+    final ts = _iso(ultimaSync);
+    print('[💸 MENSAJES VENTAS SERVICE] 📥 Filtrando > $ts (paginado)…');
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase
-          .from('ventas')
-          .select()
-          .gt('updated_at', _iso(ultimaSync));
-      print('[💸 MENSAJES VENTAS SERVICE] ✅ ${res.length} ventas filtradas');
-      return List<Map<String, dynamic>>.from(res);
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1;
+        final page = await supabase
+            .from('ventas')
+            .select()
+            .gt('updated_at', ts)
+            .order('updated_at', ascending: true)
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[💸 MENSAJES VENTAS SERVICE]   Página ${from}..$to -> ${batch.length} filas',
+        );
+        if (batch.length < _pageSize) break;
+        from += _pageSize;
+      }
+
+      print(
+        '[💸 MENSAJES VENTAS SERVICE] ✅ Filtradas acumuladas: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[💸 MENSAJES VENTAS SERVICE] ❌ Error filtradas: $e');
+      print('[💸 MENSAJES VENTAS SERVICE] ❌ Error filtradas (paginado): $e');
       rethrow;
     }
   }
@@ -81,27 +127,71 @@ class VentasService {
   // 📌 HEADS (uid, updated_at) → diff barato
   // ---------------------------------------------------------------------------
 
-  /// Heads remotos: `uid, updated_at` para hacer diff barato.
+  /// Heads remotos: `uid, updated_at` (paginado con range()).
   Future<List<Map<String, dynamic>>> obtenerCabecerasOnline() async {
+    print('[💸 MENSAJES VENTAS SERVICE] 📥 Obteniendo cabeceras (paginado)…');
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase.from('ventas').select('uid, updated_at');
-      return List<Map<String, dynamic>>.from(res);
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1;
+        final page = await supabase
+            .from('ventas')
+            .select('uid, updated_at')
+            .order('updated_at', ascending: true)
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[💸 MENSAJES VENTAS SERVICE]   Heads ${from}..$to -> ${batch.length}',
+        );
+        if (batch.length < _pageSize) break;
+        from += _pageSize;
+      }
+      print('[💸 MENSAJES VENTAS SERVICE] ✅ Heads acumuladas: ${out.length}');
+      return out;
     } catch (e) {
-      print('[💸 MENSAJES VENTAS SERVICE] ❌ Error en cabeceras: $e');
+      print('[💸 MENSAJES VENTAS SERVICE] ❌ Error en cabeceras (paginado): $e');
       rethrow;
     }
   }
 
-  /// Fetch selectivo por UIDs (lotes).
+  /// Fetch selectivo por UIDs (lotes para evitar URIs enormes).
   Future<List<Map<String, dynamic>>> obtenerPorUidsOnline(
     List<String> uids,
   ) async {
     if (uids.isEmpty) return [];
+    print(
+      '[💸 MENSAJES VENTAS SERVICE] 📥 Fetch por UIDs (${uids.length}) en lotes…',
+    );
+    final out = <Map<String, dynamic>>[];
+
     try {
-      final res = await supabase.from('ventas').select().inFilter('uid', uids);
-      return List<Map<String, dynamic>>.from(res);
+      // troceo inline (sin nuevos métodos)
+      for (int i = 0; i < uids.length; i += _uidsChunk) {
+        final chunk = uids.sublist(
+          i,
+          (i + _uidsChunk > uids.length) ? uids.length : i + _uidsChunk,
+        );
+        final res = await supabase
+            .from('ventas')
+            .select()
+            .inFilter('uid', chunk)
+            .order('updated_at', ascending: true);
+
+        final batch = List<Map<String, dynamic>>.from(res);
+        out.addAll(batch);
+        print(
+          '[💸 MENSAJES VENTAS SERVICE]   Chunk ${i}..${i + chunk.length - 1} -> ${batch.length}',
+        );
+      }
+
+      print('[💸 MENSAJES VENTAS SERVICE] ✅ Total por UIDs: ${out.length}');
+      return out;
     } catch (e) {
-      print('[💸 MENSAJES VENTAS SERVICE] ❌ Error fetch por UIDs: $e');
+      print('[💸 MENSAJES VENTAS SERVICE] ❌ Error fetch por UIDs (lotes): $e');
       rethrow;
     }
   }

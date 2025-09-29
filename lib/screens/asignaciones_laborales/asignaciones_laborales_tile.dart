@@ -187,9 +187,11 @@ class _AsignacionLaboralItemTileState
       return const CircleAvatar(child: Icon(Icons.person));
     }
     final haveLocal =
-        c.fotoRutaLocal.isNotEmpty && File(c.fotoRutaLocal).existsSync();
+        c.fotoRutaLocal != null &&
+        c.fotoRutaLocal!.isNotEmpty &&
+        File(c.fotoRutaLocal!).existsSync();
     if (haveLocal) {
-      return CircleAvatar(backgroundImage: FileImage(File(c.fotoRutaLocal)));
+      return CircleAvatar(backgroundImage: FileImage(File(c.fotoRutaLocal!)));
     }
     return CircleAvatar(child: Text(_iniciales(_nombreColab(c))));
   }

@@ -346,7 +346,6 @@ class _VisorPDFState extends State<VisorPDF> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No se pudo compartir el PDF. $e')),
       );
-      print('No se pudo compartir el PDF. $e');
     }
   }
 }

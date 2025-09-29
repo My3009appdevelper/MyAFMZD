@@ -1,3 +1,5 @@
+// ignore_for_file: dead_code
+
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';

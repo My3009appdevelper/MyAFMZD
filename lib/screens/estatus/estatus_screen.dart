@@ -1,6 +1,3 @@
-// lib/database/estatus/ui/estatus_screen.dart
-// ignore_for_file: avoid_print
-
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';

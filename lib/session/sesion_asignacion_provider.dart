@@ -63,13 +63,26 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
   /// - Si no hay ninguna, deja null.
   Future<void> ensureActiveForUser({required String? colaboradorUid}) async {
     try {
+      print(
+        '[🎛 ASG SESSION][DEBUG] ensureActiveForUser(colaboradorUid=$colaboradorUid)',
+      );
+
       final all = _ref.read(asignacionesLaboralesProvider);
+      print(
+        '[🎛 ASG SESSION][DEBUG] asignaciones totales en memoria: ${all.length}',
+      );
+
       // Filtra por colaborador si viene (si es null/empty mostramos todas).
       final list = (colaboradorUid == null || colaboradorUid.isEmpty)
           ? all.where((a) => !a.deleted).toList()
           : all
                 .where((a) => !a.deleted && a.colaboradorUid == colaboradorUid)
                 .toList();
+
+      print(
+        '[🎛 ASG SESSION][DEBUG] candidatas para este usuario: ${list.length} '
+        '(activas=${list.where((a) => a.fechaFin == null).length} historicas=${list.where((a) => a.fechaFin != null).length})',
+      );
 
       // 1) preferir la guardada si sigue existiendo
       final saved = state;
@@ -78,7 +91,7 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
         print(
           '[🎛 ASG SESSION] ensureActiveForUser → mantiene guardada $saved',
         );
-        return; // nada que hacer
+        return;
       }
 
       // 2) activa más reciente (sin fechaFin)
@@ -95,7 +108,6 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
       // 3) histórica más reciente
       final historicas = list.where((a) => a.fechaFin != null).toList()
         ..sort((a, b) {
-          // por fechaFin desc (o fechaInicio si faltara)
           final af = a.fechaFin ?? a.fechaInicio;
           final bf = b.fechaFin ?? b.fechaInicio;
           return bf.compareTo(af);

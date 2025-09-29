@@ -1,5 +1,3 @@
-// lib/screens/reportes/reportes_screen.dart
-// ignore_for_file: avoid_print
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';

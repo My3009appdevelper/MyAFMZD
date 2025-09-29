@@ -1,24 +1,15 @@
-// lib/screens/ventas/ventas_item_tile.dart
-// ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/widgets/my_sheet_action.dart';
 import 'package:myafmzd/widgets/my_show_detail_dialog.dart';
-
-// Providers que usamos para “resolver” nombres
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
-import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/database/estatus/estatus_provider.dart';
 
 /// Tile para mostrar una venta con información resumida.
-/// - Lee la versión “viva” desde [ventasProvider] para mantenerse actualizada.
-/// - Resuelve nombres de catálogo (distribuidor, vendedor, modelo, estatus).
-/// - Long press: ver detalles / editar.
 class VentaItemTile extends ConsumerStatefulWidget {
   final VentaDb venta;
   final VoidCallback onTap;
@@ -38,7 +29,6 @@ class VentaItemTile extends ConsumerStatefulWidget {
 class _VentaItemTileState extends ConsumerState<VentaItemTile> {
   @override
   Widget build(BuildContext context) {
-    // Versión “viva” desde provider (si no, usa la prop)
     final v = ref
         .watch(ventasProvider)
         .firstWhere(
@@ -47,17 +37,23 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
         );
 
     // ======= Lookups (nombres legibles) =======
-    final distNombre = _buscarDistribuidorNombre(v.distribuidoraUid);
-    final distOrigenNombre = _buscarDistribuidorNombre(
-      v.distribuidoraOrigenUid,
+    final distNombre = _sinPrefijoMazda(
+      _buscarDistribuidorNombre(v.distribuidoraUid),
     );
-    final vendedorNombre = _buscarColaboradorNombre(v.vendedorUid);
-    final gerenteNombre = v.gerenteGrupoUid.isEmpty
-        ? ''
-        : _buscarColaboradorNombre(v.gerenteGrupoUid);
-    final modeloStr = _modeloResumen(v.modeloUid);
+    final distOrigenNombre = _sinPrefijoMazda(
+      _buscarDistribuidorNombre(v.distribuidoraOrigenUid),
+    );
+
+    // 👇 AHORA: vendedor desde Asignación Laboral -> Colaborador
+    final vendedorNombre = _buscarVendedorDesdeAsignacion(v.vendedorUid);
+
     final estatus = _buscarEstatus(v.estatusUid);
     final estatusColor = _parseColorHex(estatus?.colorHex ?? '');
+
+    // Mes/Año
+    final mm = v.mesVenta ?? v.fechaVenta?.toUtc().month;
+    final aa = v.anioVenta ?? v.fechaVenta?.toUtc().year;
+    final mesAnioStr = (mm != null && aa != null) ? _fmtMesAnio(mm, aa) : '—';
 
     // ======= UI =======
     final leading = CircleAvatar(
@@ -66,37 +62,24 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
       child: const Icon(Icons.receipt_long),
     );
 
-    final titulo = [
-      (v.folioContrato.trim().isEmpty ? '— folio —' : v.folioContrato.trim()),
-      if (modeloStr.isNotEmpty) '· $modeloStr',
-    ].join(' ');
+    final titulo = (v.folioContrato.trim().isEmpty
+        ? '— folio —'
+        : v.folioContrato.trim());
 
     final linea1 = [
-      // Dist actual y (si cambió) origen
-      distNombre.isNotEmpty
+      (distNombre.isNotEmpty
           ? distNombre
-          : (v.distribuidoraUid.isEmpty ? '—' : v.distribuidoraUid),
+          : (v.distribuidoraUid.isEmpty ? '—' : v.distribuidoraUid)),
       if (v.distribuidoraOrigenUid.isNotEmpty &&
           v.distribuidoraOrigenUid != v.distribuidoraUid)
         ' (origen: ${distOrigenNombre.isNotEmpty ? distOrigenNombre : v.distribuidoraOrigenUid})',
     ].join('');
 
-    final linea2 = [
-      'Vendedor: ${vendedorNombre.isNotEmpty ? vendedorNombre : v.vendedorUid}',
-      if (v.gerenteGrupoUid.isNotEmpty)
-        ' • Gte: ${gerenteNombre.isNotEmpty ? gerenteNombre : v.gerenteGrupoUid}',
-    ].join('');
-
-    final linea3 = [
-      'G/I: ${v.grupo}-${v.integrante}',
-      '• Venta: ${v.fechaVenta != null ? _fmtFecha(v.fechaVenta!) : '—'}',
-      if (v.mesVenta != null && v.anioVenta != null)
-        '(${_fmtMesAnio(v.mesVenta!, v.anioVenta!)})',
-    ].join(' ');
-
-    final linea4 = [
-      if (v.fechaContrato != null) 'Contrato: ${_fmtFecha(v.fechaContrato!)}',
-    ].join(' ');
+    final linea2 =
+        'Vendedor: ${vendedorNombre.isNotEmpty ? vendedorNombre : v.vendedorUid}';
+    final linea3 =
+        'Estatus: ${estatus?.nombre ?? (v.estatusUid.isEmpty ? "—" : v.estatusUid)}';
+    final linea4 = 'Mes/Año venta: $mesAnioStr';
 
     return ListTile(
       key: ValueKey(v.uid),
@@ -108,8 +91,7 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
           Text(linea1, maxLines: 1, overflow: TextOverflow.ellipsis),
           Text(linea2, maxLines: 1, overflow: TextOverflow.ellipsis),
           Text(linea3, maxLines: 1, overflow: TextOverflow.ellipsis),
-          if (linea4.isNotEmpty)
-            Text(linea4, maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(linea4, maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
       isThreeLine: true,
@@ -118,10 +100,7 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
     );
   }
 
-  // ============================ Acciones =============================
-
   Future<void> _mostrarOpcionesVenta(BuildContext context, VentaDb v) {
-    print('[💸 MENSAJES VENTAS TILE] opciones → ${v.uid}');
     return showActionSheet(
       context,
       title: 'Acciones',
@@ -140,11 +119,10 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
     final distOrigenNombre = _buscarDistribuidorNombre(
       v.distribuidoraOrigenUid,
     );
-    final vendedorNombre = _buscarColaboradorNombre(v.vendedorUid);
-    final gerenteNombre = v.gerenteGrupoUid.isEmpty
-        ? ''
-        : _buscarColaboradorNombre(v.gerenteGrupoUid);
-    final modeloStr = _modeloResumen(v.modeloUid);
+
+    // 👇 mismo lookup correcto para el vendedor
+    final vendedorNombre = _buscarVendedorDesdeAsignacion(v.vendedorUid);
+
     final estatus = _buscarEstatus(v.estatusUid);
 
     showDetailsDialog(
@@ -153,7 +131,6 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
       fields: {
         'UID': v.uid,
         'Folio': v.folioContrato.isNotEmpty ? v.folioContrato : '—',
-        'Modelo': modeloStr.isNotEmpty ? modeloStr : v.modeloUid,
         'Distribuidora': distNombre.isNotEmpty
             ? distNombre
             : v.distribuidoraUid,
@@ -163,15 +140,17 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
                   ? '—'
                   : v.distribuidoraOrigenUid),
         'Vendedor': vendedorNombre.isNotEmpty ? vendedorNombre : v.vendedorUid,
-        'Gerente grupo': v.gerenteGrupoUid.isEmpty
-            ? '—'
-            : (gerenteNombre.isNotEmpty ? gerenteNombre : v.gerenteGrupoUid),
         'Grupo': v.grupo.toString(),
         'Integrante': v.integrante.toString(),
         'Fecha venta': v.fechaVenta != null ? _fmtFecha(v.fechaVenta!) : '—',
         'Mes/Año venta': (v.mesVenta != null && v.anioVenta != null)
-            ? '${v.mesVenta}/${v.anioVenta}'
-            : '—',
+            ? _fmtMesAnio(v.mesVenta!, v.anioVenta!)
+            : (v.fechaVenta != null
+                  ? _fmtMesAnio(
+                      v.fechaVenta!.toUtc().month,
+                      v.fechaVenta!.toUtc().year,
+                    )
+                  : '—'),
         'Fecha contrato': v.fechaContrato != null
             ? _fmtFecha(v.fechaContrato!)
             : '—',
@@ -187,6 +166,14 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
 
   // ============================ Helpers ==============================
 
+  // ✅ Quitar prefijos "Mazda" robusto (case-insensitive, varios separadores)
+  String _sinPrefijoMazda(String s) {
+    if (s.isEmpty) return '';
+    final reg = RegExp(r'^\s*mazda\b[\s\-–—:]*', caseSensitive: false);
+    final out = s.replaceFirst(reg, '');
+    return out.trimLeft();
+  }
+
   String _buscarDistribuidorNombre(String uid) {
     if (uid.isEmpty) return '';
     try {
@@ -198,29 +185,42 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
     }
   }
 
-  String _buscarColaboradorNombre(String uid) {
-    if (uid.isEmpty) return '';
+  // 🔎 VENDEDOR: resolve desde Asignación → Colaborador
+  String _buscarVendedorDesdeAsignacion(String asignacionUid) {
+    if (asignacionUid.isEmpty) return '';
     try {
-      final list = ref.read(colaboradoresProvider);
-      final c = list.firstWhere((x) => x.uid == uid && !x.deleted);
+      final asignaciones = ref.read(asignacionesLaboralesProvider);
+      final asg = asignaciones.firstWhere(
+        (a) => a.uid == asignacionUid && !a.deleted,
+      );
+
+      // si la asignación está cerrada también vale; ya la encontramos
+      final colabUid = asg.colaboradorUid;
+      if (colabUid.isEmpty) return '';
+
+      final colaboradores = ref.read(colaboradoresProvider);
+      final c = colaboradores.firstWhere(
+        (x) => x.uid == colabUid && !x.deleted,
+      );
       final nom = '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
       return nom;
     } catch (_) {
-      return '';
-    }
-  }
-
-  String _modeloResumen(String modeloUid) {
-    if (modeloUid.isEmpty) return '';
-    try {
-      final list = ref.read(modelosProvider);
-      final m = list.firstWhere((x) => x.uid == modeloUid && !x.deleted);
-      // “Modelo (año)” o “marca modelo (año)” si quieres mayor contexto
-      return '${m.modelo} ${m.anio}';
-    } catch (_) {
-      return '';
+      // fallback defensivo: si por error el vendedorUid viniera como colaboradorUid,
+      // intentamos resolver directo para no dejar el tile en blanco.
+      try {
+        final colaboradores = ref.read(colaboradoresProvider);
+        final c = colaboradores.firstWhere(
+          (x) => x.uid == asignacionUid && !x.deleted,
+        );
+        final nom = '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+        return nom;
+      } catch (_) {
+        return '';
+      }
     }
   }
 
@@ -253,12 +253,11 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
     final raw = h.startsWith('#') ? h.substring(1) : h;
     final ok = RegExp(r'^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(raw);
     if (!ok) return null;
-    // #RRGGBB or #RRGGBBAA → Flutter usa AARRGGBB
     if (raw.length == 6) {
       final val = int.parse('FF$raw', radix: 16);
       return Color(val);
     }
-    final aarrggbb = raw.substring(6, 8) + raw.substring(0, 6); // AA + RRGGBB
+    final aarrggbb = raw.substring(6, 8) + raw.substring(0, 6);
     return Color(int.parse(aarrggbb, radix: 16));
   }
 }

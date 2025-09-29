@@ -20,6 +20,11 @@ class ColaboradoresScreen extends ConsumerStatefulWidget {
 class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
   bool _cargandoInicial = true;
 
+  // === 🔎 Estado de búsqueda ===
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +32,22 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarColaboradores();
     });
+
+    // Listener con debounce para la búsqueda
+    _searchCtrl.addListener(() {
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 250), () {
+        if (!mounted) return;
+        setState(() => _query = _searchCtrl.text);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -41,6 +62,9 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     });
 
     final colaboradores = ref.watch(colaboradoresProvider);
+
+    // 🔎 Lista filtrada por la búsqueda
+    final filtrados = _aplicarFiltro(colaboradores, _query);
 
     return Scaffold(
       appBar: AppBar(
@@ -70,19 +94,61 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
 
       body: Column(
         children: [
-          if (!_cargandoInicial) _buildResumen(context, colaboradores.length),
+          // === 🔎 Barra de búsqueda ===
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: TextField(
+              controller: _searchCtrl,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                labelText: 'Buscar colaborador',
+                hintText: 'Nombre, teléfono, correo, CURP o RFC',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: (_query.isNotEmpty)
+                    ? IconButton(
+                        tooltip: 'Limpiar búsqueda',
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          FocusScope.of(context).unfocus();
+                        },
+                      )
+                    : null,
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              onSubmitted: (_) => FocusScope.of(context).unfocus(),
+            ),
+          ),
+
+          if (!_cargandoInicial)
+            _buildResumen(
+              context,
+              filtrados.length,
+              total: colaboradores.length,
+            ),
+
           Expanded(
             child: _cargandoInicial
                 ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
                 : RefreshIndicator(
                     color: cs.secondary,
                     onRefresh: _cargarColaboradores,
-                    child: colaboradores.isEmpty
+                    child: filtrados.isEmpty
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 80),
-                              Center(child: Text('No hay colaboradores')),
+                            children: [
+                              const SizedBox(height: 80),
+                              Center(
+                                child: Text(
+                                  _query.isEmpty
+                                      ? 'No hay colaboradores'
+                                      : 'Sin coincidencias para “$_query”.',
+                                  style: tt.bodyLarge?.copyWith(
+                                    color: cs.onSurface.withOpacity(0.65),
+                                  ),
+                                ),
+                              ),
                             ],
                           )
                         : ListView.builder(
@@ -93,9 +159,9 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
                               horizontal: 16,
                               vertical: 24,
                             ),
-                            itemCount: colaboradores.length,
+                            itemCount: filtrados.length,
                             itemBuilder: (context, index) {
-                              final c = colaboradores[index];
+                              final c = filtrados[index];
                               return Card(
                                 color: cs.surface,
                                 margin: const EdgeInsets.only(bottom: 12),
@@ -121,7 +187,11 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     );
   }
 
-  Widget _buildResumen(BuildContext context, int totalActual) {
+  Widget _buildResumen(
+    BuildContext context,
+    int totalActual, {
+    required int total,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -130,7 +200,11 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Chip(
-            label: Text('Total: $totalActual'),
+            label: Text(
+              total == totalActual
+                  ? 'Total: $totalActual'
+                  : 'Coincidencias: $totalActual / $total',
+            ),
             backgroundColor: colorScheme.surface,
           ),
         ],
@@ -255,5 +329,70 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
         context.loaderOverlay.hide();
       }
     }
+  }
+
+  // ===============================
+  // 🔎 LÓGICA DE BÚSQUEDA / MATCHING
+  // ===============================
+
+  List _aplicarFiltro(List lista, String query) {
+    if (query.trim().isEmpty) return lista;
+
+    final q = _normalize(query);
+    final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+
+    return lista.where((c) {
+      // Campos del colaborador según tu tabla Drift (ColaboradorDb):
+      // nombres, apellidoPaterno, apellidoMaterno, telefonoMovil,
+      // emailPersonal, curp, rfc
+      final nombres = _safeStr(
+        '${c.nombres ?? ''} ${c.apellidoPaterno ?? ''} ${c.apellidoMaterno ?? ''}',
+      );
+      final telefono = _safeStr(c.telefonoMovil ?? '');
+      final correo = _safeStr(c.emailPersonal ?? '');
+      final curp = _safeStr(c.curp ?? '');
+      final rfc = _safeStr(c.rfc ?? '');
+
+      final indexText = _normalize('$nombres $correo $curp $rfc');
+      final phoneDigits = _digitsOnly(telefono);
+
+      // AND de todos los tokens: cada token debe hacer match en texto o en teléfono
+      final ok = tokens.every((t) {
+        final isDigits = RegExp(r'^\d+$').hasMatch(t);
+        if (isDigits) {
+          // Para números, comparamos solo contra teléfono (solo dígitos)
+          return phoneDigits.contains(t);
+        }
+        // Para texto, comparamos contra el índice normalizado (sin acentos)
+        return indexText.contains(t);
+      });
+
+      return ok;
+    }).toList();
+  }
+
+  String _safeStr(Object? v) => (v ?? '').toString();
+
+  String _digitsOnly(String s) => s.replaceAll(RegExp(r'\D+'), '');
+
+  /// Normaliza: minúsculas, sin acentos/diéresis/ñ, y simplifica espacios.
+  String _normalize(String input) {
+    var t = input.toLowerCase();
+
+    // Reemplazos de acentos más comunes en ES (incluye diéresis y ç)
+    t = t.replaceAll(RegExp(r'[áàäâã]'), 'a');
+    t = t.replaceAll(RegExp(r'[éèëê]'), 'e');
+    t = t.replaceAll(RegExp(r'[íìïî]'), 'i');
+    t = t.replaceAll(RegExp(r'[óòöôõ]'), 'o');
+    t = t.replaceAll(RegExp(r'[úùüû]'), 'u');
+    t = t.replaceAll(RegExp(r'[ñ]'), 'n');
+    t = t.replaceAll(RegExp(r'[ç]'), 'c');
+
+    // Sustituye cualquier char que no sea alfanumérico o espacio por espacio
+    t = t.replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
+
+    // Colapsa espacios
+    t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return t;
   }
 }

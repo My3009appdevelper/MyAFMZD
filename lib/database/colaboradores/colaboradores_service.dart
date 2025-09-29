@@ -13,6 +13,13 @@ class ColaboradoresService {
 
   ColaboradoresService(AppDatabase db) : supabase = Supabase.instance.client;
 
+  // ===== Añadido (alineado a VentasService) =====
+  // Tamaños de bloque conservadores para móviles/redes lentas.
+  static const int _pageSize = 1000; // range() es inclusivo
+  static const int _uidsChunk = 200; // evita 414 al usar inFilter
+  String _iso(DateTime d) => d.toUtc().toIso8601String();
+  // ==============================================
+
   // ---------------------------------------------------------------------------
   // 📌 COMPROBAR ACTUALIZACIONES ONLINE
   // ---------------------------------------------------------------------------
@@ -45,14 +52,38 @@ class ColaboradoresService {
   // ---------------------------------------------------------------------------
   Future<List<Map<String, dynamic>>> obtenerTodosOnline() async {
     print(
-      '[👥 MENSAJES COLABORADORES SERVICE] 📥 Obteniendo TODOS los colaboradores online…',
+      '[👥 MENSAJES COLABORADORES SERVICE] 📥 Obteniendo TODOS los colaboradores online (paginado)…',
     );
+    // ===== Modificado: paginado con range() =====
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase.from('colaboradores').select();
-      print('[👥 MENSAJES COLABORADORES SERVICE] ✅ ${res.length} filas');
-      return res;
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1; // range es inclusivo
+        final page = await supabase
+            .from('colaboradores')
+            .select()
+            .order('updated_at', ascending: true) // orden estable para paginar
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[👥 MENSAJES COLABORADORES SERVICE]   Página $from..$to -> ${batch.length} filas',
+        );
+        if (batch.length < _pageSize) break; // última página
+        from += _pageSize;
+      }
+
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ✅ Total acumulado: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👥 MENSAJES COLABORADORES SERVICE] ❌ Error obtener todos: $e');
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ❌ Error obtener todos (paginado): $e',
+      );
       rethrow;
     }
   }
@@ -62,17 +93,40 @@ class ColaboradoresService {
     DateTime ultimaSync,
   ) async {
     print(
-      '[👥 MENSAJES COLABORADORES SERVICE] 📥 Filtrando > $ultimaSync (UTC)',
+      '[👥 MENSAJES COLABORADORES SERVICE] 📥 Filtrando > $ultimaSync (UTC, paginado)…',
     );
+    // ===== Modificado: paginado con range() =====
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase
-          .from('colaboradores')
-          .select()
-          .gt('updated_at', ultimaSync.toUtc().toIso8601String());
-      print('[👥 MENSAJES COLABORADORES SERVICE] ✅ ${res.length} filtrados');
-      return res;
+      final ts = _iso(ultimaSync);
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1;
+        final page = await supabase
+            .from('colaboradores')
+            .select()
+            .gt('updated_at', ts)
+            .order('updated_at', ascending: true)
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[👥 MENSAJES COLABORADORES SERVICE]   Página $from..$to -> ${batch.length} filtrados',
+        );
+        if (batch.length < _pageSize) break;
+        from += _pageSize;
+      }
+
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ✅ Filtrados acumulados: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👥 MENSAJES COLABORADORES SERVICE] ❌ Error filtrados: $e');
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ❌ Error filtrados (paginado): $e',
+      );
       rethrow;
     }
   }
@@ -81,13 +135,38 @@ class ColaboradoresService {
   // 📌 HEADS (uid, updated_at) → diff barato
   // ---------------------------------------------------------------------------
   Future<List<Map<String, dynamic>>> obtenerCabecerasOnline() async {
+    // ===== Modificado: paginado con range() =====
+    print(
+      '[👥 MENSAJES COLABORADORES SERVICE] 📥 Obteniendo cabeceras (paginado)…',
+    );
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase
-          .from('colaboradores')
-          .select('uid, updated_at');
-      return res;
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1;
+        final page = await supabase
+            .from('colaboradores')
+            .select('uid, updated_at')
+            .order('updated_at', ascending: true)
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[👥 MENSAJES COLABORADORES SERVICE]   Heads $from..$to -> ${batch.length}',
+        );
+        if (batch.length < _pageSize) break;
+        from += _pageSize;
+      }
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ✅ Heads acumuladas: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👥 MENSAJES COLABORADORES SERVICE] ❌ Error en cabeceras: $e');
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ❌ Error en cabeceras (paginado): $e',
+      );
       rethrow;
     }
   }
@@ -99,14 +178,38 @@ class ColaboradoresService {
     List<String> uids,
   ) async {
     if (uids.isEmpty) return [];
+    // ===== Modificado: troceo en chunks para evitar 414 =====
+    print(
+      '[👥 MENSAJES COLABORADORES SERVICE] 📥 Fetch por UIDs (${uids.length}) en lotes…',
+    );
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase
-          .from('colaboradores')
-          .select()
-          .inFilter('uid', uids);
-      return res;
+      for (int i = 0; i < uids.length; i += _uidsChunk) {
+        final chunk = uids.sublist(
+          i,
+          (i + _uidsChunk > uids.length) ? uids.length : i + _uidsChunk,
+        );
+
+        final res = await supabase
+            .from('colaboradores')
+            .select()
+            .inFilter('uid', chunk)
+            .order('updated_at', ascending: true);
+
+        final batch = List<Map<String, dynamic>>.from(res);
+        out.addAll(batch);
+        print(
+          '[👥 MENSAJES COLABORADORES SERVICE]   Chunk $i..${i + chunk.length - 1} -> ${batch.length}',
+        );
+      }
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ✅ Total por UIDs: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👥 MENSAJES COLABORADORES SERVICE] ❌ Error fetch por UIDs: $e');
+      print(
+        '[👥 MENSAJES COLABORADORES SERVICE] ❌ Error fetch por UIDs (lotes): $e',
+      );
       rethrow;
     }
   }

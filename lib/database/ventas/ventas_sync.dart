@@ -125,7 +125,6 @@ class VentasSync {
 
           distribuidoraOrigenUid: Value(str(m['distribuidora_origen_uid'])),
           distribuidoraUid: Value(str(m['distribuidora_uid'])),
-          gerenteGrupoUid: Value(str(m['gerente_grupo_uid'])),
           vendedorUid: Value(str(m['vendedor_uid'])),
           folioContrato: Value(str(m['folio_contrato'])),
           modeloUid: Value(str(m['modelo_uid'])),
@@ -174,7 +173,6 @@ class VentasSync {
       'uid': v.uid,
       'distribuidora_origen_uid': v.distribuidoraOrigenUid,
       'distribuidora_uid': v.distribuidoraUid,
-      'gerente_grupo_uid': v.gerenteGrupoUid,
       'vendedor_uid': v.vendedorUid,
       'folio_contrato': v.folioContrato,
       'modelo_uid': v.modeloUid,

@@ -32,17 +32,19 @@ class ColaboradoresSync {
     for (final c in pendientes) {
       try {
         // 1) Subir FOTO si está local y hay ruta remota
+        final fotoRutaLocal = c.fotoRutaLocal ?? '';
+        final fotoRutaRemota = c.fotoRutaRemota ?? '';
         final hasLocalImg =
-            c.fotoRutaLocal.isNotEmpty && File(c.fotoRutaLocal).existsSync();
+            fotoRutaLocal.isNotEmpty && File(fotoRutaLocal).existsSync();
 
-        if (hasLocalImg && c.fotoRutaRemota.isNotEmpty) {
+        if (hasLocalImg && fotoRutaRemota.isNotEmpty) {
           await _service.uploadImagenOnline(
-            File(c.fotoRutaLocal),
-            c.fotoRutaRemota,
+            File(fotoRutaLocal),
+            fotoRutaRemota,
             overwrite: true, // 👈 fuerza reemplazo siempre
           );
           print(
-            '[👥 MENSAJES COLABORADORES SYNC] ☁️ Foto subida/actualizada: ${c.fotoRutaRemota}',
+            '[👥 MENSAJES COLABORADORES SYNC] ☁️ Foto subida/actualizada: $fotoRutaRemota',
           );
         } else {
           print(

@@ -1,4 +1,3 @@
-// ignore_for_file: avoid_print
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/session/sesion_asignacion_selectors.dart';
@@ -69,9 +68,7 @@ final appPermissionsProvider = Provider<AppPermissions>((ref) {
   final a = ref.watch(activeAssignmentProvider);
   final rol = (a?.rol ?? 'vendedor');
   final features = _roleToFeatures(rol);
-  print(
-    '[🔐 PERMS] Rol activo="$rol" → ${features.map((e) => e.name).join(', ')}',
-  );
+
   return AppPermissions(features);
 });
 

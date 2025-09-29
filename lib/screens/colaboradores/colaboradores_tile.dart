@@ -42,9 +42,9 @@ class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (c.telefonoMovil.trim().isNotEmpty)
+          if ((c.telefonoMovil ?? '').trim().isNotEmpty)
             Text('Tel: ${c.telefonoMovil}'),
-          if (c.emailPersonal.trim().isNotEmpty)
+          if ((c.emailPersonal ?? '').trim().isNotEmpty)
             Text('Email: ${c.emailPersonal}'),
         ],
       ),
@@ -57,16 +57,26 @@ class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
 
   Widget _buildAvatar(ColaboradorDb c) {
     final haveLocal =
-        c.fotoRutaLocal.isNotEmpty && File(c.fotoRutaLocal).existsSync();
+        c.fotoRutaLocal != null &&
+        c.fotoRutaLocal!.isNotEmpty &&
+        File(c.fotoRutaLocal!).existsSync();
     if (haveLocal) {
-      return CircleAvatar(backgroundImage: FileImage(File(c.fotoRutaLocal)));
+      return CircleAvatar(backgroundImage: FileImage(File(c.fotoRutaLocal!)));
     }
     final initials = _iniciales(_nombreCompleto(c));
     return CircleAvatar(child: Text(initials));
   }
 
-  String _nombreCompleto(ColaboradorDb c) =>
-      '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'.trim();
+  String _nombreCompleto(ColaboradorDb c) {
+    final nombres = c.nombres;
+    final apellidoPaterno = c.apellidoPaterno ?? '';
+    final apellidoMaterno = c.apellidoMaterno ?? '';
+    return [
+      nombres,
+      apellidoPaterno,
+      apellidoMaterno,
+    ].where((e) => e.trim().isNotEmpty).join(' ').trim();
+  }
 
   String _iniciales(String nombre) {
     final parts = nombre
@@ -115,12 +125,20 @@ class _ColaboradorItemTileState extends ConsumerState<ColaboradorItemTile> {
             : '—',
         'CURP': (c.curp ?? '').isNotEmpty ? (c.curp ?? '') : '—',
         'RFC': (c.rfc ?? '').isNotEmpty ? (c.rfc ?? '') : '—',
-        'Teléfono': c.telefonoMovil.isNotEmpty ? c.telefonoMovil : '—',
-        'Email': c.emailPersonal.isNotEmpty ? c.emailPersonal : '—',
+        'Teléfono': (c.telefonoMovil ?? '').isNotEmpty
+            ? (c.telefonoMovil ?? '')
+            : '—',
+        'Email': (c.emailPersonal ?? '').isNotEmpty
+            ? (c.emailPersonal ?? '')
+            : '—',
         'Género': (c.genero ?? '').isNotEmpty ? (c.genero ?? '') : '—',
-        'Notas': c.notas.isNotEmpty ? c.notas : '—',
-        'Foto remota': c.fotoRutaRemota.isNotEmpty ? c.fotoRutaRemota : '—',
-        'Foto local': c.fotoRutaLocal.isNotEmpty ? c.fotoRutaLocal : '—',
+        'Notas': (c.notas ?? '').isNotEmpty ? (c.notas ?? '') : '—',
+        'Foto remota': (c.fotoRutaRemota ?? '').isNotEmpty
+            ? (c.fotoRutaRemota ?? '')
+            : '—',
+        'Foto local': (c.fotoRutaLocal ?? '').isNotEmpty
+            ? (c.fotoRutaLocal ?? '')
+            : '—',
         'Synced': c.isSynced ? 'Sí' : 'No',
         'Eliminado': c.deleted ? 'Sí' : 'No',
         'Creado': c.createdAt.toLocal().toString(),

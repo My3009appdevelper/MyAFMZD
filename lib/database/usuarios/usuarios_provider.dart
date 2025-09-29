@@ -98,7 +98,7 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
         createdAt: Value(DateTime.now().toUtc()),
         updatedAt: Value(DateTime.now().toUtc()),
         deleted: Value((row['deleted'] as bool?) ?? false),
-        isSynced: const Value(true),
+        isSynced: const Value(false),
       );
 
       await _dao.upsertUsuarioDrift(comp);
@@ -127,7 +127,9 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
         uid: Value(uid),
         userName: userName != null ? Value(userName) : const Value.absent(),
         correo: correo != null ? Value(correo) : const Value.absent(),
-        colaboradorUid: Value(colaboradorUid),
+        colaboradorUid: (colaboradorUid == null)
+            ? const Value.absent()
+            : Value(colaboradorUid),
         createdAt: const Value.absent(),
         updatedAt: Value(DateTime.now().toUtc()),
         deleted: const Value.absent(),

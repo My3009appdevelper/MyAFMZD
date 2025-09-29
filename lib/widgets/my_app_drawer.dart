@@ -1,4 +1,3 @@
-// ignore_for_file: avoid_print
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -97,7 +96,6 @@ class MyAppDrawer extends ConsumerWidget {
             trailing: PopupMenuButton<String>(
               tooltip: 'Cambiar asignación',
               onSelected: (uid) async {
-                print('[🧭 DRAWER] Cambiar asignación → $uid');
                 await ref
                     .read(assignmentSessionProvider.notifier)
                     .setActiveAssignment(uid);

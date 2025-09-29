@@ -1123,7 +1123,6 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
           );
           if (yaExiste != null) {
             duplicadas++;
-            debugPrint('[IMG] Duplicada por sha: ${file.path}');
             continue;
           }
 
@@ -1134,7 +1133,6 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
             shaHex: sha,
             originalPath: file.path,
           );
-          debugPrint('[IMG] Crear+Subir uid=${reg.uid} → $rutaRemotaImg');
 
           await imgNotifier.subirNuevaImagen(
             imagen: reg,
@@ -1151,9 +1149,8 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
             );
             yaHayPortada = true;
           }
-        } catch (e, st) {
+        } catch (e) {
           errores++;
-          debugPrint('[IMG] ERROR subiendo ${file.path}: $e\n$st');
         }
       }
     } finally {

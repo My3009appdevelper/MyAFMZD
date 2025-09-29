@@ -38,6 +38,8 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   bool _hayInternet = true;
   bool get hayInternet => _hayInternet;
 
+  String? _nvl(String? s) => (s == null || s.trim().isEmpty) ? null : s.trim();
+
   // ---------------------------------------------------------------------------
   // ✅ Cargar colaboradores (offline-first)
   // ---------------------------------------------------------------------------
@@ -45,55 +47,39 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     try {
       _hayInternet = _ref.read(connectivityProvider);
 
-      // 1) Local primero
       final local = await _dao.obtenerTodosDrift();
       state = local;
-      print(
-        '[👥 MENSAJES COLABORADORES PROVIDER] Local cargado -> ${local.length} colaboradores',
-      );
+      print('[👥 COLABS PROVIDER] Local -> ${local.length}');
 
-      // 2) Sin internet → detener
       if (!_hayInternet) {
-        print(
-          '[👥 MENSAJES COLABORADORES PROVIDER] Sin internet → usando solo local',
-        );
+        print('[👥 COLABS PROVIDER] Sin internet → solo local');
         return;
       }
 
-      // 3) (Opcional) timestamps para logs/telemetría
       final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
       final remotoTimestamp = await _servicio.comprobarActualizacionesOnline();
       print(
-        '[👥 MENSAJES COLABORADORES PROVIDER] Remoto:$remotoTimestamp | Local:$localTimestamp',
+        '[👥 COLABS PROVIDER] Remoto:$remotoTimestamp | Local:$localTimestamp',
       );
 
-      // 4) Pull (heads → diff → bulk)
       await _sync.pullColaboradoresOnline();
-
-      // 5) Push de cambios offline
       await _sync.pushColaboradoresOffline();
 
-      // 6) Recargar desde Drift
       final actualizados = await _dao.obtenerTodosDrift();
       state = actualizados;
 
-      // 7) Sincroniza fotos locales con lo remoto (descarga nuevas y limpia obsoletas)
       final cambios = await syncFotosLocales();
       if (cambios > 0) {
         state = await _dao.obtenerTodosDrift();
-        print(
-          '[👥 MENSAJES COLABORADORES PROVIDER] Fotos sincronizadas → $cambios cambios aplicados',
-        );
+        print('[👥 COLABS PROVIDER] Fotos sync → $cambios cambios');
       }
     } catch (e) {
-      print(
-        '[👥 MENSAJES COLABORADORES PROVIDER] ❌ Error al cargar colaboradores: $e',
-      );
+      print('[👥 COLABS PROVIDER] ❌ Error al cargar: $e');
     }
   }
 
   // ---------------------------------------------------------------------------
-  // ➕ Crear colaborador (ONLINE upsert → local isSynced=true)
+  // ➕ Crear colaborador
   // ---------------------------------------------------------------------------
   Future<ColaboradorDb?> crearColaborador({
     required String nombres,
@@ -114,23 +100,23 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     try {
       final now = DateTime.now().toUtc();
 
-      // 2) Upsert LOCAL (remoto ⇒ isSynced=true)
       final comp = ColaboradoresCompanion(
         uid: Value(uid),
-        nombres: Value(nombres),
-        apellidoPaterno: Value(apellidoPaterno),
-        apellidoMaterno: Value(apellidoMaterno),
+        nombres: Value(nombres), // no-nullable
+        // 👇 normaliza '' → NULL
+        apellidoPaterno: Value(_nvl(apellidoPaterno)),
+        apellidoMaterno: Value(_nvl(apellidoMaterno)),
         fechaNacimiento: fechaNacimiento == null
-            ? const Value.absent()
+            ? const Value(null)
             : Value(fechaNacimiento.toUtc()),
-        curp: Value(curp),
-        rfc: Value(rfc),
-        telefonoMovil: Value(telefonoMovil),
-        emailPersonal: Value(emailPersonal),
-        genero: genero.isEmpty ? const Value.absent() : Value(genero),
-        notas: Value(notas),
-        fotoRutaRemota: Value(fotoRutaRemota),
-        fotoRutaLocal: Value(fotoRutaLocal),
+        curp: Value(_nvl(curp)),
+        rfc: Value(_nvl(rfc)),
+        telefonoMovil: Value(_nvl(telefonoMovil)),
+        emailPersonal: Value(_nvl(emailPersonal)),
+        genero: Value(_nvl(genero)),
+        notas: Value(_nvl(notas)),
+        fotoRutaRemota: Value(_nvl(fotoRutaRemota)),
+        fotoRutaLocal: Value(_nvl(fotoRutaLocal)),
         createdAt: Value(now),
         updatedAt: Value(now),
         deleted: const Value(false),
@@ -138,7 +124,6 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       );
       await _dao.upsertColaboradorDrift(comp);
 
-      // 3) Refrescar estado y devolver
       final actualizados = await _dao.obtenerTodosDrift();
       state = actualizados;
       return actualizados.firstWhere(
@@ -146,15 +131,16 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
         orElse: () => actualizados.last,
       );
     } catch (e) {
-      print(
-        '[👥 MENSAJES COLABORADORES PROVIDER] ❌ Error al crear colaborador: $e',
-      );
+      print('[👥 COLABS PROVIDER] ❌ Error al crear: $e');
       rethrow;
     }
   }
 
   // ---------------------------------------------------------------------------
-  // ✏️ Editar colaborador (LOCAL → isSynced=false; el push lo sube)
+  // ✏️ Editar colaborador
+  //   - null  -> no tocar (absent)
+  //   - ''    -> escribir NULL
+  //   - texto -> escribir texto
   // ---------------------------------------------------------------------------
   Future<void> editarColaborador({
     required String uid,
@@ -175,31 +161,19 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       final comp = ColaboradoresCompanion(
         uid: Value(uid),
         nombres: Value(nombres),
-        apellidoPaterno: apellidoPaterno == null
-            ? const Value.absent()
-            : Value(apellidoPaterno),
-        apellidoMaterno: apellidoMaterno == null
-            ? const Value.absent()
-            : Value(apellidoMaterno),
+        apellidoPaterno: Value(apellidoPaterno),
+        apellidoMaterno: Value(apellidoMaterno),
         fechaNacimiento: fechaNacimiento == null
             ? const Value.absent()
             : Value(fechaNacimiento.toUtc()),
-        curp: curp == null ? const Value.absent() : Value(curp),
-        rfc: rfc == null ? const Value.absent() : Value(rfc),
-        telefonoMovil: telefonoMovil == null
-            ? const Value.absent()
-            : Value(telefonoMovil),
-        emailPersonal: emailPersonal == null
-            ? const Value.absent()
-            : Value(emailPersonal),
-        genero: genero == null ? const Value.absent() : Value(genero),
-        notas: notas == null ? const Value.absent() : Value(notas),
-        fotoRutaRemota: fotoRutaRemota == null
-            ? const Value.absent()
-            : Value(fotoRutaRemota),
-        fotoRutaLocal: fotoRutaLocal == null
-            ? const Value.absent()
-            : Value(fotoRutaLocal),
+        curp: Value(curp),
+        rfc: Value(rfc),
+        telefonoMovil: Value(telefonoMovil),
+        emailPersonal: Value(emailPersonal),
+        genero: Value(genero),
+        notas: Value(notas),
+        fotoRutaRemota: Value(fotoRutaRemota),
+        fotoRutaLocal: Value(fotoRutaLocal),
         updatedAt: Value(DateTime.now().toUtc()),
         deleted: const Value.absent(),
         isSynced: const Value(false),
@@ -208,22 +182,17 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       await _dao.upsertColaboradorDrift(comp);
 
       state = await _dao.obtenerTodosDrift();
-      print(
-        '[👥 MENSAJES COLABORADORES PROVIDER] Colaborador $uid editado localmente',
-      );
+      print('[👥 COLABS PROVIDER] Editado local: $uid');
     } catch (e) {
-      print(
-        '[👥 MENSAJES COLABORADORES PROVIDER] ❌ Error al editar colaborador: $e',
-      );
+      print('[👥 COLABS PROVIDER] ❌ Error al editar: $e');
       rethrow;
     }
   }
 
   // ---------------------------------------------------------------------------
-  // 📷 Fotos: descargar / eliminar local / subir desde archivo
+  // 📷 Fotos
   // ---------------------------------------------------------------------------
   Future<ColaboradorDb?> descargarFoto(ColaboradorDb c) async {
-    // Reuso: si otro colaborador ya tiene misma rutaRemota descargada
     final reused = _localFileForRuta(c.fotoRutaRemota);
     if (reused != null) {
       await _dao.actualizarParcialPorUid(
@@ -234,10 +203,15 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       return state.firstWhere((x) => x.uid == c.uid, orElse: () => c);
     }
 
-    // Descarga real
-    final file = await _servicio.descargarImagenOnline(c.fotoRutaRemota);
+    final remote = c.fotoRutaRemota?.trim() ?? '';
+    if (remote.isEmpty) {
+      print('[👥 COLABS PROVIDER] ⚠️ rutaRemota vacía');
+      return null;
+    }
+
+    final file = await _servicio.descargarImagenOnline(remote);
     if (file == null) {
-      print('[👥 MENSAJES COLABORADORES PROVIDER] ❌ No se pudo descargar foto');
+      print('[👥 COLABS PROVIDER] ❌ No se pudo descargar foto');
       return null;
     }
 
@@ -251,43 +225,36 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   }
 
   Future<void> eliminarFotoLocal(ColaboradorDb c) async {
-    print(
-      '[👥 MENSAJES COLABORADORES PROVIDER] Borrando foto local: ${c.fotoRutaLocal}',
-    );
-    if (c.fotoRutaLocal.isNotEmpty) {
-      final file = File(c.fotoRutaLocal);
+    print('[👥 COLABS PROVIDER] Borrando foto local: ${c.fotoRutaLocal}');
+    final path = c.fotoRutaLocal;
+    if (path != null && path.isNotEmpty) {
+      final file = File(path);
       try {
         if (await file.exists()) await file.delete();
       } catch (e) {
-        print(
-          '[👥 MENSAJES COLABORADORES PROVIDER] ⚠️ Error borrando foto local: $e',
-        );
+        print('[👥 COLABS PROVIDER] ⚠️ Error borrando foto local: $e');
       }
     }
 
     await _dao.actualizarParcialPorUid(
       c.uid,
-      const ColaboradoresCompanion(fotoRutaLocal: Value('')),
+      const ColaboradoresCompanion(fotoRutaLocal: Value(null)), // NULL
     );
 
     state = await _dao.obtenerTodosDrift();
   }
 
-  /// Copia la foto al almacenamiento de la app, setea rutaRemota y marca para sync.
   Future<void> subirNuevaFoto({
     required ColaboradorDb colaborador,
     required File archivo,
   }) async {
     try {
-      // 0) Hash + ext
       final hash = await _servicio.calcularSha256(archivo);
       final ext = p.extension(archivo.path).toLowerCase();
-      final cleanExt = (ext.isEmpty ? '.jpg' : ext); // default si hace falta
+      final cleanExt = (ext.isEmpty ? '.jpg' : ext);
 
-      // 1) Ruta remota con hash (ej: colaboradores/<uid>/<sha>.png)
       final remotePath = 'colaboradores/${colaborador.uid}/$hash$cleanExt';
 
-      // 2) Copia local canónica (nombre deriva de remotePath => cambia con el hash)
       final dir = await getApplicationSupportDirectory();
       final fotosDir = Directory(p.join(dir.path, 'colaboradores_img'));
       if (!await fotosDir.exists()) await fotosDir.create(recursive: true);
@@ -296,10 +263,8 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       final destino = File(p.join(fotosDir.path, safeName));
       await archivo.copy(destino.path);
 
-      // 3) Guardar metadata local (nueva ruta remota + local) y marcar para sync
-      final oldRemote =
-          colaborador.fotoRutaRemota; // para limpieza remota luego
-      final oldLocal = colaborador.fotoRutaLocal;
+      final oldRemote = colaborador.fotoRutaRemota ?? '';
+      final oldLocal = colaborador.fotoRutaLocal ?? '';
 
       await _dao.actualizarParcialPorUid(
         colaborador.uid,
@@ -311,37 +276,29 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
         ),
       );
 
-      //Eliminarmos el archivo local viejo
       if (oldLocal.isNotEmpty &&
           oldLocal != destino.path &&
           await File(oldLocal).exists()) {
         try {
           await File(oldLocal).delete();
-          print(
-            '[👥 MENSAJES COLABORADORES PROVIDER] 🧹 Local anterior eliminado: $oldLocal',
-          );
+          print('[👥 COLABS PROVIDER] 🧹 Local anterior eliminado: $oldLocal');
         } catch (e) {
-          print(
-            '[👥 MENSAJES COLABORADORES PROVIDER] ⚠️ No se pudo borrar local anterior: $e',
-          );
+          print('[👥 COLABS PROVIDER] ⚠️ No se pudo borrar local anterior: $e');
         }
       }
-      // 4) Refrescar estado y sincronizar si hay red
+
       state = await _dao.obtenerTodosDrift();
 
       if (_hayInternet) {
-        // Sube nueva imagen + metadata
         await _sync.pushColaboradoresOffline();
-        // Limpia la imagen remota anterior si existe y es distinta
         if (oldRemote.isNotEmpty && oldRemote != remotePath) {
           await _servicio.deleteImagenOnlineSafe(oldRemote);
         }
-        // Trae metadata fresca si otro cliente tocó algo más
         await _sync.pullColaboradoresOnline();
         state = await _dao.obtenerTodosDrift();
       }
 
-      print('[Colaboradores] Foto preparada y lista para sync: $remotePath');
+      print('[Colaboradores] Foto lista para sync: $remotePath');
     } catch (e) {
       print('[Colaboradores] ❌ Error preparando foto: $e');
       rethrow;
@@ -349,7 +306,7 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   }
 
   // ---------------------------------------------------------------------------
-  // 📥 Descarga diferida en lote (faltantes)
+  // 📥 Descarga diferida en lote
   // ---------------------------------------------------------------------------
   Future<int> syncFotosLocales({
     int max = 500,
@@ -357,14 +314,10 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   }) async {
     if (!_hayInternet) return 0;
 
-    // Construye la lista de “candidatos” a revisar (tienen una ruta remota válida)
-    final candidatos =
-        state.where((c) {
-          if (c.deleted) return false;
-          return c.fotoRutaRemota.trim().isNotEmpty;
-        }).toList()..sort(
-          (a, b) => b.updatedAt.compareTo(a.updatedAt),
-        ); // recientes primero
+    final candidatos = state.where((c) {
+      if (c.deleted) return false;
+      return (c.fotoRutaRemota?.trim().isNotEmpty == true);
+    }).toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
     if (candidatos.isEmpty) return 0;
 
@@ -376,57 +329,48 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
 
     for (final c in candidatos) {
       if (procesados >= max) break;
-      final remote = c.fotoRutaRemota.trim();
+      final remote = (c.fotoRutaRemota ?? '').trim();
+      if (remote.isEmpty) {
+        procesados++;
+        continue;
+      }
       final expectedSafeName = _safeName(remote);
 
-      // Si ya hay ruta local, verifica si apunta al archivo esperado (mismo “safeName”)
       final tieneLocal =
-          c.fotoRutaLocal.isNotEmpty && File(c.fotoRutaLocal).existsSync();
+          (c.fotoRutaLocal?.isNotEmpty == true) &&
+          File(c.fotoRutaLocal!).existsSync();
       final apuntaALoEsperado =
-          tieneLocal && p.basename(c.fotoRutaLocal) == expectedSafeName;
+          tieneLocal && p.basename(c.fotoRutaLocal!) == expectedSafeName;
 
-      // Ya está correcto → nada que hacer
       if (apuntaALoEsperado) {
         procesados++;
         continue;
       }
 
-      // Si hay local pero NO corresponde al archivo esperado (hash cambió o moviste path)
       if (tieneLocal &&
-          p.basename(c.fotoRutaLocal) != expectedSafeName &&
+          p.basename(c.fotoRutaLocal!) != expectedSafeName &&
           borrarObsoletas) {
         try {
-          await File(c.fotoRutaLocal).delete();
-        } catch (_) {
-          // no nos detenemos por errores de borrado
-        }
+          await File(c.fotoRutaLocal!).delete();
+        } catch (_) {}
       }
 
-      // ¿Ya existe en el destino canónico por casualidad?
-      // Nota: descargarImagenOnline guarda como "<safeName>" en appSupport/colaboradores_img
-      // así que podemos intentar usarlo directamente.
       File? targetFile;
       try {
-        // Intenta componer el path canónico y ver si ya existe
         final baseDir = await getApplicationSupportDirectory();
         final targetDir = Directory(p.join(baseDir.path, 'colaboradores_img'));
         final canonical = File(p.join(targetDir.path, expectedSafeName));
         if (await canonical.exists()) {
           targetFile = canonical;
         }
-      } catch (_) {
-        // Ignora y fuerza descarga
-      }
+      } catch (_) {}
 
-      // Si no existe localmente el esperado, descárgalo del Storage
       targetFile ??= await _servicio.descargarImagenOnline(remote);
       if (targetFile == null) {
-        // No se pudo descargar; pasa al siguiente sin romper
         procesados++;
         continue;
       }
 
-      // Actualiza la ruta local en DB para que apunte al canónico recién creado/encontrado
       await _dao.actualizarParcialPorUid(
         c.uid,
         ColaboradoresCompanion(fotoRutaLocal: Value(targetFile.path)),
@@ -458,12 +402,12 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     if (q.isEmpty) return state;
     return state.where((c) {
       final nombreCompleto =
-          '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}'
+          '${c.nombres} ${c.apellidoPaterno ?? ''} ${c.apellidoMaterno ?? ''}'
               .trim()
               .toLowerCase();
       return nombreCompleto.contains(q) ||
-          c.emailPersonal.toLowerCase().contains(q) ||
-          c.telefonoMovil.toLowerCase().contains(q);
+          (c.emailPersonal?.toLowerCase().contains(q) ?? false) ||
+          (c.telefonoMovil?.toLowerCase().contains(q) ?? false);
     }).toList()..sort((a, b) => a.nombres.compareTo(b.nombres));
   }
 
@@ -481,16 +425,17 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   }
 
   // Helpers de reuso local
-  File? _localFileForRuta(String ruta) {
-    if (ruta.trim().isEmpty) return null;
+  File? _localFileForRuta(String? ruta) {
+    final r = ruta?.trim() ?? '';
+    if (r.isEmpty) return null;
     try {
       final other = state.firstWhere(
         (c) =>
-            c.fotoRutaRemota == ruta &&
-            c.fotoRutaLocal.isNotEmpty &&
-            File(c.fotoRutaLocal).existsSync(),
+            c.fotoRutaRemota == r &&
+            (c.fotoRutaLocal?.isNotEmpty == true) &&
+            File(c.fotoRutaLocal!).existsSync(),
       );
-      return File(other.fotoRutaLocal);
+      return File(other.fotoRutaLocal!);
     } catch (_) {
       return null;
     }
@@ -498,13 +443,7 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
 
   // ---------------------------------------------------------------------------
   // 🔎 Duplicados
-  //   - Reglas (en orden de mayor a menor fuerza):
-  //     1) CURP (si no viene vacío) coincide exactamente (case-insensitive)
-  //     2) RFC  (si no viene vacío) coincide exactamente (case-insensitive)
-  //     3) Email o Teléfono móvil coinciden (normalizados)
-  //     4) Nombre completo + Fecha de nacimiento (si ambos presentes)
   // ---------------------------------------------------------------------------
-  // 🔎 Duplicados (DB) — ahora con opción de nombre+fecha y excluir al propio uid.
   bool existeDuplicado({
     String curp = '',
     String rfc = '',
@@ -514,7 +453,7 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     String apellidoPaterno = '',
     String apellidoMaterno = '',
     DateTime? fechaNacimiento,
-    String? excluirUid, // 👈 nuevo
+    String? excluirUid,
   }) {
     final curpIn = curp.trim().toLowerCase();
     final rfcIn = rfc.trim().toLowerCase();
@@ -524,37 +463,28 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
 
     for (final c in state) {
       if (c.deleted) continue;
-
-      // 👇 evita compararte contra ti mismo cuando editas
       if (excluirUid != null && excluirUid.isNotEmpty && c.uid == excluirUid) {
         continue;
       }
 
-      // 1) CURP
       final curpDb = (c.curp ?? '').trim().toLowerCase();
       if (curpIn.isNotEmpty && curpDb.isNotEmpty && curpDb == curpIn)
         return true;
 
-      // 2) RFC
       final rfcDb = (c.rfc ?? '').trim().toLowerCase();
       if (rfcIn.isNotEmpty && rfcDb.isNotEmpty && rfcDb == rfcIn) return true;
 
-      // 3) Email
-      final emailDb = c.emailPersonal.trim().toLowerCase();
-      if (emailIn.isNotEmpty && emailDb.isNotEmpty && emailDb == emailIn) {
+      final emailDb = (c.emailPersonal ?? '').trim().toLowerCase();
+      if (emailIn.isNotEmpty && emailDb.isNotEmpty && emailDb == emailIn)
         return true;
-      }
 
-      // 4) Teléfono
-      final telDb = _digits(c.telefonoMovil);
-      if (phoneIn.isNotEmpty && telDb.isNotEmpty && telDb == phoneIn) {
+      final telDb = _digits(c.telefonoMovil ?? '');
+      if (phoneIn.isNotEmpty && telDb.isNotEmpty && telDb == phoneIn)
         return true;
-      }
 
-      // 5) Nombre completo + fecha (si ambos presentes)
       if (fullNameIn.isNotEmpty && fechaNacimiento != null) {
         final fullNameDb = _norm(
-          '${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}',
+          '${c.nombres} ${c.apellidoPaterno ?? ''} ${c.apellidoMaterno ?? ''}',
         );
         final fDb = c.fechaNacimiento?.toUtc();
         if (fullNameDb == fullNameIn &&
@@ -570,7 +500,6 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   // ----- Helpers de normalización -----
   String _norm(String s) {
     final lower = s.trim().toLowerCase();
-    // quita acentos más comunes
     return lower
         .replaceAll(RegExp(r'[áàä]'), 'a')
         .replaceAll(RegExp(r'[éèë]'), 'e')
@@ -578,20 +507,18 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
         .replaceAll(RegExp(r'[óòö]'), 'o')
         .replaceAll(RegExp(r'[úùü]'), 'u')
         .replaceAll(RegExp(r'ñ'), 'n')
-        .replaceAll(RegExp(r'\s+'), ' ') // colapsa espacios
+        .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
 
   String _digits(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
 
-  // ====================== CSV: helpers locales ======================
-
-  // Encabezado estable (mismo orden en import/export).
+  // ====================== CSV ======================
   static const List<String> _csvHeaderColabs = [
     'nombres',
     'apellidoPaterno',
     'apellidoMaterno',
-    'fechaNacimiento', // ISO o dd/MM/yyyy, se guarda en UTC
+    'fechaNacimiento',
     'curp',
     'rfc',
     'telefonoMovil',
@@ -600,18 +527,14 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     'fotoRutaRemota',
     'genero',
     'notas',
-    'createdAt', // opcional; si vacío: nowUtc
-    'updatedAt', // opcional; si vacío: nowUtc
-    'deleted', // true/false/1/0/yes/no/si
-    'isSynced', // true/false/1/0/yes/no/si
+    'createdAt',
+    'updatedAt',
+    'deleted',
+    'isSynced',
   ];
 
-  // Formatea DateTime a ISO-UTC o cadena vacía
   String _fmtIso(DateTime? d) => d == null ? '' : d.toUtc().toIso8601String();
 
-  // ====================== CSV: EXPORTAR ======================
-
-  /// Exporta todos los colaboradores (o solo NO eliminados) a CSV (String).
   Future<String> exportarCsvColaboradores({
     bool incluirEliminados = false,
   }) async {
@@ -619,30 +542,27 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
         ? await _dao.obtenerTodosDrift()
         : (await _dao.obtenerTodosDrift()).where((c) => !c.deleted).toList();
 
-    // Orden consistente
     lista.sort((a, b) => a.nombres.compareTo(b.nombres));
 
-    // 1) Header EXACTO (sin uid)
     final rows = <List<dynamic>>[
       ['uid', ..._csvHeaderColabs],
     ];
 
-    // 2) Filas (sin uid)
     for (final c in lista) {
       rows.add([
         c.uid,
         c.nombres,
-        c.apellidoPaterno,
-        c.apellidoMaterno,
+        c.apellidoPaterno ?? '',
+        c.apellidoMaterno ?? '',
         _fmtIso(c.fechaNacimiento),
         c.curp ?? '',
         c.rfc ?? '',
-        c.telefonoMovil,
-        c.emailPersonal,
-        c.fotoRutaLocal,
-        c.fotoRutaRemota,
+        c.telefonoMovil ?? '',
+        c.emailPersonal ?? '',
+        c.fotoRutaLocal ?? '',
+        c.fotoRutaRemota ?? '',
         c.genero ?? '',
-        c.notas,
+        c.notas ?? '',
         _fmtIso(c.createdAt),
         _fmtIso(c.updatedAt),
         c.deleted.toString(),
@@ -662,10 +582,8 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
         ? nombreArchivo!.trim()
         : 'colaboradores_$ts.csv';
 
-    // Preferir Descargas en desktop si está disponible; soporte app en mobile
     Directory dir;
     try {
-      // Sólo desktop expone Downloads de forma estándar
       final downloads = await getDownloadsDirectory();
       dir = downloads ?? await getApplicationSupportDirectory();
     } catch (_) {
@@ -675,13 +593,9 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     final file = File(p.join(dir.path, fileName));
     await file.create(recursive: true);
     await file.writeAsString(csv, flush: true);
-
-    return file.path; // 👈 Devuelve la ruta exacta donde quedó el export
+    return file.path;
   }
 
-  /// Importa colaboradores desde CSV. SOLO INSERTA. Nunca edita existentes.
-  /// Reglas duplicado (en este orden): CURP, RFC, Email, Tel, Nombre+Fecha.
-  /// Además evita repetir filas duplicadas dentro del mismo CSV.
   Future<(int insertados, int saltados)> importarCsvColaboradores({
     String? csvText,
     List<int>? csvBytes,
@@ -698,7 +612,6 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     ).convert(text);
     if (rows.isEmpty) return (0, 0);
 
-    // Header EXACTO (sin uid)
     final header = rows.first.map((e) => (e ?? '').toString().trim()).toList();
     final validHeader =
         header.length == _csvHeaderColabs.length &&
@@ -715,13 +628,12 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
     final dataRows = rows.skip(1);
     final nowUtc = DateTime.now().toUtc();
 
-    // === Índices de existentes (DB) para lookup rápido ===
     final existentes = await _dao.obtenerTodosDrift();
     final byCurp = <String, bool>{};
     final byRfc = <String, bool>{};
     final byEmail = <String, bool>{};
     final byPhone = <String, bool>{};
-    final byNameDob = <String, bool>{}; // key: "<fullName>|<yyyy-mm-dd>"
+    final byNameDob = <String, bool>{};
 
     String kCurp(String s) => s.trim().toLowerCase();
     String kRfc(String s) => s.trim().toLowerCase();
@@ -739,20 +651,19 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       if (c.deleted) continue;
       if ((c.curp ?? '').trim().isNotEmpty) byCurp[kCurp(c.curp!)] = true;
       if ((c.rfc ?? '').trim().isNotEmpty) byRfc[kRfc(c.rfc!)] = true;
-      if (c.emailPersonal.trim().isNotEmpty)
-        byEmail[kEmail(c.emailPersonal)] = true;
-      if (c.telefonoMovil.trim().isNotEmpty)
-        byPhone[kPhone(c.telefonoMovil)] = true;
+      if ((c.emailPersonal ?? '').trim().isNotEmpty)
+        byEmail[kEmail(c.emailPersonal!)] = true;
+      if ((c.telefonoMovil ?? '').trim().isNotEmpty)
+        byPhone[kPhone(c.telefonoMovil!)] = true;
       byNameDob[kNameDob(
             c.nombres,
-            c.apellidoPaterno,
-            c.apellidoMaterno,
+            c.apellidoPaterno ?? '',
+            c.apellidoMaterno ?? '',
             c.fechaNacimiento,
           )] =
           true;
     }
 
-    // === Seen maps para evitar duplicado DENTRO del CSV ===
     final seenCurp = <String, bool>{};
     final seenRfc = <String, bool>{};
     final seenEmail = <String, bool>{};
@@ -787,20 +698,18 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
         final deletedStr = row[14];
         final syncedStr = row[15];
 
-        final fNac = parseDateFlexible(fNacStr); // UTC o null
+        final fNac = parseDateFlexible(fNacStr);
         final createdAt = parseDateFlexible(createdStr) ?? nowUtc;
         final updatedAt = parseDateFlexible(updatedStr) ?? nowUtc;
         final deleted = parseBoolFlexible(deletedStr, defaultValue: false);
         final isSynced = parseBoolFlexible(syncedStr, defaultValue: false);
 
-        // --- Normaliza llaves
         final curpK = kCurp(curp);
         final rfcK = kRfc(rfc);
         final emailK = kEmail(email);
         final phoneK = kPhone(tel);
         final nameDobK = kNameDob(nombres, apP, apM, fNac);
 
-        // --- ¿Duplicado en DB?
         final dupDb =
             (curpK.isNotEmpty && byCurp[curpK] == true) ||
             (rfcK.isNotEmpty && byRfc[rfcK] == true) ||
@@ -808,7 +717,6 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
             (phoneK.isNotEmpty && byPhone[phoneK] == true) ||
             (nameDobK.isNotEmpty && byNameDob[nameDobK] == true);
 
-        // --- ¿Duplicado en el propio CSV (ya procesado)?
         final dupCsv =
             (curpK.isNotEmpty && seenCurp[curpK] == true) ||
             (rfcK.isNotEmpty && seenRfc[rfcK] == true) ||
@@ -818,43 +726,40 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
 
         if (dupDb || dupCsv) {
           saltados++;
-          // Marca como vistos (para cascada de duplicados dentro del CSV)
           if (curpK.isNotEmpty) seenCurp[curpK] = true;
           if (rfcK.isNotEmpty) seenRfc[rfcK] = true;
           if (emailK.isNotEmpty) seenEmail[emailK] = true;
           if (phoneK.isNotEmpty) seenPhone[phoneK] = true;
           if (nameDobK.isNotEmpty) seenNameDob[nameDobK] = true;
-          continue; // 👈 NO insertes, NO actualices
+          continue;
         }
 
-        // --- Insertar SIEMPRE (uid nuevo)
         final uid = const Uuid().v4();
         final comp = ColaboradoresCompanion(
           uid: Value(uid),
           nombres: Value(nombres),
-          apellidoPaterno: Value(apP),
-          apellidoMaterno: Value(apM),
+          apellidoPaterno: Value(_nvl(apP)),
+          apellidoMaterno: Value(_nvl(apM)),
           fechaNacimiento: fNac == null
-              ? const Value.absent()
+              ? const Value(null)
               : Value(fNac.toUtc()),
-          curp: curp.isEmpty ? const Value.absent() : Value(curp),
-          rfc: rfc.isEmpty ? const Value.absent() : Value(rfc),
-          telefonoMovil: Value(tel),
-          emailPersonal: Value(email),
-          fotoRutaLocal: Value(fotoLocal),
-          fotoRutaRemota: Value(fotoRem),
-          genero: genero.isEmpty ? const Value.absent() : Value(genero),
-          notas: Value(notas),
+          curp: Value(_nvl(curp)),
+          rfc: Value(_nvl(rfc)),
+          telefonoMovil: Value(_nvl(tel)),
+          emailPersonal: Value(_nvl(email)),
+          fotoRutaLocal: Value(_nvl(fotoLocal)),
+          fotoRutaRemota: Value(_nvl(fotoRem)),
+          genero: Value(_nvl(genero)),
+          notas: Value(_nvl(notas)),
           createdAt: Value(createdAt),
           updatedAt: Value(updatedAt),
           deleted: Value(deleted),
           isSynced: Value(isSynced),
         );
 
-        await _dao.upsertColaboradorDrift(comp); // uid nuevo → inserta
+        await _dao.upsertColaboradorDrift(comp);
         insertados++;
 
-        // Actualiza índices para siguientes filas (DB y CSV)
         if (curpK.isNotEmpty) {
           byCurp[curpK] = true;
           seenCurp[curpK] = true;

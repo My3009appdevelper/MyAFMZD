@@ -5005,7 +5005,7 @@ class $ColaboradoresTable extends Colaboradores
   late final GeneratedColumn<String> apellidoPaterno = GeneratedColumn<String>(
     'apellido_paterno',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
@@ -5017,7 +5017,7 @@ class $ColaboradoresTable extends Colaboradores
   late final GeneratedColumn<String> apellidoMaterno = GeneratedColumn<String>(
     'apellido_materno',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
@@ -5059,7 +5059,7 @@ class $ColaboradoresTable extends Colaboradores
   late final GeneratedColumn<String> telefonoMovil = GeneratedColumn<String>(
     'telefono_movil',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
@@ -5071,7 +5071,7 @@ class $ColaboradoresTable extends Colaboradores
   late final GeneratedColumn<String> emailPersonal = GeneratedColumn<String>(
     'email_personal',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
@@ -5083,7 +5083,7 @@ class $ColaboradoresTable extends Colaboradores
   late final GeneratedColumn<String> fotoRutaLocal = GeneratedColumn<String>(
     'foto_ruta_local',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
@@ -5095,7 +5095,7 @@ class $ColaboradoresTable extends Colaboradores
   late final GeneratedColumn<String> fotoRutaRemota = GeneratedColumn<String>(
     'foto_ruta_remota',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
@@ -5115,7 +5115,7 @@ class $ColaboradoresTable extends Colaboradores
   late final GeneratedColumn<String> notas = GeneratedColumn<String>(
     'notas',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
@@ -5353,11 +5353,11 @@ class $ColaboradoresTable extends Colaboradores
       apellidoPaterno: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}apellido_paterno'],
-      )!,
+      ),
       apellidoMaterno: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}apellido_materno'],
-      )!,
+      ),
       fechaNacimiento: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}fecha_nacimiento'],
@@ -5373,19 +5373,19 @@ class $ColaboradoresTable extends Colaboradores
       telefonoMovil: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}telefono_movil'],
-      )!,
+      ),
       emailPersonal: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}email_personal'],
-      )!,
+      ),
       fotoRutaLocal: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}foto_ruta_local'],
-      )!,
+      ),
       fotoRutaRemota: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}foto_ruta_remota'],
-      )!,
+      ),
       genero: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}genero'],
@@ -5393,7 +5393,7 @@ class $ColaboradoresTable extends Colaboradores
       notas: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notas'],
-      )!,
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -5422,17 +5422,17 @@ class $ColaboradoresTable extends Colaboradores
 class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
   final String uid;
   final String nombres;
-  final String apellidoPaterno;
-  final String apellidoMaterno;
+  final String? apellidoPaterno;
+  final String? apellidoMaterno;
   final DateTime? fechaNacimiento;
   final String? curp;
   final String? rfc;
-  final String telefonoMovil;
-  final String emailPersonal;
-  final String fotoRutaLocal;
-  final String fotoRutaRemota;
+  final String? telefonoMovil;
+  final String? emailPersonal;
+  final String? fotoRutaLocal;
+  final String? fotoRutaRemota;
   final String? genero;
-  final String notas;
+  final String? notas;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool deleted;
@@ -5440,17 +5440,17 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
   const ColaboradorDb({
     required this.uid,
     required this.nombres,
-    required this.apellidoPaterno,
-    required this.apellidoMaterno,
+    this.apellidoPaterno,
+    this.apellidoMaterno,
     this.fechaNacimiento,
     this.curp,
     this.rfc,
-    required this.telefonoMovil,
-    required this.emailPersonal,
-    required this.fotoRutaLocal,
-    required this.fotoRutaRemota,
+    this.telefonoMovil,
+    this.emailPersonal,
+    this.fotoRutaLocal,
+    this.fotoRutaRemota,
     this.genero,
-    required this.notas,
+    this.notas,
     required this.createdAt,
     required this.updatedAt,
     required this.deleted,
@@ -5461,8 +5461,12 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
     final map = <String, Expression>{};
     map['uid'] = Variable<String>(uid);
     map['nombres'] = Variable<String>(nombres);
-    map['apellido_paterno'] = Variable<String>(apellidoPaterno);
-    map['apellido_materno'] = Variable<String>(apellidoMaterno);
+    if (!nullToAbsent || apellidoPaterno != null) {
+      map['apellido_paterno'] = Variable<String>(apellidoPaterno);
+    }
+    if (!nullToAbsent || apellidoMaterno != null) {
+      map['apellido_materno'] = Variable<String>(apellidoMaterno);
+    }
     if (!nullToAbsent || fechaNacimiento != null) {
       map['fecha_nacimiento'] = Variable<DateTime>(fechaNacimiento);
     }
@@ -5472,14 +5476,24 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
     if (!nullToAbsent || rfc != null) {
       map['rfc'] = Variable<String>(rfc);
     }
-    map['telefono_movil'] = Variable<String>(telefonoMovil);
-    map['email_personal'] = Variable<String>(emailPersonal);
-    map['foto_ruta_local'] = Variable<String>(fotoRutaLocal);
-    map['foto_ruta_remota'] = Variable<String>(fotoRutaRemota);
+    if (!nullToAbsent || telefonoMovil != null) {
+      map['telefono_movil'] = Variable<String>(telefonoMovil);
+    }
+    if (!nullToAbsent || emailPersonal != null) {
+      map['email_personal'] = Variable<String>(emailPersonal);
+    }
+    if (!nullToAbsent || fotoRutaLocal != null) {
+      map['foto_ruta_local'] = Variable<String>(fotoRutaLocal);
+    }
+    if (!nullToAbsent || fotoRutaRemota != null) {
+      map['foto_ruta_remota'] = Variable<String>(fotoRutaRemota);
+    }
     if (!nullToAbsent || genero != null) {
       map['genero'] = Variable<String>(genero);
     }
-    map['notas'] = Variable<String>(notas);
+    if (!nullToAbsent || notas != null) {
+      map['notas'] = Variable<String>(notas);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['deleted'] = Variable<bool>(deleted);
@@ -5491,21 +5505,35 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
     return ColaboradoresCompanion(
       uid: Value(uid),
       nombres: Value(nombres),
-      apellidoPaterno: Value(apellidoPaterno),
-      apellidoMaterno: Value(apellidoMaterno),
+      apellidoPaterno: apellidoPaterno == null && nullToAbsent
+          ? const Value.absent()
+          : Value(apellidoPaterno),
+      apellidoMaterno: apellidoMaterno == null && nullToAbsent
+          ? const Value.absent()
+          : Value(apellidoMaterno),
       fechaNacimiento: fechaNacimiento == null && nullToAbsent
           ? const Value.absent()
           : Value(fechaNacimiento),
       curp: curp == null && nullToAbsent ? const Value.absent() : Value(curp),
       rfc: rfc == null && nullToAbsent ? const Value.absent() : Value(rfc),
-      telefonoMovil: Value(telefonoMovil),
-      emailPersonal: Value(emailPersonal),
-      fotoRutaLocal: Value(fotoRutaLocal),
-      fotoRutaRemota: Value(fotoRutaRemota),
+      telefonoMovil: telefonoMovil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(telefonoMovil),
+      emailPersonal: emailPersonal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emailPersonal),
+      fotoRutaLocal: fotoRutaLocal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fotoRutaLocal),
+      fotoRutaRemota: fotoRutaRemota == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fotoRutaRemota),
       genero: genero == null && nullToAbsent
           ? const Value.absent()
           : Value(genero),
-      notas: Value(notas),
+      notas: notas == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notas),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deleted: Value(deleted),
@@ -5521,17 +5549,17 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
     return ColaboradorDb(
       uid: serializer.fromJson<String>(json['uid']),
       nombres: serializer.fromJson<String>(json['nombres']),
-      apellidoPaterno: serializer.fromJson<String>(json['apellidoPaterno']),
-      apellidoMaterno: serializer.fromJson<String>(json['apellidoMaterno']),
+      apellidoPaterno: serializer.fromJson<String?>(json['apellidoPaterno']),
+      apellidoMaterno: serializer.fromJson<String?>(json['apellidoMaterno']),
       fechaNacimiento: serializer.fromJson<DateTime?>(json['fechaNacimiento']),
       curp: serializer.fromJson<String?>(json['curp']),
       rfc: serializer.fromJson<String?>(json['rfc']),
-      telefonoMovil: serializer.fromJson<String>(json['telefonoMovil']),
-      emailPersonal: serializer.fromJson<String>(json['emailPersonal']),
-      fotoRutaLocal: serializer.fromJson<String>(json['fotoRutaLocal']),
-      fotoRutaRemota: serializer.fromJson<String>(json['fotoRutaRemota']),
+      telefonoMovil: serializer.fromJson<String?>(json['telefonoMovil']),
+      emailPersonal: serializer.fromJson<String?>(json['emailPersonal']),
+      fotoRutaLocal: serializer.fromJson<String?>(json['fotoRutaLocal']),
+      fotoRutaRemota: serializer.fromJson<String?>(json['fotoRutaRemota']),
       genero: serializer.fromJson<String?>(json['genero']),
-      notas: serializer.fromJson<String>(json['notas']),
+      notas: serializer.fromJson<String?>(json['notas']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deleted: serializer.fromJson<bool>(json['deleted']),
@@ -5544,17 +5572,17 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
     return <String, dynamic>{
       'uid': serializer.toJson<String>(uid),
       'nombres': serializer.toJson<String>(nombres),
-      'apellidoPaterno': serializer.toJson<String>(apellidoPaterno),
-      'apellidoMaterno': serializer.toJson<String>(apellidoMaterno),
+      'apellidoPaterno': serializer.toJson<String?>(apellidoPaterno),
+      'apellidoMaterno': serializer.toJson<String?>(apellidoMaterno),
       'fechaNacimiento': serializer.toJson<DateTime?>(fechaNacimiento),
       'curp': serializer.toJson<String?>(curp),
       'rfc': serializer.toJson<String?>(rfc),
-      'telefonoMovil': serializer.toJson<String>(telefonoMovil),
-      'emailPersonal': serializer.toJson<String>(emailPersonal),
-      'fotoRutaLocal': serializer.toJson<String>(fotoRutaLocal),
-      'fotoRutaRemota': serializer.toJson<String>(fotoRutaRemota),
+      'telefonoMovil': serializer.toJson<String?>(telefonoMovil),
+      'emailPersonal': serializer.toJson<String?>(emailPersonal),
+      'fotoRutaLocal': serializer.toJson<String?>(fotoRutaLocal),
+      'fotoRutaRemota': serializer.toJson<String?>(fotoRutaRemota),
       'genero': serializer.toJson<String?>(genero),
-      'notas': serializer.toJson<String>(notas),
+      'notas': serializer.toJson<String?>(notas),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deleted': serializer.toJson<bool>(deleted),
@@ -5565,17 +5593,17 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
   ColaboradorDb copyWith({
     String? uid,
     String? nombres,
-    String? apellidoPaterno,
-    String? apellidoMaterno,
+    Value<String?> apellidoPaterno = const Value.absent(),
+    Value<String?> apellidoMaterno = const Value.absent(),
     Value<DateTime?> fechaNacimiento = const Value.absent(),
     Value<String?> curp = const Value.absent(),
     Value<String?> rfc = const Value.absent(),
-    String? telefonoMovil,
-    String? emailPersonal,
-    String? fotoRutaLocal,
-    String? fotoRutaRemota,
+    Value<String?> telefonoMovil = const Value.absent(),
+    Value<String?> emailPersonal = const Value.absent(),
+    Value<String?> fotoRutaLocal = const Value.absent(),
+    Value<String?> fotoRutaRemota = const Value.absent(),
     Value<String?> genero = const Value.absent(),
-    String? notas,
+    Value<String?> notas = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? deleted,
@@ -5583,19 +5611,31 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
   }) => ColaboradorDb(
     uid: uid ?? this.uid,
     nombres: nombres ?? this.nombres,
-    apellidoPaterno: apellidoPaterno ?? this.apellidoPaterno,
-    apellidoMaterno: apellidoMaterno ?? this.apellidoMaterno,
+    apellidoPaterno: apellidoPaterno.present
+        ? apellidoPaterno.value
+        : this.apellidoPaterno,
+    apellidoMaterno: apellidoMaterno.present
+        ? apellidoMaterno.value
+        : this.apellidoMaterno,
     fechaNacimiento: fechaNacimiento.present
         ? fechaNacimiento.value
         : this.fechaNacimiento,
     curp: curp.present ? curp.value : this.curp,
     rfc: rfc.present ? rfc.value : this.rfc,
-    telefonoMovil: telefonoMovil ?? this.telefonoMovil,
-    emailPersonal: emailPersonal ?? this.emailPersonal,
-    fotoRutaLocal: fotoRutaLocal ?? this.fotoRutaLocal,
-    fotoRutaRemota: fotoRutaRemota ?? this.fotoRutaRemota,
+    telefonoMovil: telefonoMovil.present
+        ? telefonoMovil.value
+        : this.telefonoMovil,
+    emailPersonal: emailPersonal.present
+        ? emailPersonal.value
+        : this.emailPersonal,
+    fotoRutaLocal: fotoRutaLocal.present
+        ? fotoRutaLocal.value
+        : this.fotoRutaLocal,
+    fotoRutaRemota: fotoRutaRemota.present
+        ? fotoRutaRemota.value
+        : this.fotoRutaRemota,
     genero: genero.present ? genero.value : this.genero,
-    notas: notas ?? this.notas,
+    notas: notas.present ? notas.value : this.notas,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deleted: deleted ?? this.deleted,
@@ -5707,17 +5747,17 @@ class ColaboradorDb extends DataClass implements Insertable<ColaboradorDb> {
 class ColaboradoresCompanion extends UpdateCompanion<ColaboradorDb> {
   final Value<String> uid;
   final Value<String> nombres;
-  final Value<String> apellidoPaterno;
-  final Value<String> apellidoMaterno;
+  final Value<String?> apellidoPaterno;
+  final Value<String?> apellidoMaterno;
   final Value<DateTime?> fechaNacimiento;
   final Value<String?> curp;
   final Value<String?> rfc;
-  final Value<String> telefonoMovil;
-  final Value<String> emailPersonal;
-  final Value<String> fotoRutaLocal;
-  final Value<String> fotoRutaRemota;
+  final Value<String?> telefonoMovil;
+  final Value<String?> emailPersonal;
+  final Value<String?> fotoRutaLocal;
+  final Value<String?> fotoRutaRemota;
   final Value<String?> genero;
-  final Value<String> notas;
+  final Value<String?> notas;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> deleted;
@@ -5809,17 +5849,17 @@ class ColaboradoresCompanion extends UpdateCompanion<ColaboradorDb> {
   ColaboradoresCompanion copyWith({
     Value<String>? uid,
     Value<String>? nombres,
-    Value<String>? apellidoPaterno,
-    Value<String>? apellidoMaterno,
+    Value<String?>? apellidoPaterno,
+    Value<String?>? apellidoMaterno,
     Value<DateTime?>? fechaNacimiento,
     Value<String?>? curp,
     Value<String?>? rfc,
-    Value<String>? telefonoMovil,
-    Value<String>? emailPersonal,
-    Value<String>? fotoRutaLocal,
-    Value<String>? fotoRutaRemota,
+    Value<String?>? telefonoMovil,
+    Value<String?>? emailPersonal,
+    Value<String?>? fotoRutaLocal,
+    Value<String?>? fotoRutaRemota,
     Value<String?>? genero,
-    Value<String>? notas,
+    Value<String?>? notas,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? deleted,
@@ -7682,18 +7722,6 @@ class $VentasTable extends Ventas with TableInfo<$VentasTable, VentaDb> {
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
-  static const VerificationMeta _gerenteGrupoUidMeta = const VerificationMeta(
-    'gerenteGrupoUid',
-  );
-  @override
-  late final GeneratedColumn<String> gerenteGrupoUid = GeneratedColumn<String>(
-    'gerente_grupo_uid',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(''),
-  );
   static const VerificationMeta _vendedorUidMeta = const VerificationMeta(
     'vendedorUid',
   );
@@ -7870,7 +7898,6 @@ class $VentasTable extends Ventas with TableInfo<$VentasTable, VentaDb> {
     uid,
     distribuidoraOrigenUid,
     distribuidoraUid,
-    gerenteGrupoUid,
     vendedorUid,
     folioContrato,
     modeloUid,
@@ -7921,15 +7948,6 @@ class $VentasTable extends Ventas with TableInfo<$VentasTable, VentaDb> {
         distribuidoraUid.isAcceptableOrUnknown(
           data['distribuidora_uid']!,
           _distribuidoraUidMeta,
-        ),
-      );
-    }
-    if (data.containsKey('gerente_grupo_uid')) {
-      context.handle(
-        _gerenteGrupoUidMeta,
-        gerenteGrupoUid.isAcceptableOrUnknown(
-          data['gerente_grupo_uid']!,
-          _gerenteGrupoUidMeta,
         ),
       );
     }
@@ -8047,10 +8065,6 @@ class $VentasTable extends Ventas with TableInfo<$VentasTable, VentaDb> {
         DriftSqlType.string,
         data['${effectivePrefix}distribuidora_uid'],
       )!,
-      gerenteGrupoUid: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}gerente_grupo_uid'],
-      )!,
       vendedorUid: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}vendedor_uid'],
@@ -8120,7 +8134,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
   final String uid;
   final String distribuidoraOrigenUid;
   final String distribuidoraUid;
-  final String gerenteGrupoUid;
   final String vendedorUid;
   final String folioContrato;
   final String modeloUid;
@@ -8129,11 +8142,7 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
   final int integrante;
   final DateTime? fechaContrato;
   final DateTime? fechaVenta;
-
-  /// Mes de venta [1..12] — opcional (útil para filtros/reportes)
   final int? mesVenta;
-
-  /// Año de venta [1990..2100] — opcional (útil para filtros/reportes)
   final int? anioVenta;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -8143,7 +8152,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
     required this.uid,
     required this.distribuidoraOrigenUid,
     required this.distribuidoraUid,
-    required this.gerenteGrupoUid,
     required this.vendedorUid,
     required this.folioContrato,
     required this.modeloUid,
@@ -8165,7 +8173,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
     map['uid'] = Variable<String>(uid);
     map['distribuidora_origen_uid'] = Variable<String>(distribuidoraOrigenUid);
     map['distribuidora_uid'] = Variable<String>(distribuidoraUid);
-    map['gerente_grupo_uid'] = Variable<String>(gerenteGrupoUid);
     map['vendedor_uid'] = Variable<String>(vendedorUid);
     map['folio_contrato'] = Variable<String>(folioContrato);
     map['modelo_uid'] = Variable<String>(modeloUid);
@@ -8196,7 +8203,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
       uid: Value(uid),
       distribuidoraOrigenUid: Value(distribuidoraOrigenUid),
       distribuidoraUid: Value(distribuidoraUid),
-      gerenteGrupoUid: Value(gerenteGrupoUid),
       vendedorUid: Value(vendedorUid),
       folioContrato: Value(folioContrato),
       modeloUid: Value(modeloUid),
@@ -8233,7 +8239,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
         json['distribuidoraOrigenUid'],
       ),
       distribuidoraUid: serializer.fromJson<String>(json['distribuidoraUid']),
-      gerenteGrupoUid: serializer.fromJson<String>(json['gerenteGrupoUid']),
       vendedorUid: serializer.fromJson<String>(json['vendedorUid']),
       folioContrato: serializer.fromJson<String>(json['folioContrato']),
       modeloUid: serializer.fromJson<String>(json['modeloUid']),
@@ -8259,7 +8264,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
         distribuidoraOrigenUid,
       ),
       'distribuidoraUid': serializer.toJson<String>(distribuidoraUid),
-      'gerenteGrupoUid': serializer.toJson<String>(gerenteGrupoUid),
       'vendedorUid': serializer.toJson<String>(vendedorUid),
       'folioContrato': serializer.toJson<String>(folioContrato),
       'modeloUid': serializer.toJson<String>(modeloUid),
@@ -8281,7 +8285,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
     String? uid,
     String? distribuidoraOrigenUid,
     String? distribuidoraUid,
-    String? gerenteGrupoUid,
     String? vendedorUid,
     String? folioContrato,
     String? modeloUid,
@@ -8301,7 +8304,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
     distribuidoraOrigenUid:
         distribuidoraOrigenUid ?? this.distribuidoraOrigenUid,
     distribuidoraUid: distribuidoraUid ?? this.distribuidoraUid,
-    gerenteGrupoUid: gerenteGrupoUid ?? this.gerenteGrupoUid,
     vendedorUid: vendedorUid ?? this.vendedorUid,
     folioContrato: folioContrato ?? this.folioContrato,
     modeloUid: modeloUid ?? this.modeloUid,
@@ -8328,9 +8330,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
       distribuidoraUid: data.distribuidoraUid.present
           ? data.distribuidoraUid.value
           : this.distribuidoraUid,
-      gerenteGrupoUid: data.gerenteGrupoUid.present
-          ? data.gerenteGrupoUid.value
-          : this.gerenteGrupoUid,
       vendedorUid: data.vendedorUid.present
           ? data.vendedorUid.value
           : this.vendedorUid,
@@ -8366,7 +8365,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
           ..write('uid: $uid, ')
           ..write('distribuidoraOrigenUid: $distribuidoraOrigenUid, ')
           ..write('distribuidoraUid: $distribuidoraUid, ')
-          ..write('gerenteGrupoUid: $gerenteGrupoUid, ')
           ..write('vendedorUid: $vendedorUid, ')
           ..write('folioContrato: $folioContrato, ')
           ..write('modeloUid: $modeloUid, ')
@@ -8390,7 +8388,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
     uid,
     distribuidoraOrigenUid,
     distribuidoraUid,
-    gerenteGrupoUid,
     vendedorUid,
     folioContrato,
     modeloUid,
@@ -8413,7 +8410,6 @@ class VentaDb extends DataClass implements Insertable<VentaDb> {
           other.uid == this.uid &&
           other.distribuidoraOrigenUid == this.distribuidoraOrigenUid &&
           other.distribuidoraUid == this.distribuidoraUid &&
-          other.gerenteGrupoUid == this.gerenteGrupoUid &&
           other.vendedorUid == this.vendedorUid &&
           other.folioContrato == this.folioContrato &&
           other.modeloUid == this.modeloUid &&
@@ -8434,7 +8430,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
   final Value<String> uid;
   final Value<String> distribuidoraOrigenUid;
   final Value<String> distribuidoraUid;
-  final Value<String> gerenteGrupoUid;
   final Value<String> vendedorUid;
   final Value<String> folioContrato;
   final Value<String> modeloUid;
@@ -8454,7 +8449,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
     this.uid = const Value.absent(),
     this.distribuidoraOrigenUid = const Value.absent(),
     this.distribuidoraUid = const Value.absent(),
-    this.gerenteGrupoUid = const Value.absent(),
     this.vendedorUid = const Value.absent(),
     this.folioContrato = const Value.absent(),
     this.modeloUid = const Value.absent(),
@@ -8475,7 +8469,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
     required String uid,
     this.distribuidoraOrigenUid = const Value.absent(),
     this.distribuidoraUid = const Value.absent(),
-    this.gerenteGrupoUid = const Value.absent(),
     this.vendedorUid = const Value.absent(),
     this.folioContrato = const Value.absent(),
     this.modeloUid = const Value.absent(),
@@ -8496,7 +8489,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
     Expression<String>? uid,
     Expression<String>? distribuidoraOrigenUid,
     Expression<String>? distribuidoraUid,
-    Expression<String>? gerenteGrupoUid,
     Expression<String>? vendedorUid,
     Expression<String>? folioContrato,
     Expression<String>? modeloUid,
@@ -8518,7 +8510,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
       if (distribuidoraOrigenUid != null)
         'distribuidora_origen_uid': distribuidoraOrigenUid,
       if (distribuidoraUid != null) 'distribuidora_uid': distribuidoraUid,
-      if (gerenteGrupoUid != null) 'gerente_grupo_uid': gerenteGrupoUid,
       if (vendedorUid != null) 'vendedor_uid': vendedorUid,
       if (folioContrato != null) 'folio_contrato': folioContrato,
       if (modeloUid != null) 'modelo_uid': modeloUid,
@@ -8541,7 +8532,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
     Value<String>? uid,
     Value<String>? distribuidoraOrigenUid,
     Value<String>? distribuidoraUid,
-    Value<String>? gerenteGrupoUid,
     Value<String>? vendedorUid,
     Value<String>? folioContrato,
     Value<String>? modeloUid,
@@ -8563,7 +8553,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
       distribuidoraOrigenUid:
           distribuidoraOrigenUid ?? this.distribuidoraOrigenUid,
       distribuidoraUid: distribuidoraUid ?? this.distribuidoraUid,
-      gerenteGrupoUid: gerenteGrupoUid ?? this.gerenteGrupoUid,
       vendedorUid: vendedorUid ?? this.vendedorUid,
       folioContrato: folioContrato ?? this.folioContrato,
       modeloUid: modeloUid ?? this.modeloUid,
@@ -8595,9 +8584,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
     }
     if (distribuidoraUid.present) {
       map['distribuidora_uid'] = Variable<String>(distribuidoraUid.value);
-    }
-    if (gerenteGrupoUid.present) {
-      map['gerente_grupo_uid'] = Variable<String>(gerenteGrupoUid.value);
     }
     if (vendedorUid.present) {
       map['vendedor_uid'] = Variable<String>(vendedorUid.value);
@@ -8653,7 +8639,6 @@ class VentasCompanion extends UpdateCompanion<VentaDb> {
           ..write('uid: $uid, ')
           ..write('distribuidoraOrigenUid: $distribuidoraOrigenUid, ')
           ..write('distribuidoraUid: $distribuidoraUid, ')
-          ..write('gerenteGrupoUid: $gerenteGrupoUid, ')
           ..write('vendedorUid: $vendedorUid, ')
           ..write('folioContrato: $folioContrato, ')
           ..write('modeloUid: $modeloUid, ')
@@ -11113,17 +11098,17 @@ typedef $$ColaboradoresTableCreateCompanionBuilder =
     ColaboradoresCompanion Function({
       required String uid,
       required String nombres,
-      Value<String> apellidoPaterno,
-      Value<String> apellidoMaterno,
+      Value<String?> apellidoPaterno,
+      Value<String?> apellidoMaterno,
       Value<DateTime?> fechaNacimiento,
       Value<String?> curp,
       Value<String?> rfc,
-      Value<String> telefonoMovil,
-      Value<String> emailPersonal,
-      Value<String> fotoRutaLocal,
-      Value<String> fotoRutaRemota,
+      Value<String?> telefonoMovil,
+      Value<String?> emailPersonal,
+      Value<String?> fotoRutaLocal,
+      Value<String?> fotoRutaRemota,
       Value<String?> genero,
-      Value<String> notas,
+      Value<String?> notas,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
@@ -11134,17 +11119,17 @@ typedef $$ColaboradoresTableUpdateCompanionBuilder =
     ColaboradoresCompanion Function({
       Value<String> uid,
       Value<String> nombres,
-      Value<String> apellidoPaterno,
-      Value<String> apellidoMaterno,
+      Value<String?> apellidoPaterno,
+      Value<String?> apellidoMaterno,
       Value<DateTime?> fechaNacimiento,
       Value<String?> curp,
       Value<String?> rfc,
-      Value<String> telefonoMovil,
-      Value<String> emailPersonal,
-      Value<String> fotoRutaLocal,
-      Value<String> fotoRutaRemota,
+      Value<String?> telefonoMovil,
+      Value<String?> emailPersonal,
+      Value<String?> fotoRutaLocal,
+      Value<String?> fotoRutaRemota,
       Value<String?> genero,
-      Value<String> notas,
+      Value<String?> notas,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
@@ -11450,17 +11435,17 @@ class $$ColaboradoresTableTableManager
               ({
                 Value<String> uid = const Value.absent(),
                 Value<String> nombres = const Value.absent(),
-                Value<String> apellidoPaterno = const Value.absent(),
-                Value<String> apellidoMaterno = const Value.absent(),
+                Value<String?> apellidoPaterno = const Value.absent(),
+                Value<String?> apellidoMaterno = const Value.absent(),
                 Value<DateTime?> fechaNacimiento = const Value.absent(),
                 Value<String?> curp = const Value.absent(),
                 Value<String?> rfc = const Value.absent(),
-                Value<String> telefonoMovil = const Value.absent(),
-                Value<String> emailPersonal = const Value.absent(),
-                Value<String> fotoRutaLocal = const Value.absent(),
-                Value<String> fotoRutaRemota = const Value.absent(),
+                Value<String?> telefonoMovil = const Value.absent(),
+                Value<String?> emailPersonal = const Value.absent(),
+                Value<String?> fotoRutaLocal = const Value.absent(),
+                Value<String?> fotoRutaRemota = const Value.absent(),
                 Value<String?> genero = const Value.absent(),
-                Value<String> notas = const Value.absent(),
+                Value<String?> notas = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
@@ -11490,17 +11475,17 @@ class $$ColaboradoresTableTableManager
               ({
                 required String uid,
                 required String nombres,
-                Value<String> apellidoPaterno = const Value.absent(),
-                Value<String> apellidoMaterno = const Value.absent(),
+                Value<String?> apellidoPaterno = const Value.absent(),
+                Value<String?> apellidoMaterno = const Value.absent(),
                 Value<DateTime?> fechaNacimiento = const Value.absent(),
                 Value<String?> curp = const Value.absent(),
                 Value<String?> rfc = const Value.absent(),
-                Value<String> telefonoMovil = const Value.absent(),
-                Value<String> emailPersonal = const Value.absent(),
-                Value<String> fotoRutaLocal = const Value.absent(),
-                Value<String> fotoRutaRemota = const Value.absent(),
+                Value<String?> telefonoMovil = const Value.absent(),
+                Value<String?> emailPersonal = const Value.absent(),
+                Value<String?> fotoRutaLocal = const Value.absent(),
+                Value<String?> fotoRutaRemota = const Value.absent(),
                 Value<String?> genero = const Value.absent(),
-                Value<String> notas = const Value.absent(),
+                Value<String?> notas = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
@@ -12363,7 +12348,6 @@ typedef $$VentasTableCreateCompanionBuilder =
       required String uid,
       Value<String> distribuidoraOrigenUid,
       Value<String> distribuidoraUid,
-      Value<String> gerenteGrupoUid,
       Value<String> vendedorUid,
       Value<String> folioContrato,
       Value<String> modeloUid,
@@ -12385,7 +12369,6 @@ typedef $$VentasTableUpdateCompanionBuilder =
       Value<String> uid,
       Value<String> distribuidoraOrigenUid,
       Value<String> distribuidoraUid,
-      Value<String> gerenteGrupoUid,
       Value<String> vendedorUid,
       Value<String> folioContrato,
       Value<String> modeloUid,
@@ -12424,11 +12407,6 @@ class $$VentasTableFilterComposer
 
   ColumnFilters<String> get distribuidoraUid => $composableBuilder(
     column: $table.distribuidoraUid,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get gerenteGrupoUid => $composableBuilder(
-    column: $table.gerenteGrupoUid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12527,11 +12505,6 @@ class $$VentasTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get gerenteGrupoUid => $composableBuilder(
-    column: $table.gerenteGrupoUid,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get vendedorUid => $composableBuilder(
     column: $table.vendedorUid,
     builder: (column) => ColumnOrderings(column),
@@ -12625,11 +12598,6 @@ class $$VentasTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get gerenteGrupoUid => $composableBuilder(
-    column: $table.gerenteGrupoUid,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get vendedorUid => $composableBuilder(
     column: $table.vendedorUid,
     builder: (column) => column,
@@ -12716,7 +12684,6 @@ class $$VentasTableTableManager
                 Value<String> uid = const Value.absent(),
                 Value<String> distribuidoraOrigenUid = const Value.absent(),
                 Value<String> distribuidoraUid = const Value.absent(),
-                Value<String> gerenteGrupoUid = const Value.absent(),
                 Value<String> vendedorUid = const Value.absent(),
                 Value<String> folioContrato = const Value.absent(),
                 Value<String> modeloUid = const Value.absent(),
@@ -12736,7 +12703,6 @@ class $$VentasTableTableManager
                 uid: uid,
                 distribuidoraOrigenUid: distribuidoraOrigenUid,
                 distribuidoraUid: distribuidoraUid,
-                gerenteGrupoUid: gerenteGrupoUid,
                 vendedorUid: vendedorUid,
                 folioContrato: folioContrato,
                 modeloUid: modeloUid,
@@ -12758,7 +12724,6 @@ class $$VentasTableTableManager
                 required String uid,
                 Value<String> distribuidoraOrigenUid = const Value.absent(),
                 Value<String> distribuidoraUid = const Value.absent(),
-                Value<String> gerenteGrupoUid = const Value.absent(),
                 Value<String> vendedorUid = const Value.absent(),
                 Value<String> folioContrato = const Value.absent(),
                 Value<String> modeloUid = const Value.absent(),
@@ -12778,7 +12743,6 @@ class $$VentasTableTableManager
                 uid: uid,
                 distribuidoraOrigenUid: distribuidoraOrigenUid,
                 distribuidoraUid: distribuidoraUid,
-                gerenteGrupoUid: gerenteGrupoUid,
                 vendedorUid: vendedorUid,
                 folioContrato: folioContrato,
                 modeloUid: modeloUid,

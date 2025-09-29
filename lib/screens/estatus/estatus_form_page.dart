@@ -1,6 +1,3 @@
-// lib/database/estatus/ui/estatus_form_page.dart
-// ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';

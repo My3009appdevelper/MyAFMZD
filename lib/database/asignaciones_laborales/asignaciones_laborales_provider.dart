@@ -1,5 +1,8 @@
 // ignore_for_file: avoid_print
 
+import 'dart:io';
+
+import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
@@ -8,6 +11,9 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_dao.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_service.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_sync.dart';
+import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 /// ---------------------------------------------------------------------------
@@ -461,6 +467,238 @@ class AsignacionesLaboralesNotifier
       if (overlaps) return true;
     }
     return false;
+  }
+
+  // ====================== CSV: headers y helpers ======================
+
+  // ⚠️ Header estable (sin uid). Mismo orden en export/import.
+  static const List<String> _csvHeaderAsignaciones = [
+    'colaboradorUid',
+    'distribuidorUid',
+    'managerColaboradorUid',
+    'rol',
+    'puesto',
+    'nivel',
+    'fechaInicio', // ISO o dd/MM/yyyy (se guarda UTC)
+    'fechaFin', // ISO o dd/MM/yyyy (se guarda UTC) - opcional
+    'createdByUsuarioUid',
+    'closedByUsuarioUid',
+    'notas',
+    'createdAt', // ISO-UTC o vacío -> nowUtc
+    'updatedAt', // ISO-UTC o vacío -> nowUtc
+    'deleted', // true/false/1/0/yes/no/si
+    'isSynced', // true/false/1/0/yes/no/si
+  ];
+
+  String _fmtIso(DateTime? d) => d == null ? '' : d.toUtc().toIso8601String();
+
+  // ====================== CSV: EXPORTAR ======================
+
+  /// Exporta todas (o solo NO eliminadas) a CSV en String.
+  /// Orden: activas primero (fechaFin == null), luego fechaInicio desc.
+  Future<String> exportarCsvAsignaciones({
+    bool incluirEliminadas = false,
+  }) async {
+    final lista = incluirEliminadas
+        ? await _dao.obtenerTodosDrift()
+        : (await _dao.obtenerTodosDrift()).where((a) => !a.deleted).toList();
+
+    // activas primero, luego por fechaInicio desc
+    lista.sort((a, b) {
+      final actA = a.fechaFin == null;
+      final actB = b.fechaFin == null;
+      if (actA != actB) return actA ? -1 : 1;
+      return b.fechaInicio.compareTo(a.fechaInicio);
+    });
+
+    final rows = <List<dynamic>>[
+      ['uid', ..._csvHeaderAsignaciones],
+    ];
+
+    for (final a in lista) {
+      rows.add([
+        a.uid,
+        a.colaboradorUid,
+        a.distribuidorUid,
+        a.managerColaboradorUid,
+        a.rol,
+        a.puesto,
+        a.nivel,
+        _fmtIso(a.fechaInicio),
+        _fmtIso(a.fechaFin),
+        a.createdByUsuarioUid,
+        a.closedByUsuarioUid,
+        a.notas,
+        _fmtIso(a.createdAt),
+        _fmtIso(a.updatedAt),
+        a.deleted.toString(),
+        a.isSynced.toString(),
+      ]);
+    }
+
+    return toCsvStringWithBom(rows);
+  }
+
+  /// Genera el archivo .csv y devuelve la ruta exacta donde quedó.
+  Future<String> exportarCsvAArchivo({String? nombreArchivo}) async {
+    final csv = await exportarCsvAsignaciones();
+
+    final now = DateTime.now().toUtc();
+    final ts = now.toIso8601String().replaceAll(':', '-');
+    final fileName = (nombreArchivo?.trim().isNotEmpty == true)
+        ? nombreArchivo!.trim()
+        : 'asignaciones_$ts.csv';
+
+    Directory dir;
+    try {
+      final downloads = await getDownloadsDirectory();
+      dir = downloads ?? await getApplicationSupportDirectory();
+    } catch (_) {
+      dir = await getApplicationSupportDirectory();
+    }
+
+    final file = File(p.join(dir.path, fileName));
+    await file.create(recursive: true);
+    await file.writeAsString(csv, flush: true);
+    return file.path;
+  }
+
+  // ====================== CSV: IMPORTAR ======================
+
+  Future<(int insertados, int saltados)> importarCsvAsignaciones({
+    String? csvText,
+    List<int>? csvBytes,
+    bool ignorarDuplicados = false,
+  }) async {
+    assert(
+      csvText != null || csvBytes != null,
+      'Proporciona csvText o csvBytes',
+    );
+
+    final text = csvText ?? decodeCsvBytes(csvBytes!);
+    final rows = const CsvToListConverter(
+      shouldParseNumbers: false,
+      eol: '\n',
+    ).convert(text);
+    if (rows.isEmpty) return (0, 0);
+
+    // Header EXACTO
+    final header = rows.first.map((e) => (e ?? '').toString().trim()).toList();
+    final validHeader =
+        header.length == _csvHeaderAsignaciones.length &&
+        _csvHeaderAsignaciones.asMap().entries.every(
+          (e) => e.value == header[e.key],
+        );
+    if (!validHeader) {
+      throw const FormatException(
+        'Encabezado CSV inválido. Esperado: '
+        'colaboradorUid,distribuidorUid,managerColaboradorUid,rol,puesto,nivel,'
+        'fechaInicio,fechaFin,createdByUsuarioUid,closedByUsuarioUid,notas,'
+        'createdAt,updatedAt,deleted,isSynced',
+      );
+    }
+
+    final dataRows = rows.skip(1);
+    final nowUtc = DateTime.now().toUtc();
+
+    // ===== Índices de existentes (DB) para lookup rápido =====
+    String kDate(DateTime? d) => (d == null)
+        ? ''
+        : '${d.toUtc().year}-${d.toUtc().month.toString().padLeft(2, '0')}-${d.toUtc().day.toString().padLeft(2, '0')}';
+    String kKey(String colab, String dist, String rol, DateTime? ini) =>
+        '${colab.trim()}|${dist.trim()}|${rol.trim()}|${kDate(ini)}';
+
+    final existentes = await _dao.obtenerTodosDrift();
+    final byKey = <String, bool>{};
+    for (final a in existentes) {
+      if (a.deleted) continue;
+      byKey[kKey(a.colaboradorUid, a.distribuidorUid, a.rol, a.fechaInicio)] =
+          true;
+    }
+
+    // ===== Seen para evitar duplicado dentro del CSV =====
+    final seenKey = <String, bool>{};
+
+    int insertados = 0, saltados = 0;
+
+    await _dao.db.transaction(() async {
+      for (final r in dataRows) {
+        if (r.isEmpty) continue;
+
+        // Normaliza fila a header
+        final row = List<String>.generate(
+          _csvHeaderAsignaciones.length,
+          (i) => (i < r.length ? (r[i] ?? '').toString() : '').trim(),
+        );
+
+        final colaboradorUid = row[0];
+        final distribuidorUid = row[1];
+        final managerColaboradorUid = row[2];
+        final rol = row[3].isEmpty ? 'vendedor' : row[3];
+        final puesto = row[4];
+        final nivel = row[5];
+        final fInicio = parseDateFlexible(row[6]);
+        final fFin = parseDateFlexible(row[7]);
+        final createdByUsuarioUid = row[8];
+        final closedByUsuarioUid = row[9];
+        final notas = row[10];
+        final createdAt = parseDateFlexible(row[11]) ?? nowUtc;
+        final updatedAt = parseDateFlexible(row[12]) ?? nowUtc;
+        final deleted = parseBoolFlexible(row[13], defaultValue: false);
+        final isSynced = parseBoolFlexible(row[14], defaultValue: false);
+
+        // Clave para detectar duplicados básicos
+        final key = kKey(colaboradorUid, distribuidorUid, rol, fInicio);
+
+        if (!ignorarDuplicados) {
+          final dupDb = byKey[key] == true;
+          final dupCsv = seenKey[key] == true;
+
+          if (dupDb || dupCsv) {
+            saltados++;
+            seenKey[key] = true;
+            continue;
+          }
+        }
+
+        // Inserta SIEMPRE con uid nuevo
+        final uid = const Uuid().v4();
+        final comp = AsignacionesLaboralesCompanion(
+          uid: Value(uid),
+          colaboradorUid: Value(colaboradorUid),
+          distribuidorUid: Value(distribuidorUid),
+          managerColaboradorUid: Value(managerColaboradorUid),
+          rol: Value(rol),
+          puesto: Value(puesto),
+          nivel: Value(nivel),
+          fechaInicio: Value((fInicio ?? nowUtc).toUtc()),
+          fechaFin: fFin == null ? const Value.absent() : Value(fFin.toUtc()),
+          createdByUsuarioUid: Value(createdByUsuarioUid),
+          closedByUsuarioUid: closedByUsuarioUid.isEmpty
+              ? const Value('')
+              : Value(closedByUsuarioUid),
+          notas: Value(notas),
+          createdAt: Value(createdAt),
+          updatedAt: Value(updatedAt),
+          deleted: Value(deleted),
+          isSynced: Value(isSynced),
+        );
+
+        await _dao.upsertAsignacionLaboralDrift(comp);
+        insertados++;
+
+        // Actualiza índices para siguientes filas
+        byKey[key] = true;
+        seenKey[key] = true;
+      }
+    });
+
+    state = await _dao.obtenerTodosDrift();
+    print(
+      '[👔 MENSAJES ASIGNACIONES PROVIDER] CSV import → insertadas:$insertados | '
+      'saltadas:$saltados (ignorarDuplicados=$ignorarDuplicados)',
+    );
+    return (insertados, saltados);
   }
 
   // ---------------------------------------------------------------------------

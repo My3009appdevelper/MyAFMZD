@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
@@ -8,6 +9,7 @@ import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_p
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_form_page.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_tile.dart';
+import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
 
 class AsignacionesLaboralesScreen extends ConsumerStatefulWidget {
   const AsignacionesLaboralesScreen({super.key});
@@ -83,21 +85,20 @@ class _AsignacionesLaboralesScreenState
       ),
       floatingActionButton: _cargandoInicial
           ? null
-          : FloatingActionButton(
-              onPressed: () async {
-                final ok = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AsignacionLaboralFormPage(),
-                  ),
-                );
-                if (mounted && ok == true) {
-                  await _cargarAsignaciones();
-                }
-              },
-              tooltip: 'Nueva asignación',
-              child: const Icon(Icons.add),
+          : FabConMenuAnchor(
+              onAgregar: _abrirFormNuevaAsignacion,
+              onImportar: _importarAsignaciones,
+              onExportar: _exportarAsignaciones,
+              txtAgregar: 'Nueva asignación',
+              txtImportar: 'Importar desde CSV',
+              txtExportar: 'Exportar a CSV',
+              iconMain: Icons.apps,
+              iconAgregar: Icons.add,
+              iconImportar: Icons.upload,
+              iconExportar: Icons.download,
+              fabTooltip: 'Acciones de asignaciones',
             ),
+
       body: Column(
         children: [
           if (!_cargandoInicial) _buildFiltros(context, distribuidores),
@@ -267,6 +268,78 @@ class _AsignacionesLaboralesScreenState
       }
       if (mounted) {
         setState(() => _cargandoInicial = false);
+      }
+    }
+  }
+
+  Future<void> _abrirFormNuevaAsignacion() async {
+    final ok = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AsignacionLaboralFormPage(), // modo crear
+      ),
+    );
+    if (mounted && ok == true) {
+      await _cargarAsignaciones();
+    }
+  }
+
+  Future<void> _importarAsignaciones() async {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+      withData: true,
+    );
+    if (res == null || res.files.single.bytes == null) return;
+
+    context.loaderOverlay.show(progress: 'Importando asignaciones…');
+    try {
+      final (ins, skip) = await ref
+          .read(asignacionesLaboralesProvider.notifier)
+          .importarCsvAsignaciones(
+            csvBytes: res.files.single.bytes!,
+            // cambia a true si quieres subir TODO sin bloquear por duplicados:
+            ignorarDuplicados: false,
+          );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Importadas: $ins • Saltadas: $skip')),
+      );
+      await _cargarAsignaciones();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al importar CSV: $e')));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+    }
+  }
+
+  Future<void> _exportarAsignaciones() async {
+    context.loaderOverlay.show(progress: 'Generando CSV…');
+    try {
+      final path = await ref
+          .read(asignacionesLaboralesProvider.notifier)
+          .exportarCsvAArchivo();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('CSV guardado en:\n$path')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al exportar: $e')));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
       }
     }
   }

@@ -473,4 +473,14 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
     );
     return (insertados, saltados);
   }
+
+  String concentradoraDeOrSelf(String origenUid) {
+    final distos = _ref.read(distribuidoresProvider);
+    for (final d in distos) {
+      if (d.uid == origenUid) {
+        return (d.concentradoraUid.isNotEmpty) ? d.concentradoraUid : d.uid;
+      }
+    }
+    return origenUid;
+  }
 }

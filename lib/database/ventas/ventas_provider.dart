@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -78,6 +79,9 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
       // 6) Recargar desde Drift
       final actualizados = await _dao.obtenerTodasDrift();
       state = _ordenado(actualizados);
+      print(
+        '[💸 MENSAJES VENTAS PROVIDER] Recargado desde DB -> ${state.length} ventas',
+      );
     } catch (e) {
       print('[💸 MENSAJES VENTAS PROVIDER] ❌ Error al cargar ventas: $e');
     }
@@ -91,7 +95,6 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     // Identidad/relaciones
     required String distribuidoraOrigenUid,
     required String distribuidoraUid,
-    String gerenteGrupoUid = '',
     required String vendedorUid,
     String folioContrato = '',
     required String modeloUid,
@@ -120,7 +123,6 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
         uid: Value(uid),
         distribuidoraOrigenUid: Value(distribuidoraOrigenUid),
         distribuidoraUid: Value(distribuidoraUid),
-        gerenteGrupoUid: Value(gerenteGrupoUid),
         vendedorUid: Value(vendedorUid),
         folioContrato: Value(folioContrato),
         modeloUid: Value(modeloUid),
@@ -160,7 +162,6 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
 
     String? distribuidoraOrigenUid,
     String? distribuidoraUid,
-    String? gerenteGrupoUid,
     String? vendedorUid,
     String? folioContrato,
     String? modeloUid,
@@ -190,9 +191,6 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
         distribuidoraUid: distribuidoraUid == null
             ? const Value.absent()
             : Value(distribuidoraUid),
-        gerenteGrupoUid: gerenteGrupoUid == null
-            ? const Value.absent()
-            : Value(gerenteGrupoUid),
         vendedorUid: vendedorUid == null
             ? const Value.absent()
             : Value(vendedorUid),
@@ -415,21 +413,39 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
 
   // ===== CSV =====
 
-  // Header estable (sin uid, igual que colaboradores)
-  static const List<String> _csvHeaderVentas = [
+  // ⬇️ EXPORT mantiene TODO (incluye distribuidoraUid)
+  static const List<String> _csvHeaderVentasExport = [
     'distribuidoraOrigenUid',
-    'distribuidoraUid', // concentradora
-    'gerenteGrupoUid',
+    'distribuidoraUid', // concentradora (solo export)
     'vendedorUid',
     'folioContrato',
     'modeloUid',
     'estatusUid',
     'grupo',
     'integrante',
-    'fechaContrato', // ISO o dd/MM/yyyy
-    'fechaVenta', // ISO o dd/MM/yyyy
-    'mesVenta', // opcional, si vacío se calcula
-    'anioVenta', // opcional, si vacío se calcula
+    'fechaContrato',
+    'fechaVenta',
+    'mesVenta',
+    'anioVenta',
+    'createdAt',
+    'updatedAt',
+    'deleted',
+    'isSynced',
+  ];
+
+  // ⬇️ IMPORT ya NO espera distribuidoraUid
+  static const List<String> _csvHeaderVentasImport = [
+    'distribuidoraOrigenUid',
+    'vendedorUid',
+    'folioContrato',
+    'modeloUid',
+    'estatusUid',
+    'grupo',
+    'integrante',
+    'fechaContrato',
+    'fechaVenta',
+    'mesVenta',
+    'anioVenta',
     'createdAt',
     'updatedAt',
     'deleted',
@@ -444,7 +460,6 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
         ? await _dao.obtenerTodasDrift()
         : (await _dao.obtenerTodasDrift()).where((v) => !v.deleted).toList();
 
-    // orden: por fechaVenta desc, luego folio
     lista.sort((a, b) {
       final av = a.fechaVenta ?? DateTime.fromMillisecondsSinceEpoch(0);
       final bv = b.fechaVenta ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -454,14 +469,13 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     });
 
     final rows = <List<dynamic>>[
-      ['uid', ..._csvHeaderVentas],
+      ['uid', ..._csvHeaderVentasExport], // 👈 usa header de EXPORT
     ];
     for (final v in lista) {
       rows.add([
         v.uid,
         v.distribuidoraOrigenUid,
-        v.distribuidoraUid,
-        v.gerenteGrupoUid,
+        v.distribuidoraUid, // 👈 se exporta
         v.vendedorUid,
         v.folioContrato,
         v.modeloUid,
@@ -526,15 +540,17 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     ).convert(text);
     if (rows.isEmpty) return (0, 0);
 
-    // Header exacto
+    // ✅ Header de IMPORT (sin distribuidoraUid)
     final header = rows.first.map((e) => (e ?? '').toString().trim()).toList();
     final validHeader =
-        header.length == _csvHeaderVentas.length &&
-        _csvHeaderVentas.asMap().entries.every((e) => e.value == header[e.key]);
+        header.length == _csvHeaderVentasImport.length &&
+        _csvHeaderVentasImport.asMap().entries.every(
+          (e) => e.value == header[e.key],
+        );
     if (!validHeader) {
       throw const FormatException(
         'Encabezado CSV inválido. Esperado: '
-        'distribuidoraOrigenUid,distribuidoraUid,gerenteGrupoUid,vendedorUid,folioContrato,'
+        'distribuidoraOrigenUid,vendedorUid,folioContrato,'
         'modeloUid,estatusUid,grupo,integrante,fechaContrato,fechaVenta,mesVenta,anioVenta,'
         'createdAt,updatedAt,deleted,isSynced',
       );
@@ -543,29 +559,14 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     final dataRows = rows.skip(1);
     final nowUtc = DateTime.now().toUtc();
 
-    // === Índices DB (lookup rápido) ===
-    final existentes = await _dao.obtenerTodasDrift();
-    final byFolio = <String, bool>{};
-    final byCombo = <String, bool>{}; // key: vendedor|yyyy-mm-dd|modelo
-
-    String kFolio(String s) => s.trim().toLowerCase();
-    String kDate(DateTime? d) => (d == null)
-        ? ''
-        : '${d.toUtc().year}-${d.toUtc().month.toString().padLeft(2, '0')}-${d.toUtc().day.toString().padLeft(2, '0')}';
-    String kCombo(String vendedor, DateTime? fecha, String modelo) =>
-        '${vendedor.trim()}|${kDate(fecha)}|${modelo.trim()}';
-
-    for (final v in existentes) {
-      if (v.deleted) continue;
-      if (v.folioContrato.trim().isNotEmpty) {
-        byFolio[kFolio(v.folioContrato)] = true;
-      }
-      byCombo[kCombo(v.vendedorUid, v.fechaVenta, v.modeloUid)] = true;
-    }
-
-    // === Seen para evitar duplicados dentro del CSV ===
-    final seenFolio = <String, bool>{};
-    final seenCombo = <String, bool>{};
+    // ⚡️ Mapa origen -> concentradora (derivación en memoria)
+    final distos = _ref.read(distribuidoresProvider); // 👈 usa _ref
+    final concMap = <String, String>{
+      for (final d in distos)
+        d.uid: (d.concentradoraUid.isNotEmpty ? d.concentradoraUid : d.uid),
+    };
+    String _concentradoraDe(String origenUid) =>
+        concMap[origenUid] ?? origenUid;
 
     int ins = 0, skip = 0;
 
@@ -573,59 +574,42 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
       for (final r in dataRows) {
         if (r.isEmpty) continue;
 
+        // 👇 Genera fila con el largo exacto del HEADER DE IMPORT
         final row = List<String>.generate(
-          _csvHeaderVentas.length,
+          _csvHeaderVentasImport.length,
           (i) => (i < r.length ? (r[i] ?? '').toString() : '').trim(),
         );
 
+        // 👇 Índices NUEVOS (sin distribuidoraUid)
         final distribuidoraOrigenUid = row[0];
-        final distribuidoraUid = row[1];
-        final gerenteGrupoUid = row[2];
-        final vendedorUid = row[3];
-        final folioContrato = row[4];
-        final modeloUid = row[5];
-        final estatusUid = row[6];
-        final grupo = int.tryParse(row[7]) ?? 0;
-        final integrante = int.tryParse(row[8]) ?? 0;
-        final fechaContrato = parseDateFlexible(row[9]);
-        final fechaVenta = parseDateFlexible(row[10]);
-        final mesVentaCsv = int.tryParse(row[11]);
-        final anioVentaCsv = int.tryParse(row[12]);
-        final createdAt = parseDateFlexible(row[13]) ?? nowUtc;
-        final updatedAt = parseDateFlexible(row[14]) ?? nowUtc;
-        final deleted = parseBoolFlexible(row[15], defaultValue: false);
-        final isSynced = parseBoolFlexible(row[16], defaultValue: false);
+        final vendedorUid = row[1];
+        final folioContrato = row[2];
+        final modeloUid = row[3];
+        final estatusUid = row[4];
+        final grupo = int.tryParse(row[5]) ?? 0;
+        final integrante = int.tryParse(row[6]) ?? 0;
+        final fechaContrato = parseDateFlexible(row[7]);
+        final fechaVenta = parseDateFlexible(row[8]);
+        final mesVentaCsv = int.tryParse(row[9]);
+        final anioVentaCsv = int.tryParse(row[10]);
+        final createdAt = parseDateFlexible(row[11]) ?? nowUtc;
+        final updatedAt = parseDateFlexible(row[12]) ?? nowUtc;
+        final deleted = parseBoolFlexible(row[13], defaultValue: false);
+        final isSynced = parseBoolFlexible(row[14], defaultValue: false);
 
         // Completa mes/año si vienen vacíos y hay fechaVenta
         final mesVenta = mesVentaCsv ?? (fechaVenta?.toUtc().month);
         final anioVenta = anioVentaCsv ?? (fechaVenta?.toUtc().year);
 
-        // Reglas duplicado
-        final folioK = kFolio(folioContrato);
-        final comboK = kCombo(vendedorUid, fechaVenta, modeloUid);
-
-        final dupDb =
-            (folioK.isNotEmpty && byFolio[folioK] == true) ||
-            byCombo[comboK] == true;
-
-        final dupCsv =
-            (folioK.isNotEmpty && seenFolio[folioK] == true) ||
-            seenCombo[comboK] == true;
-
-        if (dupDb || dupCsv) {
-          skip++;
-          if (folioK.isNotEmpty) seenFolio[folioK] = true;
-          seenCombo[comboK] = true;
-          continue; // NO insertar
-        }
+        // 🔁 Derivar distribuidoraUid desde catálogo (concentradora)
+        final concUid = _concentradoraDe(distribuidoraOrigenUid);
 
         // Inserción SIEMPRE con uid nuevo
         final uid = const Uuid().v4();
         final comp = VentasCompanion(
           uid: Value(uid),
           distribuidoraOrigenUid: Value(distribuidoraOrigenUid),
-          distribuidoraUid: Value(distribuidoraUid),
-          gerenteGrupoUid: Value(gerenteGrupoUid),
+          distribuidoraUid: Value(concUid), // 👈 derivado, NO viene en CSV
           vendedorUid: Value(vendedorUid),
           folioContrato: Value(folioContrato),
           modeloUid: Value(modeloUid),
@@ -650,18 +634,179 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
 
         await _dao.upsertVentaDrift(comp);
         ins++;
-
-        // actualiza índices DB & CSV
-        if (folioK.isNotEmpty) {
-          byFolio[folioK] = true;
-          seenFolio[folioK] = true;
-        }
-        byCombo[comboK] = true;
-        seenCombo[comboK] = true;
       }
     });
 
     state = await _dao.obtenerTodasDrift();
+    print(
+      '[🧾 MENSAJES VENTAS PROVIDER] CSV import → insertadas:$ins | '
+      'saltadas:$skip (derivando distribuidoraUid por concentradora; header sin distribuidoraUid)',
+    );
     return (ins, skip);
+  }
+
+  // ===========================================================================
+  // AGRUPACIÓN / CONTEOS POR ASIGNACIÓN LABORAL
+  // ===========================================================================
+
+  /// Determina si una venta pertenece a la asignación dada:
+  /// - Coincide el colaborador (vendedorUid == colaboradorUid de la asignación)
+  /// - La fecha de referencia (fechaVenta || updatedAt) cae dentro del rango de la asignación
+  /// - Opcionalmente, coincide la distribuidora (venta.distribuidoraUid == asignacion.distribuidorUid)
+  bool _ventaPerteneceAAsignacion(
+    VentaDb v,
+    AsignacionLaboralDb asignacion, {
+    bool exigirDistribuidor = false,
+    bool incluirEliminadas = false,
+  }) {
+    if (!incluirEliminadas && v.deleted) return false;
+
+    // ✅ Relación venta ↔ asignación (vendedorUid es el UID de la asignación)
+    if (v.vendedorUid != asignacion.uid) return false;
+
+    // ✅ Distribuidora (opcional)
+    if (exigirDistribuidor) {
+      final distAsignacion = asignacion.distribuidorUid.trim();
+      if (distAsignacion.isNotEmpty && v.distribuidoraUid != distAsignacion) {
+        return false;
+      }
+    }
+
+    // ❌ Ya no se valida ningún rango de fechas de la asignación
+    return true;
+  }
+
+  /// Cuenta ventas del [mes] (1–12) y [anio] que pertenecen a la [asignacion].
+  /// - Si la venta trae mesVenta/anioVenta los usamos; si están nulos, derivamos de su fecha de referencia.
+  int contarVentasMesAsignacion({
+    required AsignacionLaboralDb asignacion,
+    required int anio,
+    required int mes,
+    bool exigirDistribuidor = false,
+    bool incluirEliminadas = false,
+  }) {
+    assert(mes >= 1 && mes <= 12, 'mes debe ser 1..12');
+
+    print(
+      '[📊 DEBUG contarMes] anio=$anio mes=$mes '
+      'asigUid=${asignacion.uid.substring(0, 8)} '
+      'distAsig="${asignacion.distribuidorUid}" '
+      'ventasEnMemoria=${state.length} exigirDist=$exigirDistribuidor inclElim=$incluirEliminadas '
+      '(solo fechaVenta, sin rango de asignación)',
+    );
+
+    int count = 0;
+    int revisadas = 0, consideradas = 0, descartadas = 0;
+
+    for (final v in state) {
+      revisadas++;
+
+      // Pertenencia por asignación/distribuidora, sin fechas
+      if (!_ventaPerteneceAAsignacion(
+        v,
+        asignacion,
+        exigirDistribuidor: exigirDistribuidor,
+        incluirEliminadas: incluirEliminadas,
+      )) {
+        descartadas++;
+        continue;
+      }
+
+      // ✅ Solo cuenta si hay fechaVenta
+      final f = v.fechaVenta;
+      if (f == null) {
+        descartadas++;
+        continue;
+      }
+
+      final vMes = v.mesVenta ?? f.toUtc().month;
+      final vAnio = v.anioVenta ?? f.toUtc().year;
+
+      if (vMes == mes && vAnio == anio) {
+        count++;
+        consideradas++;
+      } else {
+        descartadas++;
+      }
+    }
+
+    print(
+      '[📊 DEBUG contarMes] revisadas=$revisadas consideradas=$consideradas descartadas=$descartadas total=$count',
+    );
+    return count;
+  }
+
+  /// Serie de 12 meses (enero..diciembre) para un [anio] y una [asignacion].
+  /// Útil para graficar con fl_chart en el Perfil.
+  List<int> serieMensualAnioAsignacion({
+    required AsignacionLaboralDb asignacion,
+    required int anio,
+    bool exigirDistribuidor = false,
+    bool incluirEliminadas = false,
+  }) {
+    final salida = List<int>.filled(12, 0, growable: false);
+
+    print('────────────────────────────────────────────────');
+    print(
+      '[📈 DEBUG serie] anio=$anio asigUid=${asignacion.uid.substring(0, 8)} '
+      'distAsig="${asignacion.distribuidorUid}" ventasEnMemoria=${state.length} '
+      'exigirDist=$exigirDistribuidor inclElim=$incluirEliminadas '
+      '(solo fechaVenta, sin rango de asignación)',
+    );
+
+    int revisadas = 0,
+        consideradas = 0,
+        descartadasPorAsignacion = 0,
+        descartadasPorAnio = 0,
+        descartadasSinFechaVenta = 0,
+        sumadas = 0;
+
+    for (final v in state) {
+      revisadas++;
+
+      // Pertenencia por asignación/distribuidora, sin fechas
+      final pertenece = _ventaPerteneceAAsignacion(
+        v,
+        asignacion,
+        exigirDistribuidor: exigirDistribuidor,
+        incluirEliminadas: incluirEliminadas,
+      );
+      if (!pertenece) {
+        descartadasPorAsignacion++;
+        continue;
+      }
+
+      // ✅ Solo contar si hay fechaVenta
+      final f = v.fechaVenta;
+      if (f == null) {
+        descartadasSinFechaVenta++;
+        continue;
+      }
+
+      consideradas++;
+
+      final vAnio = v.anioVenta ?? f.toUtc().year;
+      if (vAnio != anio) {
+        descartadasPorAnio++;
+        continue;
+      }
+
+      final vMes = v.mesVenta ?? f.toUtc().month;
+      if (vMes >= 1 && vMes <= 12) {
+        salida[vMes - 1] += 1;
+        sumadas++;
+      }
+    }
+
+    print(
+      '[📈 DEBUG serie] revisadas=$revisadas consideradas=$consideradas '
+      'descartadasPorAsignacion=$descartadasPorAsignacion '
+      'descartadasPorAnio=$descartadasPorAnio '
+      'sinFechaVenta=$descartadasSinFechaVenta sumadas=$sumadas',
+    );
+    print('[📈 DEBUG serie] resultado=${salida.join(', ')}');
+    print('────────────────────────────────────────────────');
+
+    return salida;
   }
 }
