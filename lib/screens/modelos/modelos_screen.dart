@@ -69,28 +69,6 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
       ),
       length: tipos.isEmpty ? 1 : tipos.length, // evitar length=0
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Modelos',
-            style: tt.titleLarge?.copyWith(color: cs.onSurface),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          bottom: _cargandoInicial || tipos.isEmpty
-              ? null
-              : TabBar(
-                  isScrollable: true,
-                  indicatorColor: cs.onSurface,
-                  labelColor: cs.onSurface,
-                  unselectedLabelColor: cs.secondary.withOpacity(0.6),
-                  tabs: [
-                    for (final t in tipos)
-                      Tab(text: '$t (${grupos[t]?.length ?? 0})'),
-                  ],
-                ),
-        ),
         floatingActionButton: _cargandoInicial
             ? null
             : FabConMenuAnchor(
@@ -107,6 +85,16 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
             ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
             : Column(
                 children: [
+                  TabBar(
+                    isScrollable: true,
+                    indicatorColor: cs.onSurface,
+                    labelColor: cs.onSurface,
+                    unselectedLabelColor: cs.secondary.withOpacity(0.6),
+                    tabs: [
+                      for (final t in tipos)
+                        Tab(text: '$t (${grupos[t]?.length ?? 0})'),
+                    ],
+                  ),
                   _buildFiltros(context, anios, grupos['Todos']?.length ?? 0),
                   Expanded(
                     child: tipos.isEmpty

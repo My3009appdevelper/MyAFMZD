@@ -1,4 +1,3 @@
-// lib/widgets/my_timeline_chart.dart
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -220,6 +219,10 @@ class MyTimelineBarChart extends StatelessWidget {
                   reservedSize: 36,
                   interval: horizontalStep,
                   getTitlesWidget: (value, meta) {
+                    // Oculta el label del tope para que no se encime con el borde superior
+                    if (value >= maxY - 1e-6) {
+                      return const SizedBox.shrink();
+                    }
                     return SideTitleWidget(
                       meta: meta,
                       child: Text(

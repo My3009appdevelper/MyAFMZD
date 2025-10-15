@@ -11,6 +11,13 @@ class AsignacionesLaboralesService {
   AsignacionesLaboralesService(AppDatabase db)
     : supabase = Supabase.instance.client;
 
+  // ===== Añadido (alineado a Ventas/Colaboradores) =====
+  // Tamaños de bloque conservadores para móviles/redes lentas.
+  static const int _pageSize = 1000; // range() es inclusivo
+  static const int _uidsChunk = 200; // evita 414 al usar inFilter
+  String _iso(DateTime d) => d.toUtc().toIso8601String();
+  // =====================================================
+
   // ---------------------------------------------------------------------------
   // 📌 COMPROBAR ACTUALIZACIONES ONLINE
   // ---------------------------------------------------------------------------
@@ -44,14 +51,38 @@ class AsignacionesLaboralesService {
   // ---------------------------------------------------------------------------
   Future<List<Map<String, dynamic>>> obtenerTodosOnline() async {
     print(
-      '[👔 MENSAJES ASIGNACIONES SERVICE] 📥 Obteniendo TODAS las asignaciones online…',
+      '[👔 MENSAJES ASIGNACIONES SERVICE] 📥 Obteniendo TODAS las asignaciones online (paginado)…',
     );
+    // ===== Modificado: paginado con range() =====
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase.from('asignaciones_laborales').select();
-      print('[👔 MENSAJES ASIGNACIONES SERVICE] ✅ ${res.length} filas');
-      return res;
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1; // range es inclusivo
+        final page = await supabase
+            .from('asignaciones_laborales')
+            .select()
+            .order('updated_at', ascending: true) // orden estable para paginar
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[👔 MENSAJES ASIGNACIONES SERVICE]   Página $from..$to -> ${batch.length} filas',
+        );
+        if (batch.length < _pageSize) break; // última página
+        from += _pageSize;
+      }
+
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ✅ Total acumulado: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error obtener todos: $e');
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error obtener todos (paginado): $e',
+      );
       rethrow;
     }
   }
@@ -61,17 +92,40 @@ class AsignacionesLaboralesService {
     DateTime ultimaSync,
   ) async {
     print(
-      '[👔 MENSAJES ASIGNACIONES SERVICE] 📥 Filtrando > $ultimaSync (UTC)',
+      '[👔 MENSAJES ASIGNACIONES SERVICE] 📥 Filtrando > $ultimaSync (UTC, paginado)…',
     );
+    // ===== Modificado: paginado con range() =====
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase
-          .from('asignaciones_laborales')
-          .select()
-          .gt('updated_at', ultimaSync.toUtc().toIso8601String());
-      print('[👔 MENSAJES ASIGNACIONES SERVICE] ✅ ${res.length} filtradas');
-      return res;
+      final ts = _iso(ultimaSync);
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1;
+        final page = await supabase
+            .from('asignaciones_laborales')
+            .select()
+            .gt('updated_at', ts)
+            .order('updated_at', ascending: true)
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[👔 MENSAJES ASIGNACIONES SERVICE]   Página $from..$to -> ${batch.length} filtradas',
+        );
+        if (batch.length < _pageSize) break;
+        from += _pageSize;
+      }
+
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ✅ Filtradas acumuladas: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error filtradas: $e');
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error filtradas (paginado): $e',
+      );
       rethrow;
     }
   }
@@ -80,13 +134,38 @@ class AsignacionesLaboralesService {
   // 📌 HEADS (uid, updated_at) → diff barato
   // ---------------------------------------------------------------------------
   Future<List<Map<String, dynamic>>> obtenerCabecerasOnline() async {
+    // ===== Modificado: paginado con range() =====
+    print(
+      '[👔 MENSAJES ASIGNACIONES SERVICE] 📥 Obteniendo cabeceras (paginado)…',
+    );
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase
-          .from('asignaciones_laborales')
-          .select('uid, updated_at');
-      return res;
+      int from = 0;
+      while (true) {
+        final to = from + _pageSize - 1;
+        final page = await supabase
+            .from('asignaciones_laborales')
+            .select('uid, updated_at')
+            .order('updated_at', ascending: true)
+            .range(from, to);
+
+        final batch = List<Map<String, dynamic>>.from(page);
+        out.addAll(batch);
+
+        print(
+          '[👔 MENSAJES ASIGNACIONES SERVICE]   Heads $from..$to -> ${batch.length}',
+        );
+        if (batch.length < _pageSize) break;
+        from += _pageSize;
+      }
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ✅ Heads acumuladas: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error en cabeceras: $e');
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error en cabeceras (paginado): $e',
+      );
       rethrow;
     }
   }
@@ -98,14 +177,38 @@ class AsignacionesLaboralesService {
     List<String> uids,
   ) async {
     if (uids.isEmpty) return [];
+    // ===== Modificado: troceo en chunks para evitar 414 =====
+    print(
+      '[👔 MENSAJES ASIGNACIONES SERVICE] 📥 Fetch por UIDs (${uids.length}) en lotes…',
+    );
+    final out = <Map<String, dynamic>>[];
     try {
-      final res = await supabase
-          .from('asignaciones_laborales')
-          .select()
-          .inFilter('uid', uids);
-      return res;
+      for (int i = 0; i < uids.length; i += _uidsChunk) {
+        final chunk = uids.sublist(
+          i,
+          (i + _uidsChunk > uids.length) ? uids.length : i + _uidsChunk,
+        );
+
+        final res = await supabase
+            .from('asignaciones_laborales')
+            .select()
+            .inFilter('uid', chunk)
+            .order('updated_at', ascending: true);
+
+        final batch = List<Map<String, dynamic>>.from(res);
+        out.addAll(batch);
+        print(
+          '[👔 MENSAJES ASIGNACIONES SERVICE]   Chunk $i..${i + chunk.length - 1} -> ${batch.length}',
+        );
+      }
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ✅ Total por UIDs: ${out.length}',
+      );
+      return out;
     } catch (e) {
-      print('[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error fetch por UIDs: $e');
+      print(
+        '[👔 MENSAJES ASIGNACIONES SERVICE] ❌ Error fetch por UIDs (lotes): $e',
+      );
       rethrow;
     }
   }
@@ -245,6 +348,7 @@ class AsignacionesLaboralesService {
           .isFilter('fecha_fin', null)
           .eq('deleted', false);
 
+      // Mantengo la lógica existente (sin paginar porque suelen ser pocas).
       final res = rol == null || rol.isEmpty ? await q : await q.eq('rol', rol);
       return res;
     } catch (e) {

@@ -55,36 +55,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         : null;
 
     return _cargandoInicial
-        ? Scaffold(
-            appBar: AppBar(
-              title: Text(
-                "Reportes Mensuales",
-                style: textTheme.titleLarge?.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              centerTitle: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-            ),
-            body: const SizedBox.shrink(),
-          )
+        ? Scaffold(body: const SizedBox.shrink())
         : (tipos.isEmpty
               // ====== Estado sin tipos: mostramos SIEMPRE filtros arriba ======
               ? Scaffold(
-                  appBar: AppBar(
-                    title: Text(
-                      "Reportes Mensuales",
-                      style: textTheme.titleLarge?.copyWith(
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    centerTitle: true,
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    scrolledUnderElevation: 0,
-                  ),
                   body: Column(
                     children: [
                       // 👇 Filtros SIEMPRE visibles (con fallback de meses)
@@ -122,30 +96,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               : DefaultTabController(
                   length: tipos.length,
                   child: Scaffold(
-                    appBar: AppBar(
-                      title: Text(
-                        "Reportes Mensuales",
-                        style: textTheme.titleLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      centerTitle: true,
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      scrolledUnderElevation: 0,
-                      bottom: TabBar(
-                        isScrollable: true,
-                        indicatorColor: colorScheme.onSurface,
-                        labelColor: colorScheme.onSurface,
-                        unselectedLabelColor: colorScheme.secondary.withOpacity(
-                          0.6,
-                        ),
-                        tabs: tipos.map((t) {
-                          final count = (grupos[t] ?? const []).length;
-                          return Tab(text: '$t ($count)');
-                        }).toList(),
-                      ),
-                    ),
                     floatingActionButton: FloatingActionButton(
                       onPressed: () async {
                         final resultado = await Navigator.push(
@@ -163,6 +113,17 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                     ),
                     body: Column(
                       children: [
+                        TabBar(
+                          isScrollable: true,
+                          indicatorColor: colorScheme.onSurface,
+                          labelColor: colorScheme.onSurface,
+                          unselectedLabelColor: colorScheme.secondary
+                              .withOpacity(0.6),
+                          tabs: tipos.map((t) {
+                            final count = (grupos[t] ?? const []).length;
+                            return Tab(text: '$t ($count)');
+                          }).toList(),
+                        ),
                         // 👇 SIEMPRE visible (antes estaba condicionado)
                         _buildFiltroMes(mesesUI, valueUI, totalMes),
 
@@ -222,8 +183,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     String? seleccionado,
     int totalMes,
   ) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Row(
@@ -243,11 +202,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
             items: meses
                 .map((mes) => DropdownMenuItem(value: mes, child: Text(mes)))
                 .toList(),
-          ),
-          const SizedBox(width: 12),
-          Chip(
-            label: Text('Total reportes: $totalMes'),
-            backgroundColor: colorScheme.surface,
           ),
           const SizedBox(width: 12),
           _buildAccionDescarga(),

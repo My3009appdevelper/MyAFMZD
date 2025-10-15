@@ -1,3 +1,4 @@
+// lib/widgets/my_picker_search_field.dart
 import 'package:flutter/material.dart';
 
 typedef ItemAsString<T extends Object> = String Function(T item);
@@ -49,7 +50,7 @@ class _MyPickerSearchFieldState<T extends Object>
   late final TextEditingController _textCtrl;
   final FocusNode _focusNode = FocusNode();
   T? _selected;
-  FormFieldState<T?>? _formState; // ← NUEVO
+  FormFieldState<T?>? _formState;
 
   @override
   void initState() {
@@ -65,6 +66,40 @@ class _MyPickerSearchFieldState<T extends Object>
     _textCtrl.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  // Normaliza para búsqueda y comparación: minúsculas + sin tildes
+  String _fold(String s) {
+    var out = s.toLowerCase();
+    const repl = {
+      'á': 'a',
+      'à': 'a',
+      'ä': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ë': 'e',
+      'ê': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'ï': 'i',
+      'î': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'ö': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'ü': 'u',
+      'û': 'u',
+      'ñ': 'n',
+      'ç': 'c',
+    };
+    repl.forEach((k, v) => out = out.replaceAll(k, v));
+    out = out.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return out;
   }
 
   @override
@@ -125,7 +160,7 @@ class _MyPickerSearchFieldState<T extends Object>
                             setState(() => _selected = null);
                             _textCtrl.clear();
                             _formState?.didChange(null);
-                            Form.of(context).validate();
+                            Form.maybeOf(context)?.validate();
                             widget.onChanged?.call(null);
                             _focusNode.unfocus();
                           },
@@ -162,11 +197,12 @@ class _MyPickerSearchFieldState<T extends Object>
         final query = ValueNotifier<String>('');
 
         List<T> filtered(String q) {
-          final t = q.trim().toLowerCase();
+          final t = _fold(q);
           if (t.isEmpty) return widget.items;
-          return widget.items
-              .where((e) => widget.itemAsString(e).toLowerCase().contains(t))
-              .toList();
+          return widget.items.where((e) {
+            final label = widget.itemAsString(e);
+            return _fold(label).contains(t);
+          }).toList();
         }
 
         return SizedBox(
@@ -254,10 +290,10 @@ class _MyPickerSearchFieldState<T extends Object>
       _textCtrl.selection = TextSelection.collapsed(
         offset: _textCtrl.text.length,
       );
-      _focusNode.unfocus(); // quita el foco del campo
+      _focusNode.unfocus();
     });
     _formState?.didChange(result);
-    Form.of(ctx).validate();
+    Form.maybeOf(ctx)?.validate();
     widget.onChanged?.call(result);
   }
 }

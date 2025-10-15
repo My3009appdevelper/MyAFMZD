@@ -9,7 +9,7 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_dao.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_service.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_sync.dart';
-import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
+import 'package:myafmzd/widgets/CSV/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';

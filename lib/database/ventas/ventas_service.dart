@@ -184,7 +184,7 @@ class VentasService {
         final batch = List<Map<String, dynamic>>.from(res);
         out.addAll(batch);
         print(
-          '[💸 MENSAJES VENTAS SERVICE]   Chunk ${i}..${i + chunk.length - 1} -> ${batch.length}',
+          '[💸 MENSAJES VENTAS SERVICE]   Chunk $i..${i + chunk.length - 1} -> ${batch.length}',
         );
       }
 

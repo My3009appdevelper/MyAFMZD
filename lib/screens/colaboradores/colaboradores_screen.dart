@@ -8,6 +8,7 @@ import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_form_page.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_tile.dart';
 import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
+import 'package:myafmzd/widgets/my_text_field.dart';
 
 class ColaboradoresScreen extends ConsumerStatefulWidget {
   const ColaboradoresScreen({super.key});
@@ -67,16 +68,6 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
     final filtrados = _aplicarFiltro(colaboradores, _query);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Colaboradores",
-          style: tt.titleLarge?.copyWith(color: cs.onSurface),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
       floatingActionButton: FabConMenuAnchor(
         onAgregar: _abrirFormNuevoColaborador,
         onImportar: _importarColaboradores,
@@ -97,26 +88,16 @@ class _ColaboradoresScreenState extends ConsumerState<ColaboradoresScreen> {
           // === 🔎 Barra de búsqueda ===
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: TextField(
+            child: MyTextField(
               controller: _searchCtrl,
               textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                labelText: 'Buscar colaborador',
-                hintText: 'Nombre, teléfono, correo, CURP o RFC',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: (_query.isNotEmpty)
-                    ? IconButton(
-                        tooltip: 'Limpiar búsqueda',
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          FocusScope.of(context).unfocus();
-                        },
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
+              showClearButton: _query.isNotEmpty,
+              labelText: 'Buscar colaborador',
+              hintText: 'Nombre, teléfono, correo, CURP o RFC',
+              onClear: () {
+                _searchCtrl.clear();
+                setState(() => _query = '');
+              },
               onSubmitted: (_) => FocusScope.of(context).unfocus(),
             ),
           ),

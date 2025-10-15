@@ -4,6 +4,7 @@ import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_p
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/estatus/estatus_provider.dart';
+import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
@@ -14,6 +15,7 @@ import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_screen.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_screen.dart';
 import 'package:myafmzd/screens/estatus/estatus_screen.dart';
+import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_screen.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
 import 'package:myafmzd/screens/productos/productos_screen.dart';
 import 'package:myafmzd/widgets/my_app_drawer.dart';
@@ -34,7 +36,8 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
     AsignacionesLaboralesScreen(), // 2
     UsuariosScreen(), // 3
     ProductosScreen(), // 4
-    EstatusScreen(), // 5
+    GruposDistribuidoresScreen(), // 5
+    EstatusScreen(), // 6
   ];
 
   @override
@@ -45,6 +48,9 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
       await ref.read(modelosProvider.notifier).cargarOfflineFirst();
       await ref.read(modeloImagenesProvider.notifier).cargarOfflineFirst();
       await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+      await ref
+          .read(gruposDistribuidoresProvider.notifier)
+          .cargarOfflineFirst();
       await ref.read(reporteProvider.notifier).cargarOfflineFirst();
       await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
       await ref
@@ -62,11 +68,46 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Lista de items del BottomNavigationBar
+    final items = [
+      BottomNavigationBarItem(
+        backgroundColor: colorScheme.primary,
+        icon: Icon(Icons.group),
+        label: 'Colaboradores',
+      ),
+      BottomNavigationBarItem(
+        backgroundColor: colorScheme.primary,
+        icon: Icon(Icons.assignment_ind),
+        label: 'Asignaciones',
+      ),
+      BottomNavigationBarItem(
+        backgroundColor: colorScheme.primary,
+        icon: Icon(Icons.manage_accounts),
+        label: 'Usuarios',
+      ),
+      BottomNavigationBarItem(
+        backgroundColor: colorScheme.primary,
+        icon: Icon(Icons.inventory_2),
+        label: 'Productos',
+      ),
+      BottomNavigationBarItem(
+        backgroundColor: colorScheme.primary,
+        icon: Icon(Icons.groups),
+        label: 'Grupos Distribuidores',
+      ),
+      BottomNavigationBarItem(
+        backgroundColor: colorScheme.primary,
+        icon: Icon(Icons.label_important_outline),
+        label: 'Estatus',
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: Center(
           child: Text(
-            "Admin MyAFMZD",
+            // ⬇️ Título dinámico según pestaña activa
+            items[_indiceActual].label ?? 'Admin MyAFMZD',
             style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary),
           ),
         ),
@@ -100,37 +141,7 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
           color: colorScheme.secondary,
         ),
         onTap: (index) => setState(() => _indiceActual = index),
-        items: [
-          // 1 Colaboradores
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.group),
-            label: 'Colaboradores',
-          ),
-          // 2 Asignaciones
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.assignment_ind),
-            label: 'Asignaciones',
-          ),
-          // 3 Usuarios
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.manage_accounts),
-            label: 'Usuarios',
-          ),
-          // 4 Productos
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.inventory_2),
-            label: 'Productos',
-          ),
-          BottomNavigationBarItem(
-            backgroundColor: colorScheme.primary,
-            icon: Icon(Icons.label_important_outline),
-            label: 'Estatus',
-          ),
-        ],
+        items: items,
       ),
     );
   }

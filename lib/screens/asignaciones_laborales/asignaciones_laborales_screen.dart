@@ -10,6 +10,7 @@ import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_form_page.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_tile.dart';
 import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
+import 'package:myafmzd/widgets/my_text_field.dart';
 
 class AsignacionesLaboralesScreen extends ConsumerStatefulWidget {
   const AsignacionesLaboralesScreen({super.key});
@@ -23,6 +24,10 @@ class _AsignacionesLaboralesScreenState
     extends ConsumerState<AsignacionesLaboralesScreen> {
   bool _cargandoInicial = true;
 
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+  Timer? _debounce;
+
   // Filtros
   bool _soloActivas = true; // Activas (true) / Inactivas (false)
   String _filtroDistribuidorUid = ''; // vacío => todos
@@ -34,12 +39,27 @@ class _AsignacionesLaboralesScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarAsignaciones();
     });
+
+    // Listener con debounce para la búsqueda
+    _searchCtrl.addListener(() {
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 250), () {
+        if (!mounted) return;
+        setState(() => _query = _searchCtrl.text);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
 
     // Reacciona a cambios de conectividad (con guard)
     ref.listen<bool>(connectivityProvider, (prev, next) async {
@@ -73,16 +93,6 @@ class _AsignacionesLaboralesScreenState
               );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Asignaciones laborales",
-          style: tt.titleLarge?.copyWith(color: cs.onSurface),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
       floatingActionButton: _cargandoInicial
           ? null
           : FabConMenuAnchor(
@@ -165,24 +175,6 @@ class _AsignacionesLaboralesScreenState
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Column(
         children: [
-          // Línea 1: chips Activas / Inactivas
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ChoiceChip(
-                label: const Text('Activas'),
-                selected: _soloActivas,
-                onSelected: (v) => setState(() => _soloActivas = true),
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Inactivas'),
-                selected: !_soloActivas,
-                onSelected: (v) => setState(() => _soloActivas = false),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
           // Línea 2: solo filtro por Distribuidor
           Row(
             children: [
@@ -217,6 +209,24 @@ class _AsignacionesLaboralesScreenState
                 ),
               ),
             ],
+          ),
+          // === 🔎 Barra de búsqueda ===
+          const SizedBox(height: 8),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: MyTextField(
+              controller: _searchCtrl,
+              textInputAction: TextInputAction.search,
+              showClearButton: _query.isNotEmpty,
+              labelText: 'Buscar colaborador',
+              hintText: 'Nombre, teléfono, correo, CURP o RFC',
+              onClear: () {
+                _searchCtrl.clear();
+                setState(() => _query = '');
+              },
+              onSubmitted: (_) => FocusScope.of(context).unfocus(),
+            ),
           ),
         ],
       ),

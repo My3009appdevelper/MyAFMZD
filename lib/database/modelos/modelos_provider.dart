@@ -10,7 +10,7 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_dao.dart';
 import 'package:myafmzd/database/modelos/modelos_service.dart';
 import 'package:myafmzd/database/modelos/modelos_sync.dart';
-import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
+import 'package:myafmzd/widgets/CSV/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -492,10 +492,23 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
       final pMaxOk = precioMax == null || m.precioBase <= precioMax;
       return tipoOk && transOk && activoOk && anioOk && pMinOk && pMaxOk;
     }).toList()..sort((a, b) {
-      // Activos primero, luego por modelo y año desc
+      // 1️⃣ Activos primero
       if (a.activo != b.activo) return a.activo ? -1 : 1;
-      final cmp = a.modelo.compareTo(b.modelo);
-      return cmp != 0 ? cmp : b.anio.compareTo(a.anio);
+
+      // 2️⃣ Orden alfabético por claveCatalogo
+      final catCmp = a.claveCatalogo.toLowerCase().compareTo(
+        b.claveCatalogo.toLowerCase(),
+      );
+      if (catCmp != 0) return catCmp;
+
+      // 3️⃣ Luego por modelo (alfabético)
+      final modeloCmp = a.modelo.toLowerCase().compareTo(
+        b.modelo.toLowerCase(),
+      );
+      if (modeloCmp != 0) return modeloCmp;
+
+      // 4️⃣ Finalmente por año (descendente)
+      return b.anio.compareTo(a.anio);
     });
   }
 
@@ -535,8 +548,15 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
 
     lista.sort((a, b) {
       if (a.activo != b.activo) return a.activo ? -1 : 1;
-      final cmp = a.modelo.compareTo(b.modelo);
-      return (cmp != 0) ? cmp : b.anio.compareTo(a.anio);
+      final catCmp = a.claveCatalogo.toLowerCase().compareTo(
+        b.claveCatalogo.toLowerCase(),
+      );
+      if (catCmp != 0) return catCmp;
+      final modeloCmp = a.modelo.toLowerCase().compareTo(
+        b.modelo.toLowerCase(),
+      );
+      if (modeloCmp != 0) return modeloCmp;
+      return b.anio.compareTo(a.anio);
     });
 
     final rows = <List<dynamic>>[

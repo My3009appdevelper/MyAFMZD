@@ -57,8 +57,13 @@ class _DistribuidorItemTileState extends ConsumerState<DistribuidorItemTile> {
       key: ValueKey(d.uid),
       leading: const Icon(Icons.location_city),
       title: Text(d.nombre),
-      subtitle: Text(
-        '${grupo.nombre} · ${d.direccion.isEmpty ? "—" : d.direccion}',
+      subtitle: Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(
+          label: Text(grupo.nombre, style: const TextStyle(fontSize: 12)),
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+        ),
       ),
       trailing: d.activo
           ? const Icon(Icons.check_circle, color: Colors.green)

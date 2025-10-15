@@ -1,4 +1,3 @@
-// lib/widgets/my_timeline_line_chart.dart
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -42,15 +41,21 @@ class MyTimelineLineChart extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     final maxVal = (serie.isEmpty ? 0 : serie.reduce((a, b) => a > b ? a : b));
-    final baseMaxY = (maxVal == 0) ? 1.0 : (maxVal + 1).toDouble();
-
     if (maxVal == 0) return _EmptyState(year: year);
 
-    // headroom para labelsTop (que no se corten las etiquetas arriba)
-    final headroom = style == TimelineLineChartStyle.labelsTop
-        ? _labelsTopHeadroom(baseMaxY)
+    // ===== Top padding “bonito” para evitar clipping y superposiciones =====
+    // - step: intervalo de grilla “agradable”
+    // - yCeil: siguiente tick por encima del máximo
+    // - maxY: un tick adicional de aire (y otro si labelsTop)
+    final baseMaxY = maxVal.toDouble();
+    final step = _niceStep(baseMaxY);
+    double yCeil = ((baseMaxY / step).ceil() * step).toDouble();
+    // si cae EXACTO en el tick, sube un paso para dejar aire
+    if ((yCeil - baseMaxY).abs() < 1e-6) yCeil += step;
+    final headroomForLabels = (style == TimelineLineChartStyle.labelsTop)
+        ? step
         : 0.0;
-    final maxY = baseMaxY + headroom;
+    final maxY = yCeil + step + headroomForLabels;
 
     final now = DateTime.now();
     final currentMonthIdx = now.year == year ? (now.month - 1) : -1;
@@ -141,7 +146,6 @@ class MyTimelineLineChart extends StatelessWidget {
     ];
 
     // ===== Touch / Tooltips =====
-    // labelsTop: etiquetas fijas en cada punto válido + hover/tap
     final lineTouchData = (style == TimelineLineChartStyle.labelsTop)
         ? LineTouchData(
             enabled: true,
@@ -199,7 +203,7 @@ class MyTimelineLineChart extends StatelessWidget {
           );
 
     // ===== Titles / Grid / Border =====
-    final horizontalStep = _niceStep(maxY);
+    final horizontalStep = step; // usa el mismo step “bonito”
 
     return AspectRatio(
       aspectRatio: aspectRatio,
@@ -209,8 +213,9 @@ class MyTimelineLineChart extends StatelessWidget {
         ),
         child: LineChart(
           LineChartData(
-            minX: 0,
-            maxX: 11,
+            // 👇 aire a los lados para que enero/diciembre no “peguen” con el borde
+            minX: -0.5,
+            maxX: 11.5,
             minY: 0,
             maxY: maxY,
             lineBarsData: lineBarsData,
@@ -242,6 +247,10 @@ class MyTimelineLineChart extends StatelessWidget {
                   reservedSize: 36,
                   interval: horizontalStep,
                   getTitlesWidget: (value, meta) {
+                    // Oculta la etiqueta del tope para que no se encime con el borde superior
+                    if (value >= maxY - 1e-6) {
+                      return const SizedBox.shrink();
+                    }
                     return SideTitleWidget(
                       meta: meta,
                       child: Text(
@@ -259,7 +268,7 @@ class MyTimelineLineChart extends StatelessWidget {
                   showTitles: true,
                   reservedSize: compact ? 22 : 28,
                   getTitlesWidget: (value, meta) {
-                    final i = value.toInt();
+                    final i = value.round();
                     if (i < 0 || i > 11) return const SizedBox.shrink();
                     return SideTitleWidget(
                       meta: meta,
@@ -460,11 +469,6 @@ class MyTimelineLineChart extends StatelessWidget {
     if (maxY <= 20) return 5;
     if (maxY <= 50) return 10;
     return 20;
-  }
-
-  double _labelsTopHeadroom(double currentMaxY) {
-    final step = _niceStep(currentMaxY);
-    return step.toDouble(); // un intervalo de la grilla como aire superior
   }
 }
 

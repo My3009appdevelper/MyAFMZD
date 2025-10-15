@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
+import 'package:myafmzd/screens/ventas/ventas_form_page.dart';
 import 'package:myafmzd/widgets/my_sheet_action.dart';
 import 'package:myafmzd/widgets/my_show_detail_dialog.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
@@ -110,8 +111,28 @@ class _VentaItemTileState extends ConsumerState<VentaItemTile> {
           label: 'Ver detalles',
           onTap: () => _mostrarDetalles(context, v),
         ),
+        SheetAction(
+          // 👇 NUEVO
+          icon: Icons.edit,
+          label: 'Editar',
+          onTap: () => _abrirFormularioEdicion(context, v),
+        ),
       ],
     );
+  }
+
+  Future<void> _abrirFormularioEdicion(
+    BuildContext context,
+    VentaDb venta,
+  ) async {
+    final resultado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => VentasFormPage(ventaEditar: venta)),
+    );
+
+    if (resultado == true && widget.onActualizado != null) {
+      widget.onActualizado!();
+    }
   }
 
   void _mostrarDetalles(BuildContext context, VentaDb v) {

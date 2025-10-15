@@ -80,7 +80,7 @@ class _ModeloItemTileState extends ConsumerState<ModeloItemTile> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${modeloActual.modelo} · ${modeloActual.descripcion}',
+                      '${modeloActual.claveCatalogo} · ${modeloActual.modelo} · ${modeloActual.descripcion}',
                       style: textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

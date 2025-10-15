@@ -142,16 +142,6 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Distribuidores',
-          style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
       floatingActionButton: FabConMenuAnchor(
         onAgregar: _abrirFormNuevoDistribuidor, // si ya lo tienes
         onImportar: _importarDistribuidores,
@@ -171,7 +161,8 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  //padding en todo
+                  padding: const EdgeInsets.all(16.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -238,11 +229,13 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                   ),
                 ),
 
-                SizedBox(
-                  height: 250,
-                  child: Stack(
-                    children: [
-                      FlutterMap(
+                ExpansionTile(
+                  title: const Text('Mapa de distribuidores'),
+                  initiallyExpanded: true,
+                  children: [
+                    SizedBox(
+                      height: 250,
+                      child: FlutterMap(
                         mapController: _mapController,
                         options: MapOptions(
                           initialCenter: const LatLng(23.6345, -102.5528),
@@ -262,7 +255,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                                 ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
                                 : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                             userAgentPackageName: 'com.example.myafmzd',
-                            tileProvider: NetworkTileProvider(), // const
+                            tileProvider: NetworkTileProvider(),
                             retinaMode: RetinaMode.isHighDensity(context),
                             keepBuffer: 4,
                           ),
@@ -276,9 +269,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                                     (e) => e.$1 == marker,
                                   );
                                   if (match.isEmpty) {
-                                    // El marker que intenta mostrar el popup ya no existe con el filtro actual.
-                                    // No rendereamos nada -> el popup “desaparece”.
-                                    return const SizedBox.shrink(); // 👈 en vez de “Desconocido”
+                                    return const SizedBox.shrink();
                                   }
                                   final data = match.first.$2;
                                   return DistribuidorPopup(distribuidor: data);
@@ -292,8 +283,8 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
 
                 Expanded(

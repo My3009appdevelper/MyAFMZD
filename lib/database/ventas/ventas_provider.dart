@@ -7,7 +7,8 @@ import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
-import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
+import 'package:myafmzd/database/syncState/sync_state_dao.dart';
+import 'package:myafmzd/widgets/CSV/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -35,12 +36,17 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     : _dao = VentasDao(db),
       _servicio = VentasService(db),
       _sync = VentasSync(db),
+      _syncDao = SyncStateDao(db),
+
       super([]);
 
   final Ref _ref;
   final VentasDao _dao;
   final VentasService _servicio;
   final VentasSync _sync;
+  final SyncStateDao _syncDao;
+
+  static const _resourceVentas = 'ventas';
 
   bool _hayInternet = true;
   bool get hayInternet => _hayInternet;
@@ -87,24 +93,16 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // ➕ Crear venta (LOCAL → isSynced=false; el push la sube)
-  //    - Calcula mes/año desde fechaVenta si vienen nulos
-  // ---------------------------------------------------------------------------
+  // ➕ Crear venta → toca sync_state (pending)
   Future<VentaDb> crearVenta({
-    // Identidad/relaciones
     required String distribuidoraOrigenUid,
     required String distribuidoraUid,
     required String vendedorUid,
     String folioContrato = '',
     required String modeloUid,
     String estatusUid = '',
-
-    // Grupo/Integrante
     int grupo = 0,
     int integrante = 0,
-
-    // Fechas derivadas
     DateTime? fechaContrato,
     DateTime? fechaVenta,
     int? mesVenta,
@@ -113,11 +111,9 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     final uid = const Uuid().v4();
     final now = DateTime.now().toUtc();
 
-    // Derivados
     final mes = mesVenta ?? (fechaVenta?.month);
     final anio = anioVenta ?? (fechaVenta?.year);
 
-    // Guard local
     await _dao.upsertVentaDrift(
       VentasCompanion(
         uid: Value(uid),
@@ -127,10 +123,8 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
         folioContrato: Value(folioContrato),
         modeloUid: Value(modeloUid),
         estatusUid: Value(estatusUid),
-
         grupo: Value(grupo),
         integrante: Value(integrante),
-
         fechaContrato: fechaContrato == null
             ? const Value.absent()
             : Value(fechaContrato.toUtc()),
@@ -139,7 +133,6 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
             : Value(fechaVenta.toUtc()),
         mesVenta: mes == null ? const Value.absent() : Value(mes),
         anioVenta: anio == null ? const Value.absent() : Value(anio),
-
         createdAt: Value(now),
         updatedAt: Value(now),
         deleted: const Value(false),
@@ -147,39 +140,33 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
       ),
     );
 
+    // 👇 TOCAR sync_state (pendiente)
+    await _syncDao.touchLocalPending(resource: _resourceVentas);
+
     final actual = await _dao.obtenerTodasDrift();
     state = _ordenado(actual);
     return state.firstWhere((v) => v.uid == uid);
   }
 
-  // ---------------------------------------------------------------------------
-  // ✏️ Editar venta (LOCAL → isSynced=false; el push lo sube)
-  //     Si se envía `fechaVenta`, por defecto recalcula mes/año salvo que
-  //     explícitamente pases mesVenta/anioVenta.
-  // ---------------------------------------------------------------------------
+  // ✏️ Editar → toca sync_state (pending)
   Future<void> editarVenta({
     required String uid,
-
     String? distribuidoraOrigenUid,
     String? distribuidoraUid,
     String? vendedorUid,
     String? folioContrato,
     String? modeloUid,
     String? estatusUid,
-
     int? grupo,
     int? integrante,
-
-    DateTime? fechaContrato, // Value(null) ⇒ limpia
-    DateTime? fechaVenta, // recalcula mes/año si no los mandas
-    int? mesVenta, // si lo mandas, respeta el valor
-    int? anioVenta, // si lo mandas, respeta el valor
-
+    DateTime? fechaContrato,
+    DateTime? fechaVenta,
+    int? mesVenta,
+    int? anioVenta,
     bool? deleted,
   }) async {
     try {
       final dtNow = DateTime.now().toUtc();
-
       final mes = mesVenta ?? (fechaVenta != null ? fechaVenta.month : null);
       final anio = anioVenta ?? (fechaVenta != null ? fechaVenta.year : null);
 
@@ -201,13 +188,10 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
         estatusUid: estatusUid == null
             ? const Value.absent()
             : Value(estatusUid),
-
         grupo: grupo == null ? const Value.absent() : Value(grupo),
         integrante: integrante == null
             ? const Value.absent()
             : Value(integrante),
-
-        // Nullable: si quieres limpiar, pasa fechaContrato == null intencional con Value(null)
         fechaContrato: fechaContrato == null
             ? const Value.absent()
             : Value(fechaContrato.toUtc()),
@@ -216,7 +200,6 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
             : Value(fechaVenta.toUtc()),
         mesVenta: mes == null ? const Value.absent() : Value(mes),
         anioVenta: anio == null ? const Value.absent() : Value(anio),
-
         updatedAt: Value(dtNow),
         deleted: deleted == null ? const Value.absent() : Value(deleted),
         isSynced: const Value(false),
@@ -224,10 +207,13 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
 
       await _dao.actualizarParcialPorUid(uid, comp);
 
+      // 👇 TOCAR sync_state (pendiente)
+      await _syncDao.touchLocalPending(resource: _resourceVentas);
+
       state = _ordenado(await _dao.obtenerTodasDrift());
-      print('[💸 MENSAJES VENTAS PROVIDER] Venta $uid editada localmente');
+      print('[💸 VENTAS PROVIDER] Venta $uid editada (local)');
     } catch (e) {
-      print('[💸 MENSAJES VENTAS PROVIDER] ❌ Error al editar venta: $e');
+      print('[💸 VENTAS PROVIDER] ❌ Error al editar venta: $e');
       rethrow;
     }
   }
@@ -242,9 +228,7 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     await editarVenta(uid: uid, estatusUid: estatusUid);
   }
 
-  // ---------------------------------------------------------------------------
-  // 🗑️ Soft delete local → push lo sube
-  // ---------------------------------------------------------------------------
+  // 🗑️ Soft delete → toca sync_state (pending)
   Future<void> eliminarVentaLocal(String uid) async {
     try {
       await _dao.actualizarParcialPorUid(
@@ -255,12 +239,14 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
           isSynced: const Value(false),
         ),
       );
+
+      // 👇 TOCAR sync_state (pendiente)
+      await _syncDao.touchLocalPending(resource: _resourceVentas);
+
       state = _ordenado(await _dao.obtenerTodasDrift());
-      print(
-        '[💸 MENSAJES VENTAS PROVIDER] Venta $uid marcada como eliminada (local)',
-      );
+      print('[💸 VENTAS PROVIDER] Venta $uid marcada como eliminada (local)');
     } catch (e) {
-      print('[💸 MENSAJES VENTAS PROVIDER] ❌ Error al eliminar: $e');
+      print('[💸 VENTAS PROVIDER] ❌ Error al eliminar: $e');
       rethrow;
     }
   }
@@ -560,13 +546,43 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     final nowUtc = DateTime.now().toUtc();
 
     // ⚡️ Mapa origen -> concentradora (derivación en memoria)
-    final distos = _ref.read(distribuidoresProvider); // 👈 usa _ref
+    final distos = _ref.read(distribuidoresProvider);
     final concMap = <String, String>{
       for (final d in distos)
         d.uid: (d.concentradoraUid.isNotEmpty ? d.concentradoraUid : d.uid),
     };
     String _concentradoraDe(String origenUid) =>
         concMap[origenUid] ?? origenUid;
+
+    // 🔧 Helpers de fecha
+    bool _looksDateOnly(String s) {
+      final t = s.trim();
+      if (t.isEmpty) return false;
+      // Sin 'T' y sin ':' es buen indicador de “solo fecha” (e.g., 01/08/2025 o 2025-08-01)
+      if (!t.contains('T') && !t.contains(':')) return true;
+      // Defensivo: “01-08-2025 00:00” sin TZ también lo tratamos como solo fecha
+      final lower = t.toLowerCase();
+      final noTz =
+          !lower.contains('z') &&
+          !t.contains('+') &&
+          !RegExp(r'.+\-\d{2}:\d{2}$').hasMatch(lower);
+      return noTz && RegExp(r'\b00:00(:00)?\b').hasMatch(t);
+    }
+
+    DateTime? _toUtcSafe(String raw) {
+      final s = raw.trim();
+      if (s.isEmpty) return null;
+
+      final parsed = parseDateFlexible(s); // tu parser existente
+      if (parsed == null) return null;
+
+      if (_looksDateOnly(s)) {
+        // ⛑️ “Solo fecha”: guardar a las 12:00 UTC para evitar desbordes de día
+        return DateTime.utc(parsed.year, parsed.month, parsed.day, 12, 0, 0);
+      }
+      // Con hora/offset real
+      return parsed.toUtc();
+    }
 
     int ins = 0, skip = 0;
 
@@ -580,7 +596,7 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
           (i) => (i < r.length ? (r[i] ?? '').toString() : '').trim(),
         );
 
-        // 👇 Índices NUEVOS (sin distribuidoraUid)
+        // Campos CSV (sin distribuidoraUid)
         final distribuidoraOrigenUid = row[0];
         final vendedorUid = row[1];
         final folioContrato = row[2];
@@ -588,40 +604,42 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
         final estatusUid = row[4];
         final grupo = int.tryParse(row[5]) ?? 0;
         final integrante = int.tryParse(row[6]) ?? 0;
-        final fechaContrato = parseDateFlexible(row[7]);
-        final fechaVenta = parseDateFlexible(row[8]);
+
+        final fechaContratoUtc = _toUtcSafe(row[7]);
+        final fechaVentaUtc = _toUtcSafe(row[8]);
+
         final mesVentaCsv = int.tryParse(row[9]);
         final anioVentaCsv = int.tryParse(row[10]);
-        final createdAt = parseDateFlexible(row[11]) ?? nowUtc;
-        final updatedAt = parseDateFlexible(row[12]) ?? nowUtc;
+
+        final createdAt = _toUtcSafe(row[11]) ?? nowUtc;
+        final updatedAt = _toUtcSafe(row[12]) ?? nowUtc;
+
         final deleted = parseBoolFlexible(row[13], defaultValue: false);
         final isSynced = parseBoolFlexible(row[14], defaultValue: false);
 
-        // Completa mes/año si vienen vacíos y hay fechaVenta
-        final mesVenta = mesVentaCsv ?? (fechaVenta?.toUtc().month);
-        final anioVenta = anioVentaCsv ?? (fechaVenta?.toUtc().year);
+        // Completa mes/año desde la fecha YA normalizada
+        final mesVenta = mesVentaCsv ?? fechaVentaUtc?.month;
+        final anioVenta = anioVentaCsv ?? fechaVentaUtc?.year;
 
-        // 🔁 Derivar distribuidoraUid desde catálogo (concentradora)
         final concUid = _concentradoraDe(distribuidoraOrigenUid);
 
-        // Inserción SIEMPRE con uid nuevo
         final uid = const Uuid().v4();
         final comp = VentasCompanion(
           uid: Value(uid),
           distribuidoraOrigenUid: Value(distribuidoraOrigenUid),
-          distribuidoraUid: Value(concUid), // 👈 derivado, NO viene en CSV
+          distribuidoraUid: Value(concUid),
           vendedorUid: Value(vendedorUid),
           folioContrato: Value(folioContrato),
           modeloUid: Value(modeloUid),
           estatusUid: Value(estatusUid),
           grupo: Value(grupo),
           integrante: Value(integrante),
-          fechaContrato: fechaContrato == null
+          fechaContrato: fechaContratoUtc == null
               ? const Value.absent()
-              : Value(fechaContrato.toUtc()),
-          fechaVenta: fechaVenta == null
+              : Value(fechaContratoUtc),
+          fechaVenta: fechaVentaUtc == null
               ? const Value.absent()
-              : Value(fechaVenta.toUtc()),
+              : Value(fechaVentaUtc),
           mesVenta: mesVenta == null ? const Value.absent() : Value(mesVenta),
           anioVenta: anioVenta == null
               ? const Value.absent()
@@ -640,8 +658,11 @@ class VentasNotifier extends StateNotifier<List<VentaDb>> {
     state = await _dao.obtenerTodasDrift();
     print(
       '[🧾 MENSAJES VENTAS PROVIDER] CSV import → insertadas:$ins | '
-      'saltadas:$skip (derivando distribuidoraUid por concentradora; header sin distribuidoraUid)',
+      'saltadas:$skip (concentradora derivada; fechas “solo día” guardadas a 12:00 UTC)',
     );
+    if (ins > 0) {
+      await _syncDao.touchLocalPending(resource: _resourceVentas);
+    }
     return (ins, skip);
   }
 

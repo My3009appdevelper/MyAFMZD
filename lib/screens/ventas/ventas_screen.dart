@@ -1,17 +1,23 @@
 // lib/screens/ventas/ventas_screen.dart
+import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/estatus/estatus_provider.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
+import 'package:myafmzd/screens/ventas/ventas_form_page.dart';
 import 'package:myafmzd/screens/ventas/ventas_tile.dart';
 import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
 import 'dart:math' as math;
+
+import 'package:myafmzd/widgets/my_picker_search_field.dart';
+import 'package:myafmzd/widgets/my_text_field.dart';
 
 class VentasScreen extends ConsumerStatefulWidget {
   const VentasScreen({super.key});
@@ -29,6 +35,11 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
   String _filtroDistribuidoraUid = '';
   String _filtroVendedorAsignacionUid = '';
 
+  // 🔎 Búsqueda libre (folio, vendedor, distribuidora origen o concentradora)
+  String _filtroQuery = '';
+  final _queryController = TextEditingController();
+  Timer? _debounce;
+
   // Mostrar/ocultar panel de filtros
   bool _mostrarFiltros = false;
 
@@ -40,12 +51,30 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _cargarVentas());
+
+    // === Listener con debounce para la búsqueda (igual que ColaboradoresScreen) ===
+    _queryController.addListener(() {
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 250), () {
+        if (!mounted) return;
+        setState(() {
+          _filtroQuery = _queryController.text;
+          _page = 0;
+        });
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _queryController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
 
     ref.listen<bool>(connectivityProvider, (prev, next) async {
       if (!mounted || prev == next) return;
@@ -62,6 +91,25 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
     final distribuidores =
         ref.watch(distribuidoresProvider).where((d) => !d.deleted).toList()
           ..sort((a, b) => a.nombre.compareTo(b.nombre));
+
+    // Construir índice de distribuidores por uid y nombre de concentradora
+    final distByUid = {for (final d in distribuidores) d.uid: d};
+    String _nombreDistribuidora(String? uid) {
+      if (uid == null || uid.isEmpty) return '';
+      final d = distByUid[uid];
+      return d == null ? '' : _sinPrefijoMazda(d.nombre);
+    }
+
+    String _nombreConcentradoraDe(String? uid) {
+      if (uid == null || uid.isEmpty) return '';
+      final d = distByUid[uid];
+      if (d == null) return '';
+      final rootUid = (d.concentradoraUid.isNotEmpty)
+          ? d.concentradoraUid
+          : d.uid;
+      final root = distByUid[rootUid];
+      return root == null ? '' : _sinPrefijoMazda(root.nombre);
+    }
 
     // Construir opciones de vendedores (asignación -> colaborador nombre)
     final asignaciones = ref.watch(asignacionesLaboralesProvider);
@@ -130,17 +178,8 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
             .toList()
           ..sort((a, b) => a.value.compareTo(b.value));
 
-    // -------- Valor seguro para el Dropdown, sin tocar el filtro real --------
-    final vendedorSeleccionValido =
-        _filtroVendedorAsignacionUid.isNotEmpty &&
-        vendedoresOpciones.any((e) => e.key == _filtroVendedorAsignacionUid);
-
-    final valueVendedorDropdown = vendedorSeleccionValido
-        ? _filtroVendedorAsignacionUid
-        : ''; // evita assert pero NO cambia el filtro
-
     // ---------- APLICAR FILTROS ----------
-    final ventasFiltradas = ref
+    final ventasFiltradasBase = ref
         .watch(ventasProvider.notifier)
         .filtrar(
           distribuidoraUid: _filtroDistribuidoraUid.isEmpty
@@ -154,6 +193,42 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
           anio: _filtroAnio,
           incluirEliminados: false,
         );
+
+    // 🔎 Filtro por texto libre: folio, nombre vendedor, distribuidora origen, concentradora
+    final q = _fold(_filtroQuery);
+    final ventasFiltradas = (q.isEmpty)
+        ? ventasFiltradasBase
+        : ventasFiltradasBase.where((v) {
+            final folio = _fold(
+              (() {
+                try {
+                  return (v.folioContrato).toString();
+                } catch (_) {
+                  return '';
+                }
+              })(),
+            );
+            final vendNombre = _fold(resolveVendedorNombre(v.vendedorUid));
+            final distOrigenNombre = _fold(
+              _nombreDistribuidora(v.distribuidoraOrigenUid),
+            );
+            final distVentaNombre = _fold(
+              _nombreDistribuidora(v.distribuidoraUid),
+            );
+            final concOrigenNombre = _fold(
+              _nombreConcentradoraDe(v.distribuidoraOrigenUid),
+            );
+            final concVentaNombre = _fold(
+              _nombreConcentradoraDe(v.distribuidoraUid),
+            );
+
+            return folio.contains(q) ||
+                vendNombre.contains(q) ||
+                distOrigenNombre.contains(q) ||
+                distVentaNombre.contains(q) ||
+                concOrigenNombre.contains(q) ||
+                concVentaNombre.contains(q);
+          }).toList();
 
     // Paginación
     final total = ventasFiltradas.length;
@@ -175,31 +250,8 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
         : 'No hay ventas';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Ventas',
-          style: tt.titleLarge?.copyWith(color: cs.onSurface),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: [
-          Center(
-            child: IconButton(
-              tooltip: _mostrarFiltros ? 'Ocultar filtros' : 'Mostrar filtros',
-              icon: const Icon(Icons.filter_list),
-              onPressed: () {
-                setState(() {
-                  _mostrarFiltros = !_mostrarFiltros;
-                });
-              },
-            ),
-          ),
-        ],
-      ),
       floatingActionButton: FabConMenuAnchor(
-        onAgregar: null,
+        onAgregar: _abrirFormNuevaVenta,
         onImportar: _importarVentas,
         onExportar: _exportarVentas,
         txtAgregar: 'Agregar venta',
@@ -215,17 +267,45 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
         children: [
           if (!_cargandoInicial)
             Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: MyTextField(
+                controller: _queryController,
+                textInputAction: TextInputAction.search,
+                showClearButton: _filtroQuery.isNotEmpty,
+                labelText:
+                    'Buscar por folio, vendedor, distribuidora o concentradora',
+                hintText: 'Ej. FOL123, Ana Pérez, Mazda Centro…',
+                onClear: () {
+                  _queryController.clear();
+                  setState(() {
+                    _filtroQuery = '';
+                    _page = 0;
+                  });
+                },
+                onSubmitted: (_) => FocusScope.of(context).unfocus(),
+              ),
+            ),
+          if (!_cargandoInicial)
+            Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
               child: Align(
                 alignment: Alignment.center,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.filter_list),
-                  label: Text(_mostrarFiltros ? 'Ocultar filtros' : 'Filtros'),
-                  onPressed: () {
-                    setState(() {
-                      _mostrarFiltros = !_mostrarFiltros;
-                    });
-                  },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.filter_list),
+                      label: Text(
+                        _mostrarFiltros ? 'Ocultar filtros' : 'Filtros',
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _mostrarFiltros = !_mostrarFiltros;
+                        });
+                      },
+                    ),
+                    _buildResumen(context, total),
+                  ],
                 ),
               ),
             ),
@@ -238,10 +318,8 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
                 meses: meses,
                 distribuidores: distribuidores,
                 vendedoresOpciones: vendedoresOpciones,
-                valueVendedorDropdown: valueVendedorDropdown, // seguro
               ),
             ),
-          if (!_cargandoInicial) _buildResumen(context, total),
           Expanded(
             child: _cargandoInicial
                 ? const SizedBox.shrink()
@@ -307,11 +385,44 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
     required ColorScheme cs,
     required List<int> anios,
     required List<int> meses,
-    required List distribuidores,
+    required List<DistribuidorDb> distribuidores,
     required List<MapEntry<String, String>> vendedoresOpciones,
-    required String valueVendedorDropdown,
   }) {
     final tt = Theme.of(context).textTheme;
+
+    // Valores iniciales para los pickers
+    final distInicial = _filtroDistribuidoraUid.isEmpty
+        ? null
+        : (() {
+            try {
+              return distribuidores.firstWhere(
+                (d) => d.uid == _filtroDistribuidoraUid,
+              );
+            } catch (_) {
+              return null;
+            }
+          })();
+
+    final vendInicial = _filtroVendedorAsignacionUid.isEmpty
+        ? null
+        : (() {
+            try {
+              return vendedoresOpciones.firstWhere(
+                (e) => e.key == _filtroVendedorAsignacionUid,
+              );
+            } catch (_) {
+              return null;
+            }
+          })();
+
+    // Sincroniza controller del campo de búsqueda con el estado actual
+    if (_queryController.text != _filtroQuery) {
+      _queryController.text = _filtroQuery;
+      _queryController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _queryController.text.length),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Card(
@@ -393,35 +504,22 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
                     ),
                   ),
 
-                  // Distribuidora
+                  // Distribuidora -> MyPickerSearchField
                   SizedBox(
                     width: 260,
-                    child: DropdownButtonFormField<String>(
-                      isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Distribuidora',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      value: _filtroDistribuidoraUid.isEmpty
-                          ? ''
-                          : _filtroDistribuidoraUid,
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: '',
-                          child: Text('Todas'),
-                        ),
-                        ...distribuidores.map(
-                          (d) => DropdownMenuItem<String>(
-                            value: d.uid,
-                            child: Text(_sinPrefijoMazda(d.nombre)),
-                          ),
-                        ),
-                      ],
-                      onChanged: (val) {
+                    child: MyPickerSearchField<DistribuidorDb>(
+                      items: distribuidores,
+                      initialValue: distInicial,
+                      itemAsString: (d) => _sinPrefijoMazda(d.nombre),
+                      compareFn: (a, b) => a.uid == b.uid,
+                      labelText: 'Distribuidora',
+                      hintText: 'Toca para buscar…',
+                      bottomSheetTitle: 'Buscar distribuidora',
+                      searchHintText: 'Nombre del distribuidor',
+                      onChanged: (d) {
                         setState(() {
-                          _filtroDistribuidoraUid = (val ?? '');
-                          // al cambiar distribuidora, reiniciamos vendedor visible pero NO tocamos el filtro real del ID
+                          _filtroDistribuidoraUid = d?.uid ?? '';
+                          // Al cambiar distribuidora, limpia vendedor seleccionado
                           _filtroVendedorAsignacionUid = '';
                           _page = 0;
                         });
@@ -429,33 +527,21 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
                     ),
                   ),
 
-                  // Vendedor (asignación → colaborador)
+                  // Vendedor/Asesor -> MyPickerSearchField
                   SizedBox(
                     width: 280,
-                    child: DropdownButtonFormField<String>(
-                      isDense: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Vendedor',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      value:
-                          valueVendedorDropdown, // valor seguro para evitar assert
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: '',
-                          child: Text('Todos'),
-                        ),
-                        ...vendedoresOpciones.map(
-                          (e) => DropdownMenuItem<String>(
-                            value: e.key,
-                            child: Text(e.value.isEmpty ? e.key : e.value),
-                          ),
-                        ),
-                      ],
-                      onChanged: (val) {
+                    child: MyPickerSearchField<MapEntry<String, String>>(
+                      items: vendedoresOpciones,
+                      initialValue: vendInicial,
+                      itemAsString: (e) => (e.value.isEmpty ? e.key : e.value),
+                      compareFn: (a, b) => a.key == b.key,
+                      labelText: 'Vendedor',
+                      hintText: 'Toca para buscar…',
+                      bottomSheetTitle: 'Buscar vendedor',
+                      searchHintText: 'Nombre o UID',
+                      onChanged: (sel) {
                         setState(() {
-                          _filtroVendedorAsignacionUid = (val ?? '');
+                          _filtroVendedorAsignacionUid = sel?.key ?? '';
                           _page = 0;
                         });
                       },
@@ -566,6 +652,18 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
     }
   }
 
+  Future<void> _abrirFormNuevaVenta() async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const VentasFormPage()),
+    );
+    if (!mounted) return;
+    if (ok == true) {
+      await _cargarVentas();
+      setState(() => _page = 0);
+    }
+  }
+
   // IMPORTAR
   Future<void> _importarVentas() async {
     final res = await FilePicker.platform.pickFiles(
@@ -635,6 +733,39 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
     final reg = RegExp(r'^\s*mazda\b[\s\-–—:]*', caseSensitive: false);
     final out = s.replaceFirst(reg, '');
     return out.trimLeft();
+  }
+
+  // Normaliza para búsqueda (minúsculas + sin acentos/espacios dobles)
+  String _fold(String s) {
+    var out = s.toLowerCase();
+    const repl = {
+      'á': 'a',
+      'à': 'a',
+      'ä': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ë': 'e',
+      'ê': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'ï': 'i',
+      'î': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'ö': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'ü': 'u',
+      'û': 'u',
+      'ñ': 'n',
+      'ç': 'c',
+    };
+    repl.forEach((k, v) => out = out.replaceAll(k, v));
+    return out.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   void _setDefaultPeriodoSiVacio() {

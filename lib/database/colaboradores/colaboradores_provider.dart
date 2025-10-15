@@ -9,7 +9,7 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_dao.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_service.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_sync.dart';
-import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
+import 'package:myafmzd/widgets/CSV/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -49,17 +49,17 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
 
       final local = await _dao.obtenerTodosDrift();
       state = local;
-      print('[👥 COLABS PROVIDER] Local -> ${local.length}');
+      print('[👥 MENSAJES COLABS PROVIDER] Local -> ${local.length}');
 
       if (!_hayInternet) {
-        print('[👥 COLABS PROVIDER] Sin internet → solo local');
+        print('[👥 MENSAJES COLABS PROVIDER] Sin internet → solo local');
         return;
       }
 
       final localTimestamp = await _dao.obtenerUltimaActualizacionDrift();
       final remotoTimestamp = await _servicio.comprobarActualizacionesOnline();
       print(
-        '[👥 COLABS PROVIDER] Remoto:$remotoTimestamp | Local:$localTimestamp',
+        '[👥 MENSAJES COLABS PROVIDER] Remoto:$remotoTimestamp | Local:$localTimestamp',
       );
 
       await _sync.pullColaboradoresOnline();
@@ -71,10 +71,10 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       final cambios = await syncFotosLocales();
       if (cambios > 0) {
         state = await _dao.obtenerTodosDrift();
-        print('[👥 COLABS PROVIDER] Fotos sync → $cambios cambios');
+        print('[👥 MENSAJES COLABS PROVIDER] Fotos sync → $cambios cambios');
       }
     } catch (e) {
-      print('[👥 COLABS PROVIDER] ❌ Error al cargar: $e');
+      print('[👥 MENSAJES COLABS PROVIDER] ❌ Error al cargar: $e');
     }
   }
 
@@ -131,7 +131,7 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
         orElse: () => actualizados.last,
       );
     } catch (e) {
-      print('[👥 COLABS PROVIDER] ❌ Error al crear: $e');
+      print('[👥 MENSAJES COLABS PROVIDER] ❌ Error al crear: $e');
       rethrow;
     }
   }
@@ -182,9 +182,9 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
       await _dao.upsertColaboradorDrift(comp);
 
       state = await _dao.obtenerTodosDrift();
-      print('[👥 COLABS PROVIDER] Editado local: $uid');
+      print('[👥 MENSAJES COLABS PROVIDER] Editado local: $uid');
     } catch (e) {
-      print('[👥 COLABS PROVIDER] ❌ Error al editar: $e');
+      print('[👥 MENSAJES COLABS PROVIDER] ❌ Error al editar: $e');
       rethrow;
     }
   }
@@ -205,13 +205,13 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
 
     final remote = c.fotoRutaRemota?.trim() ?? '';
     if (remote.isEmpty) {
-      print('[👥 COLABS PROVIDER] ⚠️ rutaRemota vacía');
+      print('[👥 MENSAJES COLABS PROVIDER] ⚠️ rutaRemota vacía');
       return null;
     }
 
     final file = await _servicio.descargarImagenOnline(remote);
     if (file == null) {
-      print('[👥 COLABS PROVIDER] ❌ No se pudo descargar foto');
+      print('[👥 MENSAJES COLABS PROVIDER] ❌ No se pudo descargar foto');
       return null;
     }
 
@@ -225,14 +225,16 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
   }
 
   Future<void> eliminarFotoLocal(ColaboradorDb c) async {
-    print('[👥 COLABS PROVIDER] Borrando foto local: ${c.fotoRutaLocal}');
+    print(
+      '[👥 MENSAJES COLABS PROVIDER] Borrando foto local: ${c.fotoRutaLocal}',
+    );
     final path = c.fotoRutaLocal;
     if (path != null && path.isNotEmpty) {
       final file = File(path);
       try {
         if (await file.exists()) await file.delete();
       } catch (e) {
-        print('[👥 COLABS PROVIDER] ⚠️ Error borrando foto local: $e');
+        print('[👥 MENSAJES COLABS PROVIDER] ⚠️ Error borrando foto local: $e');
       }
     }
 
@@ -281,9 +283,13 @@ class ColaboradoresNotifier extends StateNotifier<List<ColaboradorDb>> {
           await File(oldLocal).exists()) {
         try {
           await File(oldLocal).delete();
-          print('[👥 COLABS PROVIDER] 🧹 Local anterior eliminado: $oldLocal');
+          print(
+            '[👥 MENSAJES COLABS PROVIDER] 🧹 Local anterior eliminado: $oldLocal',
+          );
         } catch (e) {
-          print('[👥 COLABS PROVIDER] ⚠️ No se pudo borrar local anterior: $e');
+          print(
+            '[👥 MENSAJES COLABS PROVIDER] ⚠️ No se pudo borrar local anterior: $e',
+          );
         }
       }
 

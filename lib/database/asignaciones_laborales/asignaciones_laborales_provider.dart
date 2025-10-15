@@ -11,7 +11,7 @@ import 'package:myafmzd/database/database_provider.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_dao.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_service.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_sync.dart';
-import 'package:myafmzd/screens/z%20Utils/csv_utils.dart';
+import 'package:myafmzd/widgets/CSV/csv_utils.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';

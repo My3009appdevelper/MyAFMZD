@@ -12,9 +12,8 @@ import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
-import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_screen.dart';
 import 'package:myafmzd/screens/modelos/modelos_screen.dart';
-import 'package:myafmzd/screens/perfil_screen.dart';
+import 'package:myafmzd/screens/perfil/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
 import 'package:myafmzd/screens/ventas/ventas_screen.dart';
 import 'package:myafmzd/widgets/my_app_drawer.dart';
@@ -104,14 +103,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           label: 'Distribuidoras',
         ),
       );
-      pantallasVisibles.add(const GruposDistribuidoresScreen());
-      itemsVisibles.add(
-        BottomNavigationBarItem(
-          backgroundColor: colorScheme.primary,
-          icon: const Icon(Icons.groups),
-          label: 'Grupos Distribuidores',
-        ),
-      );
     }
     if (perms.can(Feature.navReportes)) {
       pantallasVisibles.add(const ReportesScreen());
@@ -167,7 +158,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: Center(
           child: Text(
-            "MyAFMZD",
+            // ⬇️ título dinámico según la pestaña seleccionada
+            itemsVisibles[_indiceActual].label ?? 'MyAFMZD',
             style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary),
           ),
         ),
