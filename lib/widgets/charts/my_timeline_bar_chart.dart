@@ -120,7 +120,7 @@ class MyTimelineBarChart extends StatelessWidget {
           padding: const EdgeInsets.only(right: 8, top: 2),
           child: Text(
             'Promedio ${avgForLabel.toStringAsFixed(1)}',
-            style: text.labelSmall?.copyWith(color: colors.secondary),
+            style: text.labelSmall?.copyWith(color: colors.onSurface),
           ),
         ),
       );
@@ -435,9 +435,24 @@ class MyTimelineBarChart extends StatelessWidget {
     int year,
     DateTime now,
   ) {
-    final cutoffExclusive = (year == now.year)
-        ? (now.month - 1).clamp(0, 12)
-        : 12;
+    // Si es el año actual, usamos el último mes que tenga ventas subidas (último índice > 0).
+    // En años anteriores seguimos usando todo hasta diciembre.
+    final cutoffExclusive = () {
+      if (year != now.year) {
+        return 12;
+      }
+      var lastIdx = -1;
+      for (var i = 0; i < 12; i++) {
+        if (serie[i] > 0) lastIdx = i;
+      }
+      // si no hay meses con ventas subidas, mantenemos el comportamiento previo:
+      // usar now.month - 1 (mes anterior) como límite práctico
+      if (lastIdx < 0) {
+        return (now.month - 1).clamp(0, 12);
+      }
+      return (lastIdx + 1).clamp(0, 12);
+    }();
+
     if (cutoffExclusive <= 0) return null;
 
     int? firstIdx;
@@ -487,7 +502,13 @@ class MyTimelineBarChart extends StatelessWidget {
     if (maxY <= 10) return 2;
     if (maxY <= 20) return 5;
     if (maxY <= 50) return 10;
-    return 20;
+    if (maxY <= 100) return 10;
+    if (maxY <= 500) return 50;
+    if (maxY <= 1000) return 100;
+    if (maxY <= 2000) return 200;
+    if (maxY <= 5000) return 500;
+    if (maxY <= 10000) return 1000;
+    return 2000;
   }
 
   double _labelsTopHeadroom(double currentMaxY) {

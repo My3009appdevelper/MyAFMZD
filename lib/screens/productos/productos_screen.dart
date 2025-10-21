@@ -29,7 +29,6 @@ class _ProductosScreenState extends ConsumerState<ProductosScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
 
     ref.listen<bool>(connectivityProvider, (prev, next) async {
       if (!mounted || prev == next) return;
@@ -42,16 +41,6 @@ class _ProductosScreenState extends ConsumerState<ProductosScreen> {
         .filtrar(soloVigentes: false, incluirInactivos: true, enFecha: null);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Productos",
-          style: tt.titleLarge?.copyWith(color: cs.onSurface),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
       floatingActionButton: _cargandoInicial
           ? null
           : FloatingActionButton(

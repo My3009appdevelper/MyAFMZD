@@ -12,12 +12,14 @@ import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/database/ventas/ventas_provider.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_screen.dart';
 import 'package:myafmzd/screens/colaboradores/colaboradores_screen.dart';
 import 'package:myafmzd/screens/estatus/estatus_screen.dart';
 import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_screen.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
 import 'package:myafmzd/screens/productos/productos_screen.dart';
+import 'package:myafmzd/screens/ventas/ventas_screen.dart';
 import 'package:myafmzd/widgets/my_app_drawer.dart';
 
 class AdminHomeScreen extends ConsumerStatefulWidget {
@@ -35,6 +37,7 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
     ColaboradoresScreen(), // 1
     AsignacionesLaboralesScreen(), // 2
     UsuariosScreen(), // 3
+    VentasScreen(),
     ProductosScreen(), // 4
     GruposDistribuidoresScreen(), // 5
     EstatusScreen(), // 6
@@ -59,6 +62,7 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       await ref.read(productosProvider.notifier).cargarOfflineFirst();
       await ref.read(estatusProvider.notifier).cargarOfflineFirst();
+      await ref.read(ventasProvider.notifier).cargarOfflineFirst();
     });
   }
 
@@ -84,6 +88,11 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
         backgroundColor: colorScheme.primary,
         icon: Icon(Icons.manage_accounts),
         label: 'Usuarios',
+      ),
+      BottomNavigationBarItem(
+        backgroundColor: colorScheme.primary,
+        icon: Icon(Icons.point_of_sale),
+        label: 'Ventas',
       ),
       BottomNavigationBarItem(
         backgroundColor: colorScheme.primary,

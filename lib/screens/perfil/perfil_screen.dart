@@ -1,18 +1,20 @@
 import 'dart:async';
-import 'dart:io'; // 👈 para File y FileImage
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
-import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
-import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
+import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
-import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
+
 import 'package:myafmzd/screens/perfil/asesor_monthly_sales_card.dart';
 import 'package:myafmzd/screens/perfil/distribuidora_monthly_sales_card.dart';
-import 'package:myafmzd/screens/perfil/distribuidora_pie_sales_card.dart';
+
 import 'package:myafmzd/session/sesion_asignacion_provider.dart';
 import 'package:myafmzd/session/sesion_asignacion_selectors.dart';
 
@@ -26,9 +28,8 @@ class PerfilScreen extends ConsumerStatefulWidget {
 class _PerfilScreenState extends ConsumerState<PerfilScreen> {
   bool _cargandoInicial = true;
 
-  // Año seleccionado para la gráfica de distribuidora (el card de asesor maneja su propio año)
-
-  // 👇 Solo se usa cuando el rol activo es ADMIN (ámbito de distribuidora)
+  // Año elegido en el único selector (fuente de verdad)
+  int _selectedYear = DateTime.now().year;
 
   @override
   void initState() {
@@ -40,19 +41,17 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Escucha ventas para que el combo de años se actualice cuando cambie el estado
-
     final usuario = ref.watch(perfilProvider);
     final colorsTheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // Objeto de asignación activa (del usuario logueado)
+    // Datos base
     final asignacionActiva = ref.watch(activeAssignmentProvider);
-
-    // Catálogo de colaboradores y distribuidores
     final colaboradores = ref.watch(colaboradoresProvider);
     final distribuidores = ref.watch(distribuidoresProvider);
+    final ventas = ref.watch(ventasProvider);
 
+    // Mantén el perfil sincronizado con conectividad
     ref.listen<bool>(connectivityProvider, (previous, next) async {
       if (!mounted || previous == next) return;
       await _cargarPerfil();
@@ -69,7 +68,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
       );
     }
 
-    // --- Colaborador del usuario (para nombre y foto) ---
+    // Colaborador para nombre/foto
     final colaborador = () {
       try {
         if (usuario.colaboradorUid == null) return null;
@@ -86,7 +85,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     final tieneFotoLocal =
         fotoLocalPath.isNotEmpty && File(fotoLocalPath).existsSync();
 
-    // --- Distribuidora de origen y concentradora (si hay asignación activa) ---
+    // Dist origen/concentradora
     final distOrigen = () {
       if (asignacionActiva == null) return null;
       try {
@@ -117,8 +116,20 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
         ? '—'
         : _sinPrefijoMazda(distConcentradora.nombre);
 
-    // === Rol activo ===
+    // Rol activo
     final rolActivo = (asignacionActiva?.rol ?? '').toLowerCase().trim();
+
+    // Años disponibles (derivados de ventas)
+    final availableYears = () {
+      final set = <int>{};
+      for (final v in ventas) {
+        final y = v.anioVenta ?? (v.fechaVenta ?? v.updatedAt).toUtc().year;
+        set.add(y);
+      }
+      if (!set.contains(_selectedYear)) set.add(_selectedYear);
+      final list = set.toList()..sort();
+      return list;
+    }();
 
     return Scaffold(
       body: _cargandoInicial
@@ -133,7 +144,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                 ),
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  // ====== CARD: Perfil (foto, datos) ======
+                  // ====== CARD: Perfil ======
                   Center(
                     child: Card(
                       color: colorsTheme.surface,
@@ -149,7 +160,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // Avatar con foto local si existe
                             CircleAvatar(
                               radius: 40,
                               backgroundColor: colorsTheme.surfaceVariant,
@@ -166,7 +176,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Nombre completo del colaborador (si hay)
                             if (nombreCompleto.isNotEmpty) ...[
                               Text(
                                 nombreCompleto,
@@ -179,7 +188,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                               const SizedBox(height: 8),
                             ],
 
-                            // Usuario
                             Text(
                               usuario.userName,
                               style: textTheme.bodyLarge?.copyWith(
@@ -189,7 +197,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                             ),
                             const SizedBox(height: 6),
 
-                            // Correo
                             _buildUserInfoRow(
                               context,
                               Icons.email_outlined,
@@ -199,7 +206,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                             const SizedBox(height: 12),
                             const Divider(height: 1),
 
-                            // Rol actual (de asignación activa)
                             const SizedBox(height: 12),
                             _buildUserInfoRow(
                               context,
@@ -208,15 +214,11 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                                   ? _capitalize(asignacionActiva!.rol)
                                   : '—',
                             ),
-
-                            // Distribuidora origen
                             _buildUserInfoRow(
                               context,
                               Icons.store_mall_directory_outlined,
                               'Distribuidora: $nombreDistOrigen',
                             ),
-
-                            // Concentradora (donde se concentran ventas)
                             _buildUserInfoRow(
                               context,
                               Icons.hub_outlined,
@@ -228,27 +230,37 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  // ====== ÚNICO SELECTOR DE AÑO ======
+                  Center(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: _selectedYear,
+                        items: [
+                          for (final y in availableYears)
+                            DropdownMenuItem(value: y, child: Text('$y')),
+                        ],
+                        onChanged: (v) {
+                          if (v == null) return;
+                          setState(() => _selectedYear = v);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
 
                   // ====== CARD: Ventas del asesor ======
                   AsesorMonthlySalesCard(
-                    rolActivo: rolActivo, // 'vendedor' | 'gerente' | 'admin'
-                    initialYear: DateTime.now().year,
+                    rolActivo: rolActivo,
+                    initialYear: _selectedYear, // 👈 viene del selector
                     chartHeight: 220,
                   ),
-                  const SizedBox(height: 24),
 
-                  DistribuidoraPieChartsCard(
-                    rolActivo: rolActivo,
-                    distribuidorUid: distConcentradora?.uid ?? distOrigen?.uid,
-                    initialYear: DateTime.now().year,
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 4),
 
                   // ====== CARD: Ventas de la distribuidora ======
                   DistribuidoraMonthlySalesCard(
-                    rolActivo: rolActivo, // 'vendedor' | 'gerente' | 'admin'
-                    initialYear: DateTime.now().year,
+                    rolActivo: rolActivo,
+                    initialYear: _selectedYear, // 👈 viene del selector
                     chartHeight: 220,
                   ),
                 ],
@@ -309,7 +321,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     final inicio = DateTime.now();
 
     try {
-      // 1) Catálogos base
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       if (!mounted) return;
       if (context.loaderOverlay.visible) {
@@ -325,7 +336,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
           .read(asignacionesLaboralesProvider.notifier)
           .cargarOfflineFirst();
 
-      // 5) Asegurar asignación activa coherente para este usuario
+      // Asegurar asignación activa
       final usuario = ref.read(perfilProvider);
       await ref
           .read(assignmentSessionProvider.notifier)
@@ -337,21 +348,21 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
       }
       await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
 
-      // 2) Perfil de usuario
+      // Perfil
       if (!mounted) return;
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Obteniendo usuario…');
       }
       await ref.read(perfilProvider.notifier).cargarUsuario();
 
-      // 3) Ventas (para la gráfica)
+      // Ventas
       if (!mounted) return;
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando ventas…');
       }
       await ref.read(ventasProvider.notifier).cargarOfflineFirst();
 
-      // Mantener una duración mínima agradable
+      // Pequeño mínimo de duración
       final duracion = DateTime.now().difference(inicio);
       const duracionMinima = Duration(milliseconds: 1500);
       if (duracion < duracionMinima) {

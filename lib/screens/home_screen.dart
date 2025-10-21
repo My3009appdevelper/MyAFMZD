@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
@@ -15,7 +16,6 @@ import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
 import 'package:myafmzd/screens/modelos/modelos_screen.dart';
 import 'package:myafmzd/screens/perfil/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
-import 'package:myafmzd/screens/ventas/ventas_screen.dart';
 import 'package:myafmzd/widgets/my_app_drawer.dart';
 
 // 👇 Asegúrate de importar tu provider de permisos
@@ -39,6 +39,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(modelosProvider.notifier).cargarOfflineFirst();
       await ref.read(modeloImagenesProvider.notifier).cargarOfflineFirst();
       await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
+      await ref
+          .read(gruposDistribuidoresProvider.notifier)
+          .cargarOfflineFirst();
       await ref.read(reporteProvider.notifier).cargarOfflineFirst();
       await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
       await ref
@@ -70,16 +73,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           backgroundColor: colorScheme.primary,
           icon: const Icon(Icons.person),
           label: 'Perfil',
-        ),
-      );
-    }
-    if (perms.can(Feature.navVentas)) {
-      pantallasVisibles.add(const VentasScreen());
-      itemsVisibles.add(
-        BottomNavigationBarItem(
-          backgroundColor: colorScheme.primary,
-          icon: const Icon(Icons.attach_money),
-          label: 'Ventas',
         ),
       );
     }

@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +16,7 @@ import 'package:myafmzd/screens/distribuidores/distribuidores_form_page.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_popup.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_tile.dart';
 import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
+import 'package:myafmzd/widgets/my_text_field.dart'; // ⬅️ NUEVO: barra de búsqueda
 
 class DistribuidoresScreen extends ConsumerStatefulWidget {
   const DistribuidoresScreen({super.key});
@@ -38,6 +39,11 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
 
   late final MapController _mapController;
   late final AnimatedMapController _animatedMapController;
+
+  // === 🔎 Estado de búsqueda ===
+  final TextEditingController _searchCtrl = TextEditingController(); // ⬅️
+  String _query = ''; // ⬅️
+  Timer? _debounce; // ⬅️
 
   // marker ↔ data
   late List<(Marker marker, DistribuidorDb data)> _entries = const [];
@@ -88,31 +94,43 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarGruposYDistribuidores(); // ← primero grupos, luego distribuidores
     });
+
+    // 🔎 Debounce búsqueda (consistente con otras screens)
+    _searchCtrl.addListener(() {
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 250), () {
+        if (!mounted) return;
+        setState(() => _query = _searchCtrl.text);
+      });
+    });
   }
 
   @override
   void dispose() {
     _popupController.dispose();
     _animatedMapController.dispose();
+    _debounce?.cancel(); // ⬅️
+    _searchCtrl.dispose(); // ⬅️
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Recalcula marcadores y mantiene referencia para popups robustos
-    final filtrados = _filtrados;
-    _entries = _buildEntries(context, filtrados);
+    // Base filtrada por grupo/activos (SIN búsqueda)
+    final filtradosBase = _filtrados; // ⬅️ renombrado para claridad
+    _entries = _buildEntries(context, filtradosBase);
     final markers = _entries.map((e) => e.$1).toList();
 
-    // ======= Derivar grupos (uuid → nombre) de forma reactiva del estado =======
+    // ======= Grupos (uuid → nombre) =======
     final grupos =
         ref
             .watch(gruposDistribuidoresProvider)
             .where((g) => !g.deleted)
             .toList()
           ..sort((a, b) => a.nombre.compareTo(b.nombre));
+    final mapGrupoNombre = {for (final g in grupos) g.uid: g.nombre}; // ⬅️
 
-    // Items para el dropdown: ('Todos' => value:'') + cada grupo por nombre
+    // Items para el dropdown
     final dropdownItems = <DropdownMenuItem<String>>[
       const DropdownMenuItem(value: '', child: Text('Todos')),
       ...grupos.map(
@@ -120,18 +138,24 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
       ),
     ];
 
-    // Lista completa (gatilla rebuild si cambia el estado)
+    // Para contador (se mantiene la lógica original)
     final distrProvider = ref.watch(distribuidoresProvider);
-
-    // Conteos base (ignorando AFMZD por **nombre** vía lookup del uuid)
     String nombreGrupo(String uuid) =>
         ref.read(gruposDistribuidoresProvider.notifier).nombrePorUid(uuid);
     final totalGeneral = distrProvider
         .where((d) => nombreGrupo(d.uuidGrupo) != 'AFMZD')
         .length;
-    final mostrados = filtrados
+    final mostrados = filtradosBase
         .where((d) => nombreGrupo(d.uuidGrupo) != 'AFMZD')
         .length;
+
+    // === 🔎 Visibles = base filtrada + búsqueda por nombre/grupo ===
+    final visibles = _aplicarFiltroDistribuidores(
+      // ⬅️
+      filtradosBase,
+      _query,
+      mapGrupoNombre: mapGrupoNombre,
+    );
 
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -143,7 +167,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
 
     return Scaffold(
       floatingActionButton: FabConMenuAnchor(
-        onAgregar: _abrirFormNuevoDistribuidor, // si ya lo tienes
+        onAgregar: _abrirFormNuevoDistribuidor,
         onImportar: _importarDistribuidores,
         onExportar: _exportarDistribuidores,
         txtAgregar: 'Agregar distribuidora',
@@ -156,137 +180,63 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
         fabTooltip: 'Acciones de distribuidores',
       ),
 
+      // ======= Mapa fijo arriba (no se desplaza con el scroll) =======
       body: _cargandoInicial
           ? const SizedBox.shrink()
           : Column(
               children: [
-                Padding(
-                  //padding en todo
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Column(
-                        children: [
-                          const Text(
-                            'Filtro por grupo',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          DropdownButton<String>(
-                            value: _grupoSeleccionado ?? '',
-                            items: dropdownItems,
-                            onChanged: (value) {
-                              if (value == null) return;
-                              _popupController.hideAllPopups();
-                              setState(() => _grupoSeleccionado = value);
-                              _resetMapaSegunFiltro();
-                            },
-                          ),
-                        ],
+                // MAPA (FIJO)
+                SizedBox(
+                  height: 250,
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: const LatLng(23.6345, -102.5528),
+                      initialZoom: 3.8,
+                      minZoom: 3.5,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                       ),
-                      const SizedBox(width: 12),
-                      Column(
-                        children: [
-                          const Text(
-                            'Mostrar inactivos',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Switch.adaptive(
-                            value: _mostrarInactivos,
-                            onChanged: (v) {
-                              _popupController
-                                  .hideAllPopups(); // 👈 cerrar popup antes
-                              setState(() => _mostrarInactivos = v);
-                              _resetMapaSegunFiltro();
+                      onMapReady: () => setState(() => _mapReady = true),
+                      onTap: (_, __) => _popupController.hideAllPopups(),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            Theme.of(context).brightness == Brightness.dark
+                            ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                            : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                        userAgentPackageName: 'com.example.myafmzd',
+                        tileProvider: NetworkTileProvider(),
+                        retinaMode: RetinaMode.isHighDensity(context),
+                        keepBuffer: 4,
+                      ),
+                      PopupMarkerLayer(
+                        options: PopupMarkerLayerOptions(
+                          markers: markers,
+                          popupController: _popupController,
+                          popupDisplayOptions: PopupDisplayOptions(
+                            builder: (ctx, marker) {
+                              final match = _entries.where(
+                                (e) => e.$1 == marker,
+                              );
+                              if (match.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              final data = match.first.$2;
+                              return DistribuidorPopup(distribuidor: data);
                             },
                           ),
-                        ],
+                          markerCenterAnimation: const MarkerCenterAnimation(),
+                          markerTapBehavior:
+                              MarkerTapBehavior.togglePopupAndHideRest(),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: colorScheme.outlineVariant),
-                      ),
-                      child: Text(
-                        'Mostrados: $mostrados / $totalGeneral',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
 
-                ExpansionTile(
-                  title: const Text('Mapa de distribuidores'),
-                  initiallyExpanded: true,
-                  children: [
-                    SizedBox(
-                      height: 250,
-                      child: FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: const LatLng(23.6345, -102.5528),
-                          initialZoom: 3.8,
-                          minZoom: 3.5,
-                          interactionOptions: const InteractionOptions(
-                            flags:
-                                InteractiveFlag.all & ~InteractiveFlag.rotate,
-                          ),
-                          onMapReady: () => setState(() => _mapReady = true),
-                          onTap: (_, __) => _popupController.hideAllPopups(),
-                        ),
-                        children: [
-                          TileLayer(
-                            urlTemplate:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                                : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                            userAgentPackageName: 'com.example.myafmzd',
-                            tileProvider: NetworkTileProvider(),
-                            retinaMode: RetinaMode.isHighDensity(context),
-                            keepBuffer: 4,
-                          ),
-                          PopupMarkerLayer(
-                            options: PopupMarkerLayerOptions(
-                              markers: markers,
-                              popupController: _popupController,
-                              popupDisplayOptions: PopupDisplayOptions(
-                                builder: (ctx, marker) {
-                                  final match = _entries.where(
-                                    (e) => e.$1 == marker,
-                                  );
-                                  if (match.isEmpty) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  final data = match.first.$2;
-                                  return DistribuidorPopup(distribuidor: data);
-                                },
-                              ),
-                              markerCenterAnimation:
-                                  const MarkerCenterAnimation(),
-                              markerTapBehavior:
-                                  MarkerTapBehavior.togglePopupAndHideRest(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
+                // ======= Scroll: filtros + búsqueda + contador + lista =======
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {
@@ -296,39 +246,141 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
                         await _resetMapaSegunFiltro();
                       }
                     },
-                    child: ListView.builder(
+                    color: colorScheme.secondary,
+                    child: ListView(
                       physics: const BouncingScrollPhysics(
                         parent: AlwaysScrollableScrollPhysics(),
                       ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 24,
+                        vertical: 16,
                       ),
-                      itemCount: max(1, filtrados.length),
-                      itemBuilder: (context, index) {
-                        if (filtrados.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.only(top: 80.0),
-                            child: Center(child: Text('No hay distribuidores')),
-                          );
-                        }
-                        final distribuidor = filtrados[index];
-                        return DistribuidorItemTile(
-                          key: ValueKey(distribuidor.uid),
-                          distribuidor: distribuidor,
-                          onTap: () {
-                            if (_puedoUsarMapa) {
-                              _centrarYMostrarPopup(
-                                distribuidor,
-                              ); // 👈 no-op si no hay mapa
-                            }
-                          },
-                          onActualizado: () async {
-                            await _cargarGruposYDistribuidores(); // ← recargar ambos
-                            await _resetMapaSegunFiltro();
-                          },
-                        );
-                      },
+                      children: [
+                        // FILTROS (en scroll)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Column(
+                              children: [
+                                const Text(
+                                  'Filtro por grupo',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                DropdownButton<String>(
+                                  value: _grupoSeleccionado ?? '',
+                                  items: dropdownItems,
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    _popupController.hideAllPopups();
+                                    setState(() => _grupoSeleccionado = value);
+                                    _resetMapaSegunFiltro();
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              children: [
+                                const Text(
+                                  'Mostrar inactivos',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Switch.adaptive(
+                                  value: _mostrarInactivos,
+                                  onChanged: (v) {
+                                    _popupController.hideAllPopups();
+                                    setState(() => _mostrarInactivos = v);
+                                    _resetMapaSegunFiltro();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        // 🔎 BARRA DE BÚSQUEDA (debajo de filtros) — SOLO lista
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                          child: MyTextField(
+                            controller: _searchCtrl,
+                            textInputAction: TextInputAction.search,
+                            showClearButton: _query.isNotEmpty,
+                            labelText: 'Buscar distribuidora',
+                            hintText: 'Grupo o nombre de distribuidora',
+                            onClear: () {
+                              _searchCtrl.clear();
+                              setState(() => _query = '');
+                            },
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).unfocus(),
+                          ),
+                        ),
+
+                        // CONTADOR (se mantiene con base en filtros)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: colorScheme.outlineVariant,
+                                ),
+                              ),
+                              child: Text(
+                                'Mostrados: $mostrados / $totalGeneral',
+                                style: textTheme.labelLarge?.copyWith(
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // LISTA (aplica búsqueda)
+                        if (visibles.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 80.0),
+                            child: Center(
+                              child: Text(
+                                _query.trim().isEmpty
+                                    ? 'No hay distribuidores'
+                                    : 'Sin coincidencias para “$_query”.',
+                                style: textTheme.bodyLarge?.copyWith(
+                                  color: colorScheme.onSurface.withOpacity(
+                                    0.65,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ...visibles.map((distribuidor) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: DistribuidorItemTile(
+                                key: ValueKey(distribuidor.uid),
+                                distribuidor: distribuidor,
+                                onTap: () {
+                                  if (_puedoUsarMapa) {
+                                    _centrarYMostrarPopup(distribuidor);
+                                  }
+                                },
+                                onActualizado: () async {
+                                  await _cargarGruposYDistribuidores();
+                                  await _resetMapaSegunFiltro();
+                                },
+                              ),
+                            );
+                          }).toList(),
+                      ],
                     ),
                   ),
                 ),
@@ -351,7 +403,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     try {
       final hayInternet = ref.read(connectivityProvider);
 
-      // 1) Grupos primero (para que el dropdown exista y el nombrePorUid funcione)
+      // 1) Grupos primero
       await ref
           .read(gruposDistribuidoresProvider.notifier)
           .cargarOfflineFirst();
@@ -371,7 +423,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
 
       if (!mounted) return;
 
-      // Valor default del filtro una vez que ya hay datos locales
+      // Valor default del filtro
       if (_grupoSeleccionado == null) {
         _grupoSeleccionado = ''; // '' => "Todos"
       }
@@ -396,9 +448,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
 
   // Importante: observa el **estado** para rebuilds, y usa el helper del notifier
   List<DistribuidorDb> get _filtrados {
-    // gatilla rebuild cuando el estado cambia
     final _ = ref.watch(distribuidoresProvider);
-    // usa la lógica centralizada del notifier (uuidGrupo)
     return ref
         .read(distribuidoresProvider.notifier)
         .filtrar(
@@ -410,7 +460,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
   }
 
   void _centrarYMostrarPopup(DistribuidorDb d) async {
-    if (!_puedoUsarMapa || _entries.isEmpty) return; // 👈 guarda
+    if (!_puedoUsarMapa || _entries.isEmpty) return;
     final entry = _entries.firstWhere(
       (e) => e.$2.uid == d.uid,
       orElse: () => _entries.first,
@@ -426,7 +476,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
   }
 
   Future<void> _resetMapaSegunFiltro() async {
-    if (!_puedoUsarMapa) return; // 👈 guarda
+    if (!_puedoUsarMapa) return;
     _popupController.hideAllPopups();
 
     final lista = _filtrados;
@@ -479,7 +529,7 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
           content: Text('Importados: $ins • Saltados (duplicados): $skip'),
         ),
       );
-      await _cargarGruposYDistribuidores(); // tu método de recarga
+      await _cargarGruposYDistribuidores();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -517,16 +567,50 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     }
   }
 
+  // ===================== 🔎 Búsqueda / Matching =====================
+  List<DistribuidorDb> _aplicarFiltroDistribuidores(
+    List<DistribuidorDb> lista,
+    String query, {
+    required Map<String, String> mapGrupoNombre,
+  }) {
+    if (query.trim().isEmpty) return lista;
+
+    final q = _normalize(query);
+    final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+
+    return lista.where((d) {
+      final nombre = _safeStr(d.nombre);
+      final grupoNombre = mapGrupoNombre[_safeStr(d.uuidGrupo)] ?? '';
+      final indexText = _normalize('$nombre $grupoNombre');
+
+      // AND de tokens
+      return tokens.every(indexText.contains);
+    }).toList();
+  }
+
+  // utils
+  String _safeStr(Object? v) => (v ?? '').toString();
+
+  String _normalize(String input) {
+    var t = input.toLowerCase();
+    t = t.replaceAll(RegExp(r'[áàäâã]'), 'a');
+    t = t.replaceAll(RegExp(r'[éèëê]'), 'e');
+    t = t.replaceAll(RegExp(r'[íìïî]'), 'i');
+    t = t.replaceAll(RegExp(r'[óòöôõ]'), 'o');
+    t = t.replaceAll(RegExp(r'[úùüû]'), 'u');
+    t = t.replaceAll(RegExp(r'[ñ]'), 'n');
+    t = t.replaceAll(RegExp(r'[ç]'), 'c');
+    t = t.replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
+    t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return t;
+  }
+
   // ABRIR FORMULARIO DE NUEVO DISTRIBUIDOR
   Future<void> _abrirFormNuevoDistribuidor() async {
-    // Navega al formulario de creación.
     final resultado = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const DistribuidorFormPage(), // modo "crear"
-      ),
+      MaterialPageRoute(builder: (_) => const DistribuidorFormPage()),
     );
 
-    // Si la página regresa true (guardado) o simplemente para asegurar, recarga.
     if (mounted && (resultado == true || resultado == null)) {
       await _cargarGruposYDistribuidores();
     }

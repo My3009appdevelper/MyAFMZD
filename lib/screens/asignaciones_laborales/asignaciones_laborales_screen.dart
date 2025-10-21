@@ -7,6 +7,7 @@ import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart'; // ⬅️ para nombres de colaboradores
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_form_page.dart';
 import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_tile.dart';
 import 'package:myafmzd/widgets/my_expandable_fab_options.dart';
@@ -24,23 +25,22 @@ class _AsignacionesLaboralesScreenState
     extends ConsumerState<AsignacionesLaboralesScreen> {
   bool _cargandoInicial = true;
 
+  // === 🔎 Estado de búsqueda ===
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
   Timer? _debounce;
 
   // Filtros
-  bool _soloActivas = true; // Activas (true) / Inactivas (false)
   String _filtroDistribuidorUid = ''; // vacío => todos
 
   @override
   void initState() {
     super.initState();
-    // Mismo patrón que en las demás pantallas: disparar tras el primer frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarAsignaciones();
     });
 
-    // Listener con debounce para la búsqueda
+    // Búsqueda con debounce (idéntico patrón a Colaboradores)
     _searchCtrl.addListener(() {
       _debounce?.cancel();
       _debounce = Timer(const Duration(milliseconds: 250), () {
@@ -61,13 +61,13 @@ class _AsignacionesLaboralesScreenState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // Reacciona a cambios de conectividad (con guard)
+    // Reacciona a cambios de conectividad
     ref.listen<bool>(connectivityProvider, (prev, next) async {
       if (!mounted || prev == next) return;
       await _cargarAsignaciones();
     });
 
-    // Forzar rebuild ante cambios de estado
+    // Disparar rebuild ante cambios de estado de asignaciones
     final _ = ref.watch(asignacionesLaboralesProvider);
 
     // Datos auxiliares para filtros
@@ -75,22 +75,41 @@ class _AsignacionesLaboralesScreenState
         ref.watch(distribuidoresProvider).where((d) => !d.deleted).toList()
           ..sort((a, b) => a.nombre.compareTo(b.nombre));
 
-    // Lista visible (derivada del provider) — solo por distribuidor
-    final visibles = _soloActivas
-        ? ref
-              .read(asignacionesLaboralesProvider.notifier)
-              .listarActivas(
-                distribuidorUid: _filtroDistribuidorUid.isEmpty
-                    ? null
-                    : _filtroDistribuidorUid,
-              )
-        : ref
-              .read(asignacionesLaboralesProvider.notifier)
-              .listarHistoricas(
-                distribuidorUid: _filtroDistribuidorUid.isEmpty
-                    ? null
-                    : _filtroDistribuidorUid,
-              );
+    // 🔎 Mapas para lookup rápido de nombres
+    final mapDistribNombre = {for (final d in distribuidores) d.uid: d.nombre};
+
+    final colaboradores = ref.watch(colaboradoresProvider);
+    final mapColabNombre = {
+      for (final c in colaboradores)
+        c.uid: _nombreCompletoColaborador(
+          c.nombres,
+          c.apellidoPaterno,
+          c.apellidoMaterno,
+        ),
+    };
+    // (opcional) teléfonos por colaborador para permitir búsqueda por dígitos
+    final mapColabTelefonos = {
+      for (final c in colaboradores)
+        c.uid: _digitsOnly('${c.telefonoMovil ?? ''} '),
+    };
+
+    // Lista base visible — por distribuidor (sin activo/histórico)
+    final base = ref
+        .read(asignacionesLaboralesProvider.notifier)
+        .listarActivas(
+          distribuidorUid: _filtroDistribuidorUid.isEmpty
+              ? null
+              : _filtroDistribuidorUid,
+        );
+
+    // 🔎 Aplicar búsqueda usando índices enriquecidos (colaborador+distribuidor)
+    final visibles = _aplicarFiltro(
+      base,
+      _query,
+      mapColabNombre: mapColabNombre,
+      mapDistribNombre: mapDistribNombre,
+      mapColabTelefonos: mapColabTelefonos,
+    );
 
     return Scaffold(
       floatingActionButton: _cargandoInicial
@@ -112,18 +131,29 @@ class _AsignacionesLaboralesScreenState
       body: Column(
         children: [
           if (!_cargandoInicial) _buildFiltros(context, distribuidores),
+
           Expanded(
             child: _cargandoInicial
-                ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
+                ? const SizedBox.shrink()
                 : RefreshIndicator(
                     color: cs.secondary,
                     onRefresh: _cargarAsignaciones,
                     child: visibles.isEmpty
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 80),
-                              Center(child: Text('No hay asignaciones')),
+                            children: [
+                              const SizedBox(height: 80),
+                              Center(
+                                child: Text(
+                                  _query.trim().isEmpty
+                                      ? 'No hay asignaciones'
+                                      : 'Sin coincidencias para “$_query”.',
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        color: cs.onSurface.withOpacity(0.65),
+                                      ),
+                                ),
+                              ),
                             ],
                           )
                         : ListView.builder(
@@ -175,13 +205,13 @@ class _AsignacionesLaboralesScreenState
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Column(
         children: [
-          // Línea 2: solo filtro por Distribuidor
+          // Filtro por Distribuidor
           Row(
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: _filtroDistribuidorUid.isEmpty
+                  value: _filtroDistribuidorUid.isEmpty
                       ? null
                       : _filtroDistribuidorUid,
                   items: [
@@ -210,17 +240,18 @@ class _AsignacionesLaboralesScreenState
               ),
             ],
           ),
+
           // === 🔎 Barra de búsqueda ===
           const SizedBox(height: 8),
-
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: MyTextField(
               controller: _searchCtrl,
               textInputAction: TextInputAction.search,
               showClearButton: _query.isNotEmpty,
-              labelText: 'Buscar colaborador',
-              hintText: 'Nombre, teléfono, correo, CURP o RFC',
+              labelText: 'Buscar asignación',
+              hintText:
+                  'Colaborador o distribuidor (también puesto, correo, CURP/RFC si existieran)',
               onClear: () {
                 _searchCtrl.clear();
                 setState(() => _query = '');
@@ -239,13 +270,9 @@ class _AsignacionesLaboralesScreenState
     if (!mounted) return;
 
     setState(() => _cargandoInicial = true);
-
-    // UX opcional, mismo patrón
     FocusScope.of(context).unfocus();
 
-    // OVERLAY
     context.loaderOverlay.show(progress: 'Cargando asignaciones…');
-
     final inicio = DateTime.now();
 
     try {
@@ -255,7 +282,6 @@ class _AsignacionesLaboralesScreenState
           .read(asignacionesLaboralesProvider.notifier)
           .cargarOfflineFirst();
 
-      // spinner mínimo para consistencia
       const duracionMinima = Duration(milliseconds: 1500);
       final duracion = DateTime.now().difference(inicio);
       if (duracion < duracionMinima) {
@@ -308,7 +334,6 @@ class _AsignacionesLaboralesScreenState
           .read(asignacionesLaboralesProvider.notifier)
           .importarCsvAsignaciones(
             csvBytes: res.files.single.bytes!,
-            // cambia a true si quieres subir TODO sin bloquear por duplicados:
             ignorarDuplicados: false,
           );
 
@@ -352,5 +377,125 @@ class _AsignacionesLaboralesScreenState
         context.loaderOverlay.hide();
       }
     }
+  }
+
+  // ===============================
+  // 🔎 LÓGICA DE BÚSQUEDA / MATCHING
+  // ===============================
+
+  /// Aplica filtro local por `_query`, enriqueciendo cada asignación con:
+  /// - Nombre del colaborador (mapColabNombre)
+  /// - Nombre del distribuidor (mapDistribNombre)
+  /// - Teléfonos del colaborador (mapColabTelefonos) — opcional
+  List _aplicarFiltro(
+    List lista,
+    String query, {
+    required Map<String, String> mapColabNombre,
+    required Map<String, String> mapDistribNombre,
+    required Map<String, String> mapColabTelefonos,
+  }) {
+    if (query.trim().isEmpty) return lista;
+
+    final q = _normalize(query);
+    final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+
+    return lista.where((a) {
+      final (idxTexto, phoneDigits) = _buildIndex(
+        a,
+        mapColabNombre,
+        mapDistribNombre,
+        mapColabTelefonos,
+      );
+
+      final ok = tokens.every((t) {
+        final isDigits = RegExp(r'^\d+$').hasMatch(t);
+        if (isDigits) return phoneDigits.contains(t);
+        return idxTexto.contains(t);
+      });
+
+      return ok;
+    }).toList();
+  }
+
+  /// Construye índice normalizado y dígitos de teléfono para una asignación.
+  /// Usa múltiples nombres posibles de campos (uuid/uid/…).
+  (String idxTexto, String phoneDigits) _buildIndex(
+    dynamic a,
+    Map<String, String> mapColabNombre,
+    Map<String, String> mapDistribNombre,
+    Map<String, String> mapColabTelefonos,
+  ) {
+    String _tryS(String Function() f) {
+      try {
+        final v = f();
+        return (v).toString();
+      } catch (_) {
+        return '';
+      }
+    }
+
+    // UIDs potenciales según distintos modelos
+    final colabUid = [
+      _tryS(() => a.uuidColaborador),
+      _tryS(() => a.colaboradorUid),
+      _tryS(() => a.uidColaborador),
+      _tryS(() => a.colaboradorUUID),
+      _tryS(() => a.colaboradorId),
+    ].firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+    final distUid = [
+      _tryS(() => a.uuidDistribuidor),
+      _tryS(() => a.distribuidorUid),
+      _tryS(() => a.uidDistribuidor),
+      _tryS(() => a.distribuidorUUID),
+      _tryS(() => a.distribuidorId),
+    ].firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+    final colaboradorNombre = mapColabNombre[colabUid] ?? '';
+    final distribuidorNombre = mapDistribNombre[distUid] ?? '';
+
+    // Otros campos locales de la asignación (si existen)
+    final puesto = _tryS(() => a.puesto ?? '');
+    final correo = _tryS(() => a.email ?? a.emailPersonal ?? '');
+    final curp = _tryS(() => a.curp ?? '');
+    final rfc = _tryS(() => a.rfc ?? '');
+    final notas = _tryS(() => a.notas ?? a.observaciones ?? '');
+
+    final texto = [
+      colaboradorNombre,
+      distribuidorNombre,
+      puesto,
+      correo,
+      curp,
+      rfc,
+      notas,
+    ].where((e) => e.isNotEmpty).join(' ');
+
+    final idxTexto = _normalize(texto);
+    final phoneDigits = mapColabTelefonos[colabUid] ?? '';
+
+    return (idxTexto, phoneDigits);
+  }
+
+  String _nombreCompletoColaborador(String? nombres, String? apP, String? apM) {
+    final s = '${nombres ?? ''} ${apP ?? ''} ${apM ?? ''}'.trim();
+    return s.replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String _digitsOnly(String s) => s.replaceAll(RegExp(r'\D+'), '');
+
+  /// Normaliza: minúsculas, sin acentos/diéresis/ñ, y simplifica espacios.
+  String _normalize(String input) {
+    var t = input.toLowerCase();
+    t = t.replaceAll(RegExp(r'[áàäâã]'), 'a');
+    t = t.replaceAll(RegExp(r'[éèëê]'), 'e');
+    t = t.replaceAll(RegExp(r'[íìïî]'), 'i');
+    t = t.replaceAll(RegExp(r'[óòöôõ]'), 'o');
+    t = t.replaceAll(RegExp(r'[úùüû]'), 'u');
+    t = t.replaceAll(RegExp(r'[ñ]'), 'n');
+    t = t.replaceAll(RegExp(r'[ç]'), 'c');
+    t = t.replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
+    t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return t;
   }
 }
