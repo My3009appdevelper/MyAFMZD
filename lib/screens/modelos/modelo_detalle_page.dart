@@ -173,36 +173,6 @@ class ModeloDetallePage extends ConsumerWidget {
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 12),
-
-                // Mensualidades / Integrante / Propietario
-                // (Valores placeholder ‘—’ por ahora)
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: 'Mensualidades: ', style: labelStyle),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: 'Integrante: ', style: labelStyle),
-                      TextSpan(text: '—', style: valueStyle),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: 'Propietario: ', style: labelStyle),
-                      TextSpan(text: '—', style: valueStyle),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),

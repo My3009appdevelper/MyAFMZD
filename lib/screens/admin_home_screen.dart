@@ -1,122 +1,239 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
-import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
-import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
-import 'package:myafmzd/database/estatus/estatus_provider.dart';
-import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
-import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
-import 'package:myafmzd/database/modelos/modelos_provider.dart';
-import 'package:myafmzd/database/perfil/perfil_provider.dart';
-import 'package:myafmzd/database/productos/productos_provider.dart';
-import 'package:myafmzd/database/reportes/reportes_provider.dart';
-import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+
+// Cargas iniciales (offline-first), igual que HomeScreen
+import 'package:myafmzd/database/perfil/perfil_provider.dart';
+import 'package:myafmzd/database/modelos/modelos_provider.dart';
+import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
+import 'package:myafmzd/database/reportes/reportes_provider.dart';
+import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
+import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
+import 'package:myafmzd/database/productos/productos_provider.dart';
+import 'package:myafmzd/database/estatus/estatus_provider.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
-import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_screen.dart';
+
+// Pantallas admin
 import 'package:myafmzd/screens/colaboradores/colaboradores_screen.dart';
-import 'package:myafmzd/screens/estatus/estatus_screen.dart';
-import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_screen.dart';
+import 'package:myafmzd/screens/asignaciones_laborales/asignaciones_laborales_screen.dart';
 import 'package:myafmzd/screens/usuarios/usuarios_screen.dart';
-import 'package:myafmzd/screens/productos/productos_screen.dart';
 import 'package:myafmzd/screens/ventas/ventas_screen.dart';
+import 'package:myafmzd/screens/productos/productos_screen.dart';
+import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_screen.dart';
+import 'package:myafmzd/screens/estatus/estatus_screen.dart';
+
+// Permisos RBAC (usa el mismo archivo que en HomeScreen)
+import 'package:myafmzd/session/pemisos_acceso.dart';
+
+// Drawer
 import 'package:myafmzd/widgets/my_app_drawer.dart';
 
 class AdminHomeScreen extends ConsumerStatefulWidget {
   const AdminHomeScreen({super.key});
 
   @override
-  ConsumerState<AdminHomeScreen> createState() => _HomeScreenState();
+  ConsumerState<AdminHomeScreen> createState() => _AdminHomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
+class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
   int _indiceActual = 0;
-
-  // 👇 Nuevo orden
-  final List<Widget> _pantallas = const [
-    ColaboradoresScreen(), // 1
-    AsignacionesLaboralesScreen(), // 2
-    UsuariosScreen(), // 3
-    VentasScreen(),
-    ProductosScreen(), // 4
-    GruposDistribuidoresScreen(), // 5
-    EstatusScreen(), // 6
-  ];
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() async {
-      await ref.read(perfilProvider.notifier).cargarUsuario();
-      await ref.read(modelosProvider.notifier).cargarOfflineFirst();
-      await ref.read(modeloImagenesProvider.notifier).cargarOfflineFirst();
-      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
-      await ref
-          .read(gruposDistribuidoresProvider.notifier)
-          .cargarOfflineFirst();
-      await ref.read(reporteProvider.notifier).cargarOfflineFirst();
-      await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
-      await ref
-          .read(asignacionesLaboralesProvider.notifier)
-          .cargarOfflineFirst();
-      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
-      await ref.read(productosProvider.notifier).cargarOfflineFirst();
-      await ref.read(estatusProvider.notifier).cargarOfflineFirst();
-      await ref.read(ventasProvider.notifier).cargarOfflineFirst();
+      // 1) Captura notifiers una sola vez (esto NO usa ref después de awaits)
+      final perfilN = ref.read(perfilProvider.notifier);
+      final modelosN = ref.read(modelosProvider.notifier);
+      final modeloImgsN = ref.read(modeloImagenesProvider.notifier);
+      final distribuidoresN = ref.read(distribuidoresProvider.notifier);
+      final gruposDistN = ref.read(gruposDistribuidoresProvider.notifier);
+      final reportesN = ref.read(reporteProvider.notifier);
+      final colaboradoresN = ref.read(colaboradoresProvider.notifier);
+      final asignacionesN = ref.read(asignacionesLaboralesProvider.notifier);
+      final usuariosN = ref.read(usuariosProvider.notifier);
+      final productosN = ref.read(productosProvider.notifier);
+      final ventasN = ref.read(ventasProvider.notifier);
+      final estatusN = ref.read(estatusProvider.notifier);
+
+      // 2) Llama a los métodos usando los notifiers guardados
+      await perfilN.cargarUsuario();
+      if (!mounted) return;
+
+      await modelosN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await modeloImgsN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await distribuidoresN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await gruposDistN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await reportesN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await colaboradoresN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await asignacionesN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await usuariosN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await productosN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await ventasN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await estatusN.cargarOfflineFirst();
+      if (!mounted) return;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool hayConexion = ref.watch(connectivityProvider);
+    final hayConexion = ref.watch(connectivityProvider);
+    final policy = ref.watch(appPolicyProvider);
+
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // Lista de items del BottomNavigationBar
-    final items = [
-      BottomNavigationBarItem(
-        backgroundColor: colorScheme.primary,
-        icon: Icon(Icons.group),
-        label: 'Colaboradores',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: colorScheme.primary,
-        icon: Icon(Icons.assignment_ind),
-        label: 'Asignaciones',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: colorScheme.primary,
-        icon: Icon(Icons.manage_accounts),
-        label: 'Usuarios',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: colorScheme.primary,
-        icon: Icon(Icons.point_of_sale),
-        label: 'Ventas',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: colorScheme.primary,
-        icon: Icon(Icons.inventory_2),
-        label: 'Productos',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: colorScheme.primary,
-        icon: Icon(Icons.groups),
-        label: 'Grupos Distribuidores',
-      ),
-      BottomNavigationBarItem(
-        backgroundColor: colorScheme.primary,
-        icon: Icon(Icons.label_important_outline),
-        label: 'Estatus',
-      ),
-    ];
+    // Construye tabs admin dinámicamente según permisos NAV
+    final pantallasVisibles = <Widget>[];
+    final itemsVisibles = <BottomNavigationBarItem>[];
+
+    if (policy.can(Resource.colaboradores, ActionType.nav)) {
+      pantallasVisibles.add(const ColaboradoresScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.group),
+          label: 'Colaboradores',
+        ),
+      );
+    }
+
+    if (policy.can(Resource.asignacionesLaborales, ActionType.nav)) {
+      pantallasVisibles.add(const AsignacionesLaboralesScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.assignment_ind),
+          label: 'Asignaciones',
+        ),
+      );
+    }
+
+    if (policy.can(Resource.usuarios, ActionType.nav)) {
+      pantallasVisibles.add(const UsuariosScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.manage_accounts),
+          label: 'Usuarios',
+        ),
+      );
+    }
+
+    if (policy.can(Resource.ventas, ActionType.nav)) {
+      pantallasVisibles.add(const VentasScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.point_of_sale),
+          label: 'Ventas',
+        ),
+      );
+    }
+
+    if (policy.can(Resource.productos, ActionType.nav)) {
+      pantallasVisibles.add(const ProductosScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.inventory_2),
+          label: 'Productos',
+        ),
+      );
+    }
+
+    if (policy.can(Resource.gruposDistribuidores, ActionType.nav)) {
+      pantallasVisibles.add(const GruposDistribuidoresScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.groups),
+          label: 'Grupos Distribuidores',
+        ),
+      );
+    }
+
+    if (policy.can(Resource.estatus, ActionType.nav)) {
+      pantallasVisibles.add(const EstatusScreen());
+      itemsVisibles.add(
+        BottomNavigationBarItem(
+          backgroundColor: colorScheme.primary,
+          icon: const Icon(Icons.label_important_outline),
+          label: 'Estatus',
+        ),
+      );
+    }
+
+    // ⚠️ Si hay 0 o 1 tabs, evita BottomNavigationBar (misma defensa que HomeScreen)
+    if (pantallasVisibles.length <= 1) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Center(
+            child: Text(
+              'Admin MyAFMZD',
+              style: textTheme.titleLarge?.copyWith(
+                color: colorScheme.onPrimary,
+              ),
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: hayConexion
+                    ? 'Conectado a Internet'
+                    : 'Sin conexión a Internet',
+                child: Icon(
+                  hayConexion ? Icons.wifi : Icons.wifi_off,
+                  color: colorScheme.onPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        drawer: const MyAppDrawer(current: DrawerDest.admin),
+        body: pantallasVisibles.isEmpty
+            ? const Center(
+                child: Text('No tienes secciones administrativas disponibles.'),
+              )
+            : pantallasVisibles.first,
+      );
+    }
+
+    // Ajuste por seguridad si el índice actual se sale del rango
+    if (_indiceActual >= pantallasVisibles.length) {
+      _indiceActual = 0;
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: Center(
           child: Text(
-            // ⬇️ Título dinámico según pestaña activa
-            items[_indiceActual].label ?? 'Admin MyAFMZD',
+            itemsVisibles[_indiceActual].label ?? 'Admin MyAFMZD',
             style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary),
           ),
         ),
@@ -135,8 +252,8 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
           ),
         ],
       ),
-      drawer: const MyAppDrawer(),
-      body: _pantallas[_indiceActual],
+      drawer: const MyAppDrawer(current: DrawerDest.admin),
+      body: pantallasVisibles[_indiceActual],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceActual,
         backgroundColor: colorScheme.primary,
@@ -150,7 +267,7 @@ class _HomeScreenState extends ConsumerState<AdminHomeScreen> {
           color: colorScheme.secondary,
         ),
         onTap: (index) => setState(() => _indiceActual = index),
-        items: items,
+        items: itemsVisibles,
       ),
     );
   }

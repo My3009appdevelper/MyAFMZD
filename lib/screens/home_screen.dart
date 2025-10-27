@@ -9,17 +9,15 @@ import 'package:myafmzd/database/modelos/modelos_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:myafmzd/database/productos/productos_provider.dart';
 import 'package:myafmzd/database/reportes/reportes_provider.dart';
-import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
+import 'package:myafmzd/connectivity/connectivity_provider.dart';
 import 'package:myafmzd/screens/distribuidores/distribuidores_screen.dart';
 import 'package:myafmzd/screens/modelos/modelos_screen.dart';
 import 'package:myafmzd/screens/perfil/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
+import 'package:myafmzd/session/pemisos_acceso.dart';
 import 'package:myafmzd/widgets/my_app_drawer.dart';
-
-// 👇 Asegúrate de importar tu provider de permisos
-import 'package:myafmzd/session/permisos.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -35,21 +33,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     Future.microtask(() async {
-      await ref.read(perfilProvider.notifier).cargarUsuario();
-      await ref.read(modelosProvider.notifier).cargarOfflineFirst();
-      await ref.read(modeloImagenesProvider.notifier).cargarOfflineFirst();
-      await ref.read(distribuidoresProvider.notifier).cargarOfflineFirst();
-      await ref
-          .read(gruposDistribuidoresProvider.notifier)
-          .cargarOfflineFirst();
-      await ref.read(reporteProvider.notifier).cargarOfflineFirst();
-      await ref.read(colaboradoresProvider.notifier).cargarOfflineFirst();
-      await ref
-          .read(asignacionesLaboralesProvider.notifier)
-          .cargarOfflineFirst();
-      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
-      await ref.read(productosProvider.notifier).cargarOfflineFirst();
-      await ref.read(ventasProvider.notifier).cargarOfflineFirst();
+      // 1) Captura notifiers una sola vez (esto NO usa ref después de awaits)
+      final perfilN = ref.read(perfilProvider.notifier);
+      final modelosN = ref.read(modelosProvider.notifier);
+      final modeloImgsN = ref.read(modeloImagenesProvider.notifier);
+      final distribuidoresN = ref.read(distribuidoresProvider.notifier);
+      final gruposDistN = ref.read(gruposDistribuidoresProvider.notifier);
+      final reportesN = ref.read(reporteProvider.notifier);
+      final colaboradoresN = ref.read(colaboradoresProvider.notifier);
+      final asignacionesN = ref.read(asignacionesLaboralesProvider.notifier);
+      final usuariosN = ref.read(usuariosProvider.notifier);
+      final productosN = ref.read(productosProvider.notifier);
+      final ventasN = ref.read(ventasProvider.notifier);
+
+      // 2) Llama a los métodos usando los notifiers guardados
+      await perfilN.cargarUsuario();
+      if (!mounted) return;
+
+      await modelosN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await modeloImgsN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await distribuidoresN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await gruposDistN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await reportesN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await colaboradoresN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await asignacionesN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await usuariosN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await productosN.cargarOfflineFirst();
+      if (!mounted) return;
+
+      await ventasN.cargarOfflineFirst();
+      if (!mounted) return;
     });
   }
 
@@ -59,14 +88,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // 👇 permisos derivados de la asignación activa
-    final perms = ref.watch(appPermissionsProvider);
+    // 🎯 Nuevo sistema de permisos basado en Policy (RBAC)
+    final policy = ref.watch(appPolicyProvider);
 
-    // Construimos listas visibles según permisos (¡sin romper el orden!).
+    // Construimos las pantallas visibles según permisos NAV
     final pantallasVisibles = <Widget>[];
     final itemsVisibles = <BottomNavigationBarItem>[];
 
-    if (perms.can(Feature.navPerfil)) {
+    if (policy.can(Resource.perfil, ActionType.nav)) {
       pantallasVisibles.add(const PerfilScreen());
       itemsVisibles.add(
         BottomNavigationBarItem(
@@ -77,7 +106,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    if (perms.can(Feature.navModelos)) {
+    if (policy.can(Resource.modelos, ActionType.nav)) {
       pantallasVisibles.add(const ModelosScreen());
       itemsVisibles.add(
         BottomNavigationBarItem(
@@ -87,7 +116,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
     }
-    if (perms.can(Feature.navDistribuidores)) {
+
+    if (policy.can(Resource.distribuidores, ActionType.nav)) {
       pantallasVisibles.add(const DistribuidoresScreen());
       itemsVisibles.add(
         BottomNavigationBarItem(
@@ -97,7 +127,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
     }
-    if (perms.can(Feature.navReportes)) {
+
+    if (policy.can(Resource.reportes, ActionType.nav)) {
       pantallasVisibles.add(const ReportesScreen());
       itemsVisibles.add(
         BottomNavigationBarItem(
@@ -108,7 +139,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    // 🔒 Defensa anti-crash: si por permisos no hay tabs, mostramos un placeholder.
+    // 🔒 Defensa: si hay 0 o 1 tabs, mostramos esa pantalla sola
+    if (pantallasVisibles.length <= 1) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Center(
+            child: Text(
+              "MyAFMZD",
+              style: textTheme.titleLarge?.copyWith(
+                color: colorScheme.onPrimary,
+              ),
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: hayConexion
+                    ? 'Conectado a Internet'
+                    : 'Sin conexión a Internet',
+                child: Icon(
+                  hayConexion ? Icons.wifi : Icons.wifi_off,
+                  color: colorScheme.onPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        drawer: const MyAppDrawer(current: DrawerDest.home),
+        body: pantallasVisibles.isEmpty
+            ? const Center(
+                child: Text('No tienes secciones disponibles para tu rol.'),
+              )
+            : pantallasVisibles.first, // ✅ Muestra la única pantalla
+      );
+    }
+
+    // 🔒 Defensa: si ningún NAV está permitido, mostrar placeholder
     if (pantallasVisibles.isEmpty) {
       return Scaffold(
         appBar: AppBar(
@@ -142,7 +209,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    // Si el índice actual queda fuera de rango por un cambio de rol/asignación, lo reajustamos.
+    // Ajuste si el índice actual se sale del rango
     if (_indiceActual >= pantallasVisibles.length) {
       _indiceActual = 0;
     }
@@ -151,7 +218,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: Center(
           child: Text(
-            // ⬇️ título dinámico según la pestaña seleccionada
             itemsVisibles[_indiceActual].label ?? 'MyAFMZD',
             style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary),
           ),

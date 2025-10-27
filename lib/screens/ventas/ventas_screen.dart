@@ -75,6 +75,7 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
     ref.listen<bool>(connectivityProvider, (prev, next) async {
       if (!mounted || prev == next) return;
@@ -294,9 +295,10 @@ class _VentasScreenState extends ConsumerState<VentasScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     OutlinedButton.icon(
-                      icon: const Icon(Icons.filter_list),
+                      icon: Icon(Icons.filter_list, color: cs.onSurface),
                       label: Text(
                         _mostrarFiltros ? 'Ocultar filtros' : 'Filtros',
+                        style: tt.bodySmall?.copyWith(color: cs.onSurface),
                       ),
                       onPressed: () {
                         setState(() {

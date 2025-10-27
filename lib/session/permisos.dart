@@ -4,54 +4,38 @@ import 'package:myafmzd/session/sesion_asignacion_selectors.dart';
 
 /// Enum de “features” que tu UI puede proteger/mostrar
 enum Feature {
-  navDashboard,
   navPerfil,
-  navVentas,
-  navDistribuidores,
-  navGruposDistribuidores,
   navModelos,
-  navProductos,
-  navUsuarios,
+  navDistribuidores,
   navReportes,
-  editProductos,
-  editUsuarios,
+  navColaboradores,
+  navAsignacionesLaborales,
+  navUsuarios,
+  navVentas,
+  navProductos,
+  navGruposDistribuidores,
+  navEstatus,
   verTodo,
   navAdminHome,
+  navHome,
 }
 
 /// Mapa de rol → features
 Set<Feature> _roleToFeatures(String rol) {
   switch (rol.trim().toLowerCase()) {
     case 'master':
+      return Feature.values.toSet()..add(Feature.verTodo);
     case 'admin':
       return Feature.values.toSet()..add(Feature.verTodo);
     case 'gerente':
-      return {
-        Feature.navDashboard,
-        Feature.navPerfil,
-        Feature.navVentas,
-        Feature.navDistribuidores,
-        Feature.navModelos,
-      };
+      return {Feature.navPerfil, Feature.navDistribuidores, Feature.navModelos};
     case 'coordinador':
+      return {Feature.navPerfil, Feature.navDistribuidores, Feature.navModelos};
     case 'administrativo':
-      return {
-        Feature.navDashboard,
-        Feature.navPerfil,
-        Feature.navVentas,
-        Feature.navDistribuidores,
-        Feature.navGruposDistribuidores,
-        Feature.navModelos,
-        Feature.navReportes,
-      };
+      return {Feature.navPerfil, Feature.navDistribuidores, Feature.navModelos};
     case 'vendedor':
     default:
-      return {
-        Feature.navPerfil,
-        Feature.navVentas,
-        Feature.navDistribuidores,
-        Feature.navModelos,
-      };
+      return {Feature.navPerfil, Feature.navModelos};
   }
 }
 

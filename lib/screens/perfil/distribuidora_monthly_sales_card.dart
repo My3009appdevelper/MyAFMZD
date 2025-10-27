@@ -126,18 +126,15 @@ class _DistribuidoraMonthlySalesCardState
     );
 
     // Selección por defecto según rol
-    // Selección por defecto según rol
     if (_selectedConcentradoraUid == null) {
       if (esVendedor || esGerente) {
         _selectedConcentradoraUid = _DistSelectors.rootUidFromBase(
           distOrigen,
           distribuidores,
-        ); // fija la del contexto
+        );
       } else {
-        // Admin: primera disponible
-        _selectedConcentradoraUid = opcionesConcentradoras.isNotEmpty
-            ? opcionesConcentradoras.first.key
-            : null;
+        // Admin: sin selección => barras muestran TOTAL por mes, pies ocultos
+        _selectedConcentradoraUid = null;
       }
     }
 
@@ -153,13 +150,23 @@ class _DistribuidoraMonthlySalesCardState
       rootUid: rootObjetivo,
     );
 
-    // Serie mensual por cluster (root)
-    final serie = _DistSelectors.seriePorRootCluster(
-      ventas: ventas,
-      distribuidores: distribuidores,
-      anio: _selectedYear,
-      rootUid: rootObjetivo,
-    );
+    // Serie mensual
+    final serie = () {
+      final sinSeleccionAdmin =
+          esAdmin && (rootObjetivo == null || rootObjetivo.isEmpty);
+      if (sinSeleccionAdmin) {
+        return _DistSelectors.serieTotalPorMes(
+          ventas: ventas,
+          anio: _selectedYear,
+        ); // TOTAL por mes
+      }
+      return _DistSelectors.seriePorRootCluster(
+        ventas: ventas,
+        distribuidores: distribuidores,
+        anio: _selectedYear,
+        rootUid: rootObjetivo,
+      );
+    }();
 
     final totalAnual = serie.fold<int>(0, (a, b) => a + b);
     final promedio = _DistSelectors.avgCorriente(
@@ -203,8 +210,8 @@ class _DistribuidoraMonthlySalesCardState
       totalKeySeleccionado: false, // ya no usamos TOTAL
     );
 
-    // ===== PIES (concentradora vs. su grupo automotriz) =====
-    final puedeVerPies = rootObjetivo != null;
+    // ===== PIES =====
+    final puedeVerPies = rootObjetivo != null && rootObjetivo.isNotEmpty;
 
     final piesData = puedeVerPies
         ? (isGrupo
@@ -245,7 +252,6 @@ class _DistribuidoraMonthlySalesCardState
             // ===== Header (solo año + títulos) =====
             _HeaderControls(
               titulo: () {
-                // Para vendedor o gerente: mostrar SIEMPRE la root de su contexto (rootObjetivo)
                 if (esVendedor || esGerente) {
                   final name = _DistSelectors.nombreRootPorUid(
                     distribuidores,
@@ -255,15 +261,16 @@ class _DistribuidoraMonthlySalesCardState
                       ? 'VENTAS POR MES (DISTRIBUIDORA)'
                       : 'VENTAS DE ${name.toUpperCase()}';
                 }
-                // Para admin: usa la seleccionada en el picker
+                // Admin:
+                final sel = _selectedConcentradoraUid ?? '';
+                if (sel.isEmpty) return 'VENTAS TOTALES POR MES';
                 final name = _DistSelectors.entryByKey(
                   opcionesConcentradoras,
-                  _selectedConcentradoraUid ?? '',
+                  sel,
                 )?.value;
-                return (_selectedConcentradoraUid?.isNotEmpty == true &&
-                        (name?.isNotEmpty == true))
-                    ? 'VENTAS DE ${name!.toUpperCase()}'
-                    : 'VENTAS POR MES (DISTRIBUIDORA)';
+                return (name == null || name.isEmpty)
+                    ? 'VENTAS POR MES (DISTRIBUIDORA)'
+                    : 'VENTAS DE ${name.toUpperCase()}';
               }(),
               subtitulo: subtitulo,
             ),
@@ -1266,6 +1273,22 @@ class _DistSelectors {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Serie TOTAL del año (todas las ventas del año, sin filtrar por concentradora/cluster).
+  static List<int> serieTotalPorMes({required List ventas, required int anio}) {
+    final serie = List<int>.filled(12, 0);
+    for (final v in ventas) {
+      if (v.deleted == true) continue;
+      final y = v.anioVenta ?? (v.fechaVenta ?? v.updatedAt).toUtc().year;
+      if (y != anio) continue;
+
+      final m = v.mesVenta ?? (v.fechaVenta ?? v.updatedAt).toUtc().month;
+      if (m >= 1 && m <= 12) {
+        serie[m - 1] += 1;
+      }
+    }
+    return serie;
   }
 }
 

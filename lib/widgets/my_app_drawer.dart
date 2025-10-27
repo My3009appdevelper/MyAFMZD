@@ -1,52 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
-import 'package:myafmzd/session/permisos.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:myafmzd/session/pemisos_acceso.dart';
 import 'package:myafmzd/session/sesion_asignacion_provider.dart';
 import 'package:myafmzd/session/sesion_asignacion_selectors.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
+import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/theme/theme_provider.dart';
+
 import 'package:myafmzd/screens/home_screen.dart';
 import 'package:myafmzd/screens/admin_home_screen.dart';
-import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
-import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 
-class MyAppDrawer extends ConsumerWidget {
-  const MyAppDrawer({super.key});
+enum DrawerDest { home, admin }
+
+class MyAppDrawer extends ConsumerStatefulWidget {
+  const MyAppDrawer({super.key, this.current = DrawerDest.home});
+
+  final DrawerDest current;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
-    final isDark = themeMode == ThemeMode.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+  ConsumerState<MyAppDrawer> createState() => _MyAppDrawerState();
+}
 
-    // 🔐 permisos derivados del rol de la asignación activa
-    final perms = ref.watch(appPermissionsProvider);
+class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
+  // Controller propio para la lista de asignaciones
+  final ScrollController _asigCtrl = ScrollController();
 
-    // Perfil → para obtener colaboradorUid del usuario autenticado
+  @override
+  void dispose() {
+    _asigCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+
+    // RBAC
+    final policy = ref.watch(appPolicyProvider);
+
+    // Perfil / asignaciones
     final usuario = ref.watch(perfilProvider);
     final colabUid = usuario?.colaboradorUid ?? '';
 
-    // Datos de asignación / catálogos para nombres bonitos
     final activa = ref.watch(activeAssignmentProvider);
     final misAsig = ref.watch(
       myAssignmentsProvider(colabUid.isEmpty ? null : colabUid),
     );
-    final colaboradores = ref.watch(colaboradoresProvider);
     final distribuidores = ref.watch(distribuidoresProvider);
 
-    // Helpers de nombres
-    String _nombreColab(String uid) {
-      final c = colaboradores.where((x) => x.uid == uid).cast().toList();
-      if (c.isEmpty) return '—';
-      final p = c.first;
-      final n = '${p.nombres} ${p.apellidoPaterno} ${p.apellidoMaterno}'
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
-      return n.isEmpty ? '—' : n;
-    }
+    // 👇 Solo ACTIVAS (no deleted, sin fechaFin), y ordenadas recientes primero
+    final asigActivas =
+        misAsig.where((a) => !a.deleted && a.fechaFin == null).toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
     String _nombreDistrib(String uid) {
       if (uid.isEmpty) return '—';
@@ -54,227 +64,363 @@ class MyAppDrawer extends ConsumerWidget {
       return d.isEmpty ? uid : d.first.nombre;
     }
 
-    String _labelActiva() {
-      if (activa == null) return '—';
-      final rol = activa.rol.trim().isEmpty ? '—' : activa.rol.trim();
-      final nivel = activa.nivel.trim().isEmpty
-          ? ''
-          : ' (${activa.nivel.trim()})';
-      final colab = _nombreColab(activa.colaboradorUid);
-      final dist = _nombreDistrib(activa.distribuidorUid);
-      final distTxt = activa.distribuidorUid.isEmpty ? '' : ' • $dist';
-      final cerrado = activa.fechaFin == null ? '' : '  (cerrada)';
-      // Rol • Colaborador • Distribuidora
-      return '$rol$nivel • $colab$distTxt$cerrado';
-    }
+    // Destinos
+    final destinations = <_NavDest>[
+      _NavDest(
+        label: 'Home',
+        icon: Icons.home,
+        onTap: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
+          );
+        },
+      ),
+      if (policy.can(Resource.adminHome, ActionType.nav))
+        _NavDest(
+          label: 'Administración',
+          icon: Icons.admin_panel_settings,
+          onTap: () {
+            Navigator.of(context).pop();
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const AdminHomeScreen()));
+          },
+        ),
+    ];
+
+    final selectedIndex = () {
+      if (widget.current == DrawerDest.admin) {
+        final i = destinations.indexWhere((d) => d.label == 'Administración');
+        return i == -1 ? 0 : i;
+      }
+      return 0;
+    }();
 
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+      child: Column(
         children: [
-          // ===== Header visual (marca) =====
-          DrawerHeader(
-            decoration: BoxDecoration(color: colorScheme.primary),
-            child: Center(
-              child: Text(
-                'AFMZD',
-                style: textTheme.titleLarge?.copyWith(
-                  color: colorScheme.onPrimary,
-                ),
-              ),
-            ),
-          ),
-
-          // ===== Bloque de Asignación Activa + Selector =====
-          ListTile(
-            title: const Text('Asignación activa'),
-            subtitle: Text(
-              _labelActiva(),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: PopupMenuButton<String>(
-              tooltip: 'Cambiar asignación',
-              onSelected: (uid) async {
-                await ref
-                    .read(assignmentSessionProvider.notifier)
-                    .setActiveAssignment(uid);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Asignación cambiada')),
-                  );
-                }
-              },
-              itemBuilder: (_) => [
-                if (misAsig.isEmpty)
-                  const PopupMenuItem<String>(
-                    enabled: false,
-                    child: Text('Sin asignaciones'),
-                  ),
-                for (final a in misAsig)
-                  CheckedPopupMenuItem<String>(
-                    value: a.uid,
-                    checked: activa?.uid == a.uid,
-                    child: Text(
-                      // Mismo formato que el display del header, pero compacto
-                      '${a.rol}${a.nivel.trim().isEmpty ? '' : ' (${a.nivel.trim()})'}'
-                      ' • ${_nombreColab(a.colaboradorUid)}'
-                      '${a.distribuidorUid.isEmpty ? '' : ' • ${_nombreDistrib(a.distribuidorUid)}'}'
-                      '${a.fechaFin == null ? '' : '  (cerrada)'}',
-                      overflow: TextOverflow.ellipsis,
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            decoration: BoxDecoration(color: cs.primary),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 24.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.directions_car, color: cs.onPrimary),
+                  const SizedBox(width: 12),
+                  Text(
+                    'MyAFMZD',
+                    style: tt.titleLarge?.copyWith(
+                      color: cs.onPrimary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-              ],
-              icon: const Icon(Icons.swap_horiz),
+                ],
+              ),
             ),
           ),
 
-          const Divider(),
+          // Navegación (M3)
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  const _SectionLabel('Navegación'),
 
-          // ===== Home =====
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: Text(
-              'Home',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-            onTap: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const HomeScreen()),
-                (route) => false,
-              );
-            },
-          ),
-
-          // ===== Administración (condicionado por permisos) =====
-          if (perms.can(Feature.navAdminHome))
-            ListTile(
-              leading: const Icon(Icons.admin_panel_settings),
-              title: Text(
-                'Administración',
-                style: textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
-                );
-              },
-            ),
-
-          const Divider(),
-
-          // ===== Tema =====
-          ListTile(
-            leading: Icon(isDark ? Icons.dark_mode : Icons.light_mode),
-            title: Text(
-              isDark ? 'Modo Oscuro' : 'Modo Claro',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-            onTap: () {
-              ref.read(themeModeProvider.notifier).toggleTheme();
-            },
-          ),
-
-          const Divider(),
-
-          // ===== Logout =====
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: Text(
-              'Cerrar sesión',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-            onTap: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: Center(
-                    child: Text(
-                      '¿Cerrar sesión?',
-                      style: textTheme.titleLarge?.copyWith(
-                        color: colorScheme.onSurface,
+                  for (var i = 0; i < destinations.length; i++)
+                    ListTile(
+                      leading: Icon(destinations[i].icon, color: cs.onSurface),
+                      title: Text(
+                        destinations[i].label,
+                        style: tt.bodyMedium?.copyWith(color: cs.onSurface),
                       ),
-                    ),
-                  ),
-                  content: Text(
-                    '¿Estás seguro de que deseas cerrar sesión?',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: Text(
-                        'Cancelar',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface,
+                      onTap: destinations[i].onTap,
+                      // sin fondo seleccionado; solo un puntito a la derecha
+                      trailing: AnimatedOpacity(
+                        opacity: selectedIndex == i ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 150),
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: cs.onSurface,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      dense: true,
+                      visualDensity: VisualDensity.compact,
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
+
+                  const Divider(),
+
+                  // ===== Asignación (inline) =====
+                  const _SectionLabel('Asignación actual'),
+
+                  if (asigActivas.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                       child: Text(
-                        'Cerrar sesión',
-                        style: textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurface,
+                        'No tienes asignaciones activas.',
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      child: ListView.separated(
+                        controller: _asigCtrl,
+                        primary: false,
+                        shrinkWrap: true,
+                        itemCount: asigActivas.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 6),
+                        itemBuilder: (context, i) {
+                          final a = asigActivas[i];
+                          final seleccionado = a.uid == activa?.uid;
+
+                          // 🔹 Fondo SIEMPRE surface; sin highlight agresivo
+                          final bg = cs.surface;
+                          final fg = cs.onSurface;
+                          final subFg = cs.onSurfaceVariant;
+
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () async {
+                              await ref
+                                  .read(assignmentSessionProvider.notifier)
+                                  .setActiveAssignment(a.uid);
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Asignación cambiada'),
+                                  duration: Duration(milliseconds: 1200),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: bg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: cs.outlineVariant,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '${a.rol}${a.nivel.trim().isEmpty ? '' : ' (${a.nivel.trim()})'}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: tt.bodyMedium?.copyWith(
+                                            color: fg,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons
+                                                  .store_mall_directory_outlined,
+                                              size: 16,
+                                              color: subFg,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                a.distribuidorUid.isEmpty
+                                                    ? '—'
+                                                    : _nombreDistrib(
+                                                        a.distribuidorUid,
+                                                      ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: tt.bodyMedium?.copyWith(
+                                                  color: subFg,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // 🔹 Dot a la derecha cuando está seleccionada
+                                  AnimatedOpacity(
+                                    opacity: seleccionado ? 1.0 : 0.0,
+                                    duration: const Duration(milliseconds: 150),
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: cs.onSurface,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ],
+                ],
+              ),
+            ),
+          ),
+          const Divider(),
+
+          const _SectionLabel('Sesión'),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: Icon(isDark ? Icons.dark_mode : Icons.light_mode),
+                  title: Text(
+                    isDark ? 'Modo Oscuro' : 'Modo Claro',
+                    style: tt.bodyMedium?.copyWith(color: cs.onSurface),
+                  ),
+                  onTap: () {
+                    ref.read(themeModeProvider.notifier).toggleTheme();
+                  },
                 ),
-              );
-              if (confirm == true) {
-                // Muestra overlay
-                if (context.mounted) {
-                  context.loaderOverlay.show(progress: 'Cerrando sesión…');
-                }
-                final inicio = DateTime.now();
-
-                try {
-                  await Supabase.instance.client.auth.signOut();
-                  await ref.read(assignmentSessionProvider.notifier).clear();
-                  ref.read(perfilProvider.notifier).limpiarUsuario();
-
-                  // Delay mínimo para UX suave (coherente con tus 900–1500 ms)
-                  const minSpin = Duration(milliseconds: 1200);
-                  final elapsed = DateTime.now().difference(inicio);
-                  if (elapsed < minSpin) {
-                    await Future.delayed(minSpin - elapsed);
-                  }
-
-                  if (context.mounted && context.loaderOverlay.visible) {
-                    context.loaderOverlay.hide();
-                  }
-                  if (context.mounted) {
-                    Navigator.of(
-                      context,
-                    ).pushNamedAndRemoveUntil('/', (_) => false);
-                  }
-                } catch (e) {
-                  if (context.mounted && context.loaderOverlay.visible) {
-                    context.loaderOverlay.hide();
-                  }
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('❌ No se pudo cerrar sesión: $e')),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: Text(
+                    'Cerrar sesión',
+                    style: tt.bodyMedium?.copyWith(color: cs.onSurface),
+                  ),
+                  onTap: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Center(child: Text('¿Cerrar sesión?')),
+                        content: const Text(
+                          '¿Estás seguro de que deseas cerrar sesión?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancelar'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Cerrar sesión'),
+                          ),
+                        ],
+                      ),
                     );
-                  }
-                }
-              }
-            },
+
+                    if (confirm == true) {
+                      if (!context.mounted) return;
+                      context.loaderOverlay.show(progress: 'Cerrando sesión…');
+                      final inicio = DateTime.now();
+
+                      try {
+                        await Supabase.instance.client.auth.signOut();
+                        await ref
+                            .read(assignmentSessionProvider.notifier)
+                            .clear();
+                        ref.read(perfilProvider.notifier).limpiarUsuario();
+
+                        const minSpin = Duration(milliseconds: 1200);
+                        final elapsed = DateTime.now().difference(inicio);
+                        if (elapsed < minSpin) {
+                          await Future.delayed(minSpin - elapsed);
+                        }
+
+                        if (!context.mounted) return;
+                        if (context.loaderOverlay.visible) {
+                          context.loaderOverlay.hide();
+                        }
+                        Navigator.of(
+                          context,
+                        ).pushNamedAndRemoveUntil('/', (_) => false);
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        if (context.loaderOverlay.visible) {
+                          context.loaderOverlay.hide();
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ No se pudo cerrar sesión: $e'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Footer visual
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+            decoration: BoxDecoration(color: cs.primary),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NavDest {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  _NavDest({required this.label, required this.icon, required this.onTap});
+}
+
+/// Encabezado de sección alineado a la izquierda (M3)
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6), // compacto
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurfaceVariant,
+            letterSpacing: 0.1,
+          ),
+        ),
       ),
     );
   }

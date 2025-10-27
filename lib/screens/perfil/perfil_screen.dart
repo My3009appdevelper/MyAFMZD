@@ -321,8 +321,8 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     final inicio = DateTime.now();
 
     try {
-      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       if (!mounted) return;
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando colaboradores');
       }

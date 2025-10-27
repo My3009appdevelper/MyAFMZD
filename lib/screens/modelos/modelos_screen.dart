@@ -26,6 +26,7 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
 
   int? _anioSeleccionado; // null => Todos
   bool _soloActivos = false;
+  int _tabIndex = 0;
 
   @override
   void initState() {
@@ -52,6 +53,13 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
         .tiposUnicos; // incluye "Todos"
     final anios = [...ref.watch(modelosProvider.notifier).aniosUnicos.reversed];
 
+    // 🛡️ Si cambia la longitud de tabs, ajusta _tabIndex
+    final tabsLen = tipos.isEmpty ? 1 : tipos.length;
+    if (_tabIndex >= tabsLen) {
+      _tabIndex = tabsLen - 1;
+      if (_tabIndex < 0) _tabIndex = 0;
+    }
+
     final Map<String, List<ModeloDb>> grupos = {
       for (final t in tipos)
         t: ref
@@ -64,10 +72,8 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
     };
 
     return DefaultTabController(
-      key: ValueKey(
-        '${tipos.join("|")}::${_anioSeleccionado ?? "all"}::$_soloActivos',
-      ),
-      length: tipos.isEmpty ? 1 : tipos.length, // evitar length=0
+      initialIndex: _tabIndex,
+      length: tabsLen,
       child: Scaffold(
         floatingActionButton: _cargandoInicial
             ? null
@@ -82,7 +88,7 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
                 fabTooltip: 'Acciones de modelos',
               ),
         body: _cargandoInicial
-            ? const SizedBox.shrink() // el overlay ya muestra “Cargando…”
+            ? const SizedBox.shrink()
             : Column(
                 children: [
                   TabBar(
@@ -90,6 +96,8 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
                     indicatorColor: cs.onSurface,
                     labelColor: cs.onSurface,
                     unselectedLabelColor: cs.secondary.withOpacity(0.6),
+                    // ✅ Persiste selección del tab
+                    onTap: (i) => setState(() => _tabIndex = i),
                     tabs: [
                       for (final t in tipos)
                         Tab(text: '$t (${grupos[t]?.length ?? 0})'),
@@ -146,41 +154,6 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
                 final colorScheme = Theme.of(context).colorScheme;
 
                 final chips = <Widget>[
-                  // Chip "Todos"
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Builder(
-                      builder: (context) {
-                        final sel = _anioSeleccionado == null;
-                        return ChoiceChip(
-                          label: Text(
-                            'Todos',
-                            style: textTheme.labelLarge?.copyWith(
-                              color: sel
-                                  ? colorScheme.onPrimaryContainer
-                                  : colorScheme.onSurface,
-                            ),
-                          ),
-                          selected: sel,
-                          onSelected: (_) =>
-                              setState(() => _anioSeleccionado = null),
-                          showCheckmark: false,
-                          side: BorderSide(
-                            color: colorScheme.outlineVariant.withOpacity(0.45),
-                            width: 1,
-                          ),
-                          shape: const StadiumBorder(),
-                          labelPadding: labelPad,
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: colorScheme.surface,
-                          selectedColor: colorScheme.primaryContainer,
-                        );
-                      },
-                    ),
-                  ),
                   // Resto de años
                   for (final y in anios)
                     Padding(
