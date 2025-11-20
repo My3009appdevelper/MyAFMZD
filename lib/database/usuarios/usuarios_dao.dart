@@ -30,9 +30,20 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
       UsuariosCompanion(
         deleted: const Value(true),
         isSynced: const Value(false),
-
         updatedAt: Value(DateTime.now().toUtc()),
         // isSynced lo dejamos como está; el Sync decidirá si marcar pendiente
+      ),
+    );
+  }
+
+  /// Quitar soft-delete: marca usuarios como NO eliminados (deleted=false).
+  Future<void> marcarComoNoEliminadosDrift(List<String> uids) async {
+    if (uids.isEmpty) return;
+    await (update(usuarios)..where((u) => u.uid.isIn(uids))).write(
+      UsuariosCompanion(
+        deleted: const Value(false),
+        isSynced: const Value(false),
+        updatedAt: Value(DateTime.now().toUtc()),
       ),
     );
   }
@@ -124,5 +135,27 @@ class UsuariosDao extends DatabaseAccessor<AppDatabase>
               ..limit(1))
             .getSingleOrNull();
     return ultimo?.updatedAt;
+  }
+
+  /// Marcar última conexión (local), setea updatedAt y deja pendiente de sync.
+  Future<void> marcarUltimaConexionLocal(String uid, DateTime cuandoUtc) async {
+    await (update(usuarios)..where((u) => u.uid.equals(uid))).write(
+      UsuariosCompanion(
+        lastConnectionAt: Value(cuandoUtc),
+        updatedAt: Value(cuandoUtc),
+        isSynced: const Value(false),
+      ),
+    );
+  }
+
+  /// Leer últimos conectados (útil para UI/estadísticas)
+  Future<List<UsuarioDb>> topUltimasConexiones({int limit = 20}) async {
+    return (select(usuarios)
+          ..orderBy([
+            (u) => OrderingTerm.desc(u.lastConnectionAt),
+            (u) => OrderingTerm.asc(u.userName),
+          ])
+          ..limit(limit))
+        .get();
   }
 }

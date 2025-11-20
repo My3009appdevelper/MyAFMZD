@@ -21,9 +21,9 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
       final prefs = await SharedPreferences.getInstance();
       final savedUid = prefs.getString(_kPrefsKey);
       state = (savedUid?.isNotEmpty == true) ? savedUid : null;
-      print('[🎛 ASG SESSION] initFromStorage → $state');
+      print('[🎛 MENSAJES ASG PROVIDER] initFromStorage → $state');
     } catch (e) {
-      print('[🎛 ASG SESSION] ❌ initFromStorage error: $e');
+      print('[🎛 MENSAJES ASG PROVIDER] ❌ initFromStorage error: $e');
     }
   }
 
@@ -37,9 +37,9 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
       } else {
         await prefs.setString(_kPrefsKey, state!);
       }
-      print('[🎛 ASG SESSION] setActiveAssignment → $state');
+      print('[🎛 MENSAJES ASG PROVIDER] setActiveAssignment → $state');
     } catch (e) {
-      print('[🎛 ASG SESSION] ❌ setActiveAssignment error: $e');
+      print('[🎛 MENSAJES ASG PROVIDER] ❌ setActiveAssignment error: $e');
     }
   }
 
@@ -49,9 +49,9 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
       state = null;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_kPrefsKey);
-      print('[🎛 ASG SESSION] clear()');
+      print('[🎛 MENSAJES ASG PROVIDER] clear()');
     } catch (e) {
-      print('[🎛 ASG SESSION] ❌ clear error: $e');
+      print('[🎛 MENSAJES ASG PROVIDER] ❌ clear error: $e');
     }
   }
 
@@ -64,12 +64,12 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
   Future<void> ensureActiveForUser({required String? colaboradorUid}) async {
     try {
       print(
-        '[🎛 ASG SESSION][DEBUG] ensureActiveForUser(colaboradorUid=$colaboradorUid)',
+        '[🎛 MENSAJES ASG PROVIDER][DEBUG] ensureActiveForUser(colaboradorUid=$colaboradorUid)',
       );
 
       final all = _ref.read(asignacionesLaboralesProvider);
       print(
-        '[🎛 ASG SESSION][DEBUG] asignaciones totales en memoria: ${all.length}',
+        '[🎛 MENSAJES ASG PROVIDER][DEBUG] asignaciones totales en memoria: ${all.length}',
       );
 
       // Filtra por colaborador si viene (si es null/empty mostramos todas).
@@ -80,7 +80,7 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
                 .toList();
 
       print(
-        '[🎛 ASG SESSION][DEBUG] candidatas para este usuario: ${list.length} '
+        '[🎛 MENSAJES ASG PROVIDER][DEBUG] candidatas para este usuario: ${list.length} '
         '(activas=${list.where((a) => a.fechaFin == null).length} historicas=${list.where((a) => a.fechaFin != null).length})',
       );
 
@@ -89,7 +89,7 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
       final stillValid = (saved != null && list.any((a) => a.uid == saved));
       if (stillValid) {
         print(
-          '[🎛 ASG SESSION] ensureActiveForUser → mantiene guardada $saved',
+          '[🎛 MENSAJES ASG PROVIDER] ensureActiveForUser → mantiene guardada $saved',
         );
         return;
       }
@@ -100,7 +100,7 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
       if (activas.isNotEmpty) {
         await setActiveAssignment(activas.first.uid);
         print(
-          '[🎛 ASG SESSION] ensureActiveForUser → eligió activa ${activas.first.uid}',
+          '[🎛 MENSAJES ASG PROVIDER] ensureActiveForUser → eligió activa ${activas.first.uid}',
         );
         return;
       }
@@ -115,16 +115,18 @@ class AssignmentSessionNotifier extends StateNotifier<String?> {
       if (historicas.isNotEmpty) {
         await setActiveAssignment(historicas.first.uid);
         print(
-          '[🎛 ASG SESSION] ensureActiveForUser → eligió histórica ${historicas.first.uid}',
+          '[🎛 MENSAJES ASG PROVIDER] ensureActiveForUser → eligió histórica ${historicas.first.uid}',
         );
         return;
       }
 
       // 4) nada disponible
       await setActiveAssignment(null);
-      print('[🎛 ASG SESSION] ensureActiveForUser → sin asignaciones, null');
+      print(
+        '[🎛 MENSAJES ASG PROVIDER] ensureActiveForUser → sin asignaciones, null',
+      );
     } catch (e) {
-      print('[🎛 ASG SESSION] ❌ ensureActiveForUser error: $e');
+      print('[🎛 MENSAJES ASG PROVIDER] ❌ ensureActiveForUser error: $e');
     }
   }
 }

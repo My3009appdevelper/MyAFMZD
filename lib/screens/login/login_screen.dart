@@ -109,14 +109,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 8),
                       if (_error != null)
                         Text(
                           _error!,
                           style: textTheme.bodyMedium?.copyWith(
                             color: colors.error,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
+                      const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         child: MyElevatedButton(
@@ -141,19 +143,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _iniciarSesion() async {
-    // Evitar reentradas si se presiona el botón varias veces
     if (_logueando) return;
     _logueando = true;
 
     setState(() => _error = null);
-
-    // UX: cerrar teclado antes de mostrar overlay
     FocusScope.of(context).unfocus();
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // Mostrar overlay
     context.loaderOverlay.show(progress: 'Autenticando…');
 
     try {
@@ -162,7 +160,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         password: password,
       );
 
-      if (response.user == null) {
+      final user = response.user;
+      if (user == null) {
         if (mounted) {
           setState(() {
             _error = 'No se pudo iniciar sesión. Verifica tus credenciales.';
@@ -171,12 +170,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      // Mensajes de progreso (defensivos)
+      // === NUEVO PASO: verificar soft-delete inmediatamente ===
       if (context.loaderOverlay.visible) {
-        context.loaderOverlay.progress('Sincronizando usuarios…');
+        context.loaderOverlay.progress('Verificando acceso…');
       }
+
+      // Cargar usuarios offline-first para tener estado fresco (local primero, luego remote diff)
       await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
 
+      final bloqueado = await ref
+          .read(usuariosProvider.notifier)
+          .estaEliminado(user.id);
+
+      print('LoginScreen: estaEliminado(${user.id}) -> $bloqueado');
+
+      if (bloqueado) {
+        // Cerrar sesión y reportar error de acceso desactivado
+        await Supabase.instance.client.auth.signOut();
+        if (mounted) {
+          setState(() {
+            _error =
+                'Tu acceso ha sido desactivado. Contacta al administrador.';
+          });
+        }
+        return;
+      }
+
+      // 🕒 Registrar última conexión (offline-first; empuja si hay internet)
+      if (context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Registrando conexión…');
+      }
+      await ref
+          .read(usuariosProvider.notifier)
+          .registrarUltimaConexion(user.id);
+
+      // === Continúa tu flujo normal de cargas ===
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Cargando distribuidores…');
       }
@@ -205,19 +233,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         colaboradorUid: ref.read(perfilProvider)?.colaboradorUid,
       );
 
-      final usuario = ref.read(perfilProvider);
-      if (usuario == null) {
-        await Supabase.instance.client.auth.signOut();
-        if (!mounted) return;
-        setState(() {
-          _error = 'No tienes acceso autorizado (perfil no encontrado)';
-        });
-        return;
-      }
+      // (Opcional) aquí podrías cargar más módulos si lo deseas
 
       if (!mounted) return;
 
-      // Ocultar overlay antes de navegar
       if (context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }
@@ -230,11 +249,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (_) {
       if (mounted) setState(() => _error = 'Ocurrió un error inesperado');
     } finally {
-      // Seguridad: si no navegaste, oculta overlay
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
       }
-      _logueando = false; // libera el guardia reentrante
+      _logueando = false;
     }
   }
 

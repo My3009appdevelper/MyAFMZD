@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
 
@@ -26,11 +27,14 @@ import 'package:myafmzd/screens/productos/productos_screen.dart';
 import 'package:myafmzd/screens/grupos_distribuidores/grupos_distribuidores_screen.dart';
 import 'package:myafmzd/screens/estatus/estatus_screen.dart';
 
-// Permisos RBAC (usa el mismo archivo que en HomeScreen)
+// Permisos RBAC
 import 'package:myafmzd/session/pemisos_acceso.dart';
 
 // Drawer
 import 'package:myafmzd/widgets/my_app_drawer.dart';
+
+// Supabase (para refreshSession)
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminHomeScreen extends ConsumerStatefulWidget {
   const AdminHomeScreen({super.key});
@@ -46,56 +50,7 @@ class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
   void initState() {
     super.initState();
     Future.microtask(() async {
-      // 1) Captura notifiers una sola vez (esto NO usa ref después de awaits)
-      final perfilN = ref.read(perfilProvider.notifier);
-      final modelosN = ref.read(modelosProvider.notifier);
-      final modeloImgsN = ref.read(modeloImagenesProvider.notifier);
-      final distribuidoresN = ref.read(distribuidoresProvider.notifier);
-      final gruposDistN = ref.read(gruposDistribuidoresProvider.notifier);
-      final reportesN = ref.read(reporteProvider.notifier);
-      final colaboradoresN = ref.read(colaboradoresProvider.notifier);
-      final asignacionesN = ref.read(asignacionesLaboralesProvider.notifier);
-      final usuariosN = ref.read(usuariosProvider.notifier);
-      final productosN = ref.read(productosProvider.notifier);
-      final ventasN = ref.read(ventasProvider.notifier);
-      final estatusN = ref.read(estatusProvider.notifier);
-
-      // 2) Llama a los métodos usando los notifiers guardados
-      await perfilN.cargarUsuario();
-      if (!mounted) return;
-
-      await modelosN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await modeloImgsN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await distribuidoresN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await gruposDistN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await reportesN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await colaboradoresN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await asignacionesN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await usuariosN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await productosN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await ventasN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await estatusN.cargarOfflineFirst();
-      if (!mounted) return;
+      await _recargarTodo();
     });
   }
 
@@ -202,15 +157,14 @@ class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
           ),
           actions: [
             Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Tooltip(
-                message: hayConexion
-                    ? 'Conectado a Internet'
-                    : 'Sin conexión a Internet',
-                child: Icon(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                onPressed: _reintentarConexionConOverlay,
+                icon: Icon(
                   hayConexion ? Icons.wifi : Icons.wifi_off,
                   color: colorScheme.onPrimary,
                 ),
+                tooltip: hayConexion ? 'Conectado' : 'Sin conexión',
               ),
             ),
           ],
@@ -239,15 +193,14 @@ class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Tooltip(
-              message: hayConexion
-                  ? 'Conectado a Internet'
-                  : 'Sin conexión a Internet',
-              child: Icon(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              onPressed: _reintentarConexionConOverlay,
+              icon: Icon(
                 hayConexion ? Icons.wifi : Icons.wifi_off,
                 color: colorScheme.onPrimary,
               ),
+              tooltip: hayConexion ? 'Conectado' : 'Sin conexión',
             ),
           ),
         ],
@@ -270,5 +223,89 @@ class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
         items: itemsVisibles,
       ),
     );
+  }
+
+  // ===================== Helpers =====================
+
+  Future<void> _recargarTodo() async {
+    // Captura notifiers cada vez (evitas estados stale)
+    final perfilN = ref.read(perfilProvider.notifier);
+    final modelosN = ref.read(modelosProvider.notifier);
+    final modeloImgsN = ref.read(modeloImagenesProvider.notifier);
+    final distribuidoresN = ref.read(distribuidoresProvider.notifier);
+    final gruposDistN = ref.read(gruposDistribuidoresProvider.notifier);
+    final reportesN = ref.read(reporteProvider.notifier);
+    final colaboradoresN = ref.read(colaboradoresProvider.notifier);
+    final asignacionesN = ref.read(asignacionesLaboralesProvider.notifier);
+    final usuariosN = ref.read(usuariosProvider.notifier);
+    final productosN = ref.read(productosProvider.notifier);
+    final ventasN = ref.read(ventasProvider.notifier);
+    final estatusN = ref.read(estatusProvider.notifier);
+
+    await perfilN.cargarUsuario();
+    if (!mounted) return;
+    await modelosN.cargarOfflineFirst();
+    if (!mounted) return;
+    await modeloImgsN.cargarOfflineFirst();
+    if (!mounted) return;
+    await distribuidoresN.cargarOfflineFirst();
+    if (!mounted) return;
+    await gruposDistN.cargarOfflineFirst();
+    if (!mounted) return;
+    await reportesN.cargarOfflineFirst();
+    if (!mounted) return;
+    await colaboradoresN.cargarOfflineFirst();
+    if (!mounted) return;
+    await asignacionesN.cargarOfflineFirst();
+    if (!mounted) return;
+    await usuariosN.cargarOfflineFirst();
+    if (!mounted) return;
+    await productosN.cargarOfflineFirst();
+    if (!mounted) return;
+    await ventasN.cargarOfflineFirst();
+    if (!mounted) return;
+    await estatusN.cargarOfflineFirst();
+    if (!mounted) return;
+  }
+
+  Future<void> _reintentarConexionConOverlay() async {
+    if (!mounted) return;
+
+    // Mensaje inicial
+    context.loaderOverlay.show(
+      progress: 'Revisando conexión y sincronizando datos',
+    );
+
+    try {
+      // 1) Revalidar red
+      await ref.read(connectivityProvider.notifier).refreshNow();
+      final online = ref.read(connectivityProvider);
+
+      if (online) {
+        try {
+          await Supabase.instance.client.auth.refreshSession();
+        } catch (_) {
+          // Ignoramos errores de refresh; seguimos con recarga.
+        }
+
+        await _recargarTodo();
+
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Listo.');
+        }
+        await Future.delayed(const Duration(milliseconds: 300));
+      } else {
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress(
+            'Sin conexión. Trabajando con datos locales…',
+          );
+        }
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+    }
   }
 }

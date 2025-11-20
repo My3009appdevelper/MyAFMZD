@@ -22,6 +22,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
   late TextEditingController _nombreController;
   late TextEditingController _uuidGrupoController; // almacena el UID del grupo
   late TextEditingController _direccionController;
+  late TextEditingController _estadoController;
   late TextEditingController _latController;
   late TextEditingController _lngController;
   late TextEditingController _concentradoraUidController;
@@ -41,6 +42,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     _direccionController = TextEditingController(
       text: distribuidor?.direccion ?? '',
     );
+    _estadoController = TextEditingController(text: distribuidor?.estado ?? '');
     _latController = TextEditingController(
       text: (distribuidor?.latitud)?.toString() ?? '',
     );
@@ -63,6 +65,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     _nombreController.dispose();
     _uuidGrupoController.dispose();
     _direccionController.dispose();
+    _estadoController.dispose();
     _latController.dispose();
     _lngController.dispose();
     _concentradoraUidController.dispose();
@@ -165,6 +168,13 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
                   ),
                   const SizedBox(height: 12),
 
+                  // Estado
+                  MyTextFormField(
+                    controller: _estadoController,
+                    labelText: 'Estado',
+                  ),
+                  const SizedBox(height: 12),
+
                   // Lat/Lng
                   Row(
                     children: [
@@ -256,6 +266,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
     final nombre = _nombreController.text.trim();
     final uuidGrupo = _uuidGrupoController.text.trim(); // uid del grupo
     final direccion = _direccionController.text.trim();
+    final estado = _estadoController.text.trim();
     double toDouble(String s) => double.tryParse(s.trim()) ?? 0.0;
     final lat = toDouble(_latController.text);
     final lng = toDouble(_lngController.text);
@@ -297,6 +308,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
           nombre: nombre,
           uuidGrupo: uuidGrupo.isEmpty ? null : uuidGrupo,
           direccion: direccion.isEmpty ? null : direccion,
+          estado: estado.isEmpty ? null : estado,
           activo: _activo,
           latitud: lat,
           longitud: lng,
@@ -307,6 +319,7 @@ class _DistribuidorFormPageState extends ConsumerState<DistribuidorFormPage> {
           nombre: nombre,
           uuidGrupo: uuidGrupo, // puede ir vacío si no selecciona
           direccion: direccion,
+          estado: estado,
           activo: _activo,
           latitud: lat,
           longitud: lng,

@@ -6,6 +6,7 @@ import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_p
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/widgets/my_elevated_button.dart';
+import 'package:myafmzd/widgets/my_multi_picker_search_field.dart';
 import 'package:myafmzd/widgets/my_picker_search_field.dart';
 import 'package:myafmzd/widgets/my_text_form_field.dart';
 
@@ -39,6 +40,9 @@ class _AsignacionLaboralFormPageState
   String _nivelSel = '';
   DateTime _fechaInicio = DateTime.now();
   DateTime? _fechaFin;
+
+  /// Para rol "gerente de grupo": lista de distribuidoras seleccionadas
+  List<String> _distribuidoresGrupoSelUids = [];
 
   late TextEditingController _puestoCtrl;
   late TextEditingController _notasCtrl;
@@ -82,7 +86,8 @@ class _AsignacionLaboralFormPageState
 
   @override
   Widget build(BuildContext context) {
-    final _ = ref.watch(asignacionesLaboralesProvider);
+    // Escuchamos asignaciones para recalcular distribuidoras disponibles
+    final asignaciones = ref.watch(asignacionesLaboralesProvider);
 
     final notifier = ref.read(asignacionesLaboralesProvider.notifier);
     final roles = notifier.opcionesRol;
@@ -95,6 +100,31 @@ class _AsignacionLaboralFormPageState
     final managerInicialSeguro = (managerInicial?.uid == _colaboradorUidSel)
         ? null
         : managerInicial;
+
+    // --------- Distribuidoras disponibles para GERENTE DE GRUPO ----------
+    // Tomamos asignaciones ACTIVAS (fechaFin == null), no eliminadas,
+    // rol "gerente de grupo" y con distribuidorUid no vacío.
+    final distribsOcupadasGerenteGrupo = asignaciones
+        .where(
+          (a) =>
+              !a.deleted &&
+              a.fechaFin == null &&
+              a.rol == 'gerente de grupo' &&
+              a.distribuidorUid.isNotEmpty,
+        )
+        .map((a) => a.distribuidorUid)
+        .toSet();
+
+    final distribsDisponiblesGerenteGrupo =
+        _distribuidores
+            .where((d) => !distribsOcupadasGerenteGrupo.contains(d.uid))
+            .toList()
+          ..sort((a, b) => a.nombre.compareTo(b.nombre));
+
+    // Mapeamos los uids seleccionados a modelos para el initialValues del multi
+    final distribsInicialGrupo = _distribuidores
+        .where((d) => _distribuidoresGrupoSelUids.contains(d.uid))
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -148,19 +178,60 @@ class _AsignacionLaboralFormPageState
                   const SizedBox(height: 12),
 
                   // =================== Distribuidor ===================
-                  MyPickerSearchField<DistribuidorDb>(
-                    items: _distribuidores,
-                    initialValue: distInicial,
-                    itemAsString: (d) => d.nombre,
-                    compareFn: (a, b) => a.uid == b.uid,
-                    labelText: 'Distribuidor',
-                    hintText: 'Toca para buscar…',
-                    bottomSheetTitle: 'Buscar distribuidor',
-                    searchHintText: 'Nombre del distribuidor',
-                    onChanged: (d) =>
-                        setState(() => _distribuidorUidSel = d?.uid ?? ''),
-                  ),
-                  const SizedBox(height: 12),
+                  // Si es NUEVA asignación y rol == "gerente de grupo":
+                  // usamos multi-select con distribuidoras libres.
+                  // En cualquier otro caso se mantiene el picker simple.
+                  if (_rolSel == 'gerente de grupo') ...[
+                    MyMultiPickerSearchField<DistribuidorDb>(
+                      items: distribsDisponiblesGerenteGrupo,
+                      initialValues: distribsInicialGrupo,
+                      itemAsString: (d) => d.nombre,
+                      compareFn: (a, b) => a.uid == b.uid,
+                      labelText: 'Distribuidoras del grupo *',
+                      hintText: 'Toca para seleccionar…',
+                      bottomSheetTitle:
+                          'Selecciona distribuidoras para este gerente de grupo',
+                      searchHintText: 'Nombre del distribuidor',
+                      validator: (lista) => lista.isEmpty
+                          ? 'Debes seleccionar al menos una distribuidora'
+                          : null,
+                      selectedTextBuilder: (lista) {
+                        if (lista.isEmpty) return '';
+                        if (lista.length <= 3) {
+                          return lista.map((d) => d.nombre).join(', ');
+                        }
+                        final primeros = lista
+                            .take(2)
+                            .map((d) => d.nombre)
+                            .join(', ');
+                        final resto = lista.length - 2;
+                        return '$primeros +$resto más';
+                      },
+                      onChanged: (listaSel) {
+                        setState(() {
+                          _distribuidoresGrupoSelUids = listaSel
+                              .map((d) => d.uid)
+                              .where((uid) => uid.isNotEmpty)
+                              .toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    MyPickerSearchField<DistribuidorDb>(
+                      items: _distribuidores,
+                      initialValue: distInicial,
+                      itemAsString: (d) => d.nombre,
+                      compareFn: (a, b) => a.uid == b.uid,
+                      labelText: 'Distribuidor',
+                      hintText: 'Toca para buscar…',
+                      bottomSheetTitle: 'Buscar distribuidor',
+                      searchHintText: 'Nombre del distribuidor',
+                      onChanged: (d) =>
+                          setState(() => _distribuidorUidSel = d?.uid ?? ''),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
 
                   // =================== Manager (opcional) ==============
                   MyPickerSearchField<ColaboradorDb>(
@@ -190,7 +261,20 @@ class _AsignacionLaboralFormPageState
                         ChoiceChip(
                           label: Text(r),
                           selected: _rolSel == r,
-                          onSelected: (sel) => setState(() => _rolSel = r),
+                          onSelected: (sel) {
+                            if (!sel) return;
+                            setState(() {
+                              _rolSel = r;
+                              // Si cambiamos a "gerente de grupo", limpiamos el
+                              // distribuidor único.
+                              if (r == 'gerente de grupo') {
+                                _distribuidorUidSel = '';
+                              } else {
+                                // Para cualquier otro rol, limpiamos el multi.
+                                _distribuidoresGrupoSelUids = [];
+                              }
+                            });
+                          },
                         ),
                     ],
                   ),
@@ -330,37 +414,46 @@ class _AsignacionLaboralFormPageState
 
     // Validaciones con feedback en overlay
     if (_colaboradorUidSel == null || _colaboradorUidSel!.isEmpty) {
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       _snack('❌ Debes seleccionar un colaborador');
       return;
     }
     if (_fechaFin != null && _fechaFin!.isBefore(_fechaInicio)) {
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       _snack('❌ La fecha fin no puede ser anterior a la fecha inicio');
       return;
     }
 
-    if (mounted && context.loaderOverlay.visible) {
-      context.loaderOverlay.progress('Validando traslapes…');
-    }
-    final traslapa = asignNotifier.tieneTraslapeEnRango(
-      colaboradorUid: _colaboradorUidSel!,
-      inicio: _fechaInicio,
-      fin: _fechaFin,
-      excluirUid: uidEditar,
-      mismoDistribuidorUid: _distribuidorUidSel.isEmpty
-          ? null
-          : _distribuidorUidSel,
-      mismoRol: _rolSel.isEmpty ? null : _rolSel,
-    );
+    // Para roles distintos de "gerente de grupo" mantenemos la validación
+    // de traslapes global como estaba.
+    if (_rolSel != 'gerente de grupo') {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Validando traslapes…');
+      }
+      final traslapa = asignNotifier.tieneTraslapeEnRango(
+        colaboradorUid: _colaboradorUidSel!,
+        inicio: _fechaInicio,
+        fin: _fechaFin,
+        excluirUid: uidEditar,
+        mismoDistribuidorUid: _distribuidorUidSel.isEmpty
+            ? null
+            : _distribuidorUidSel,
+        mismoRol: _rolSel.isEmpty ? null : _rolSel,
+      );
 
-    if (traslapa) {
-      if (mounted && context.loaderOverlay.visible)
-        context.loaderOverlay.hide();
-      _snack('❌ Existe una asignación traslapada/activa para este colaborador');
-      return;
+      if (traslapa) {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.hide();
+        }
+        _snack(
+          '❌ Existe una asignación traslapada/activa para este colaborador',
+        );
+        return;
+      }
     }
 
     try {
@@ -369,25 +462,69 @@ class _AsignacionLaboralFormPageState
           context.loaderOverlay.progress('Aplicando cambios…');
         }
 
-        await asignNotifier.crearAsignacion(
-          colaboradorUid: _colaboradorUidSel!,
-          fechaInicio: _fechaInicio.toUtc(),
-          fechaFin: _fechaFin?.toUtc(),
-          distribuidorUid: _distribuidorUidSel,
-          managerColaboradorUid: _managerUidSel,
-          rol: _rolSel,
-          puesto: _puestoCtrl.text.trim(),
-          nivel: _nivelSel,
-          createdByUsuarioUid: '',
-          notas: _notasCtrl.text.trim(),
-        );
+        // ========== CREACIÓN ==========
+        if (_rolSel == 'gerente de grupo') {
+          // Debe haber al menos una distribuidora seleccionada
+          if (_distribuidoresGrupoSelUids.isEmpty) {
+            if (mounted && context.loaderOverlay.visible) {
+              context.loaderOverlay.hide();
+            }
+            _snack(
+              '❌ Debes seleccionar al menos una distribuidora para el gerente de grupo',
+            );
+            return;
+          }
 
-        // Validación de manager ≠ colaborador
-        if (_managerUidSel.isNotEmpty && _managerUidSel == _colaboradorUidSel) {
-          if (mounted && context.loaderOverlay.visible)
-            context.loaderOverlay.hide();
-          _snack('❌ El colaborador no puede ser su propio manager');
-          return;
+          // Validación de manager ≠ colaborador
+          if (_managerUidSel.isNotEmpty &&
+              _managerUidSel == _colaboradorUidSel) {
+            if (mounted && context.loaderOverlay.visible) {
+              context.loaderOverlay.hide();
+            }
+            _snack('❌ El colaborador no puede ser su propio manager');
+            return;
+          }
+
+          // Creamos UNA asignación por cada distribuidora seleccionada
+          for (final distUid in _distribuidoresGrupoSelUids) {
+            await asignNotifier.crearAsignacion(
+              colaboradorUid: _colaboradorUidSel!,
+              fechaInicio: _fechaInicio.toUtc(),
+              fechaFin: _fechaFin?.toUtc(),
+              distribuidorUid: distUid,
+              managerColaboradorUid: _managerUidSel,
+              rol: _rolSel,
+              puesto: _puestoCtrl.text.trim(),
+              nivel: _nivelSel,
+              createdByUsuarioUid: '',
+              notas: _notasCtrl.text.trim(),
+            );
+            print('Asignación creada para distribuidorUid=$distUid');
+          }
+        } else {
+          // Flujo original para cualquier otro rol
+          await asignNotifier.crearAsignacion(
+            colaboradorUid: _colaboradorUidSel!,
+            fechaInicio: _fechaInicio.toUtc(),
+            fechaFin: _fechaFin?.toUtc(),
+            distribuidorUid: _distribuidorUidSel,
+            managerColaboradorUid: _managerUidSel,
+            rol: _rolSel,
+            puesto: _puestoCtrl.text.trim(),
+            nivel: _nivelSel,
+            createdByUsuarioUid: '',
+            notas: _notasCtrl.text.trim(),
+          );
+
+          // Validación de manager ≠ colaborador (como estaba)
+          if (_managerUidSel.isNotEmpty &&
+              _managerUidSel == _colaboradorUidSel) {
+            if (mounted && context.loaderOverlay.visible) {
+              context.loaderOverlay.hide();
+            }
+            _snack('❌ El colaborador no puede ser su propio manager');
+            return;
+          }
         }
 
         // Finalización + delay mínimo
@@ -399,8 +536,9 @@ class _AsignacionLaboralFormPageState
         if (elapsed < minSpin) {
           await Future.delayed(minSpin - elapsed);
         }
-        if (mounted && context.loaderOverlay.visible)
+        if (mounted && context.loaderOverlay.visible) {
           context.loaderOverlay.hide();
+        }
         if (mounted) Navigator.pop(context, true);
         return;
       }
@@ -451,8 +589,9 @@ class _AsignacionLaboralFormPageState
       );
 
       if (_managerUidSel.isNotEmpty && _managerUidSel == _colaboradorUidSel) {
-        if (mounted && context.loaderOverlay.visible)
+        if (mounted && context.loaderOverlay.visible) {
           context.loaderOverlay.hide();
+        }
         _snack('❌ El colaborador no puede ser su propio manager');
         return;
       }
@@ -465,12 +604,14 @@ class _AsignacionLaboralFormPageState
       if (elapsed < minSpin) {
         await Future.delayed(minSpin - elapsed);
       }
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       _snack('❌ Error al guardar: $e');
     }
   }
@@ -502,12 +643,14 @@ class _AsignacionLaboralFormPageState
       if (elapsed < minSpin) {
         await Future.delayed(minSpin - elapsed);
       }
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       _snack('❌ No se pudo cerrar: $e');
     }
   }
@@ -533,12 +676,14 @@ class _AsignacionLaboralFormPageState
       if (elapsed < minSpin) {
         await Future.delayed(minSpin - elapsed);
       }
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       _snack('❌ No se pudo reabrir: $e');
     }
   }

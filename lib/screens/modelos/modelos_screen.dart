@@ -31,6 +31,12 @@ class _ModelosScreenState extends ConsumerState<ModelosScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Inicializar con el mayor año disponible (null si no hay años)
+    final aniosInit = ref.read(modelosProvider.notifier).aniosUnicos;
+    _anioSeleccionado = aniosInit.isNotEmpty
+        ? aniosInit.reduce((a, b) => a > b ? a : b)
+        : DateTime.now().year;
     // Misma mecánica que en las otras screens: lanzar carga tras el primer frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarModelos();

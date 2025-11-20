@@ -49,9 +49,8 @@ class AsignacionesLaboralesNotifier
   static const List<String> rolesDisponibles = <String>[
     'admin',
     'vendedor',
-    'coordinador',
     'gerente',
-    'administrativo',
+    'gerente de grupo',
   ];
 
   static const List<String> nivelesDisponibles = <String>[
@@ -229,9 +228,7 @@ class AsignacionesLaboralesNotifier
       fechaInicio: fechaInicio == null
           ? const Value.absent()
           : Value(nuevoInicio.toUtc()),
-      fechaFin: fechaFin == null
-          ? const Value.absent()
-          : Value(nuevoFin?.toUtc()),
+      fechaFin: fechaFin == null ? const Value(null) : Value(nuevoFin?.toUtc()),
       notas: notas == null ? const Value.absent() : Value(notas),
       updatedAt: Value(DateTime.now().toUtc()),
       isSynced: const Value(false),
@@ -286,7 +283,6 @@ class AsignacionesLaboralesNotifier
       final now = DateTime.now().toUtc();
 
       final comp = AsignacionesLaboralesCompanion(
-        // uid NO se toca en el SET; el WHERE lo maneja el DAO
         fechaFin: const Value(null),
         closedByUsuarioUid: const Value(''),
         updatedAt: Value(now),

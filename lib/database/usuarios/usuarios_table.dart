@@ -6,6 +6,7 @@ class Usuarios extends Table {
   TextColumn get colaboradorUid => text().nullable()();
   TextColumn get userName => text().withDefault(const Constant(''))();
   TextColumn get correo => text().withDefault(const Constant(''))();
+  DateTimeColumn get lastConnectionAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();

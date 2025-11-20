@@ -6,6 +6,7 @@ class Distribuidores extends Table {
   TextColumn get nombre => text().withDefault(const Constant(''))();
   TextColumn get uuidGrupo => text().withDefault(const Constant(''))();
   TextColumn get direccion => text().withDefault(const Constant(''))();
+  TextColumn get estado => text().withDefault(const Constant(''))();
   BoolColumn get activo => boolean().withDefault(const Constant(true))();
   RealColumn get latitud => real().withDefault(const Constant(0.0))();
   RealColumn get longitud => real().withDefault(const Constant(0.0))();

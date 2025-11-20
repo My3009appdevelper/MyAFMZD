@@ -109,6 +109,7 @@ class _DistribuidorItemTileState extends ConsumerState<DistribuidorItemTile> {
         'Nombre': d.nombre,
         'Grupo': grupo.nombre, // 👈 ahora muestra el nombre real
         'Dirección': d.direccion,
+        'Estado': d.estado,
         'Coordenadas': '${d.latitud}, ${d.longitud}',
         'Activo': d.activo ? 'Sí' : 'No',
         'Synced': d.isSynced ? 'Sí' : 'No',

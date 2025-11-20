@@ -1,6 +1,7 @@
 // connectivity_provider.dart
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' show HttpClient;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -16,7 +17,7 @@ class ConnectivityNotifier extends StateNotifier<bool> {
   ConnectivityNotifier()
     : _connectivity = Connectivity(),
       _checker = InternetConnectionChecker.createInstance(),
-      super(true) {
+      super(false) {
     _configureChecker();
     _init();
   }
@@ -26,17 +27,35 @@ class ConnectivityNotifier extends StateNotifier<bool> {
 
   StreamSubscription<List<ConnectivityResult>>? _connSub;
   Timer? _debounce;
-  Timer? _pollingFallback; // 👈 fallback si el stream falla
+  Timer? _pollingFallback; // fallback si el stream falla
 
-  // Si tienes un backend, pon aquí tu health endpoint.
+  // Si tienes un backend propio con /health, ponlo aquí (mejor señal en redes corporativas).
   static const String? _backendHealthUrl =
       null; // p.ej. 'https://api.tuapp.com/health'
+
+  // Endpoints HTTP “ligeros” para HEAD (preferidos sobre solo sockets/DNS).
+  static const List<String> _httpProbeUrls = <String>[
+    'https://connectivitycheck.gstatic.com/generate_204',
+    'https://www.msftconnecttest.com/connecttest.txt',
+    // Tu dominio (si responde con <500 es suficiente):
+    'https://mazdautofinanciamiento.mx',
+  ];
+
+  // Timeouts afinados para redes reales
+  static const _httpTimeout = Duration(milliseconds: 1500);
+  static const _checkerTimeout = Duration(milliseconds: 1500);
+
+  bool _firstCheckDone = false;
+  bool get firstCheckDone => _firstCheckDone;
 
   Future<void> refreshNow() async => _refresh();
 
   void _configureChecker() {
-    _checker.checkInterval = const Duration(seconds: 0); // sin auto-polling
-    _checker.checkTimeout = const Duration(milliseconds: 900);
+    // Sin auto-polling; nosotros controlamos la cadencia
+    _checker.checkInterval = const Duration(seconds: 0);
+    _checker.checkTimeout = _checkerTimeout;
+    // Mantén direcciones (el paquete hará TCP connect); pueden fallar en ciertos firewalls,
+    // por eso primero probamos HEAD real (_httpProbeHeads).
     _checker.addresses = <AddressCheckOption>[
       AddressCheckOption(
         uri: Uri.parse('https://connectivitycheck.gstatic.com/generate_204'),
@@ -44,8 +63,8 @@ class ConnectivityNotifier extends StateNotifier<bool> {
       AddressCheckOption(
         uri: Uri.parse('https://www.msftconnecttest.com/connecttest.txt'),
       ),
+      AddressCheckOption(uri: Uri.parse('https://mazdautofinanciamiento.mx')),
     ];
-    // requireAllAddressesToRespond = false (default)
   }
 
   Future<void> _init() async {
@@ -64,7 +83,8 @@ class ConnectivityNotifier extends StateNotifier<bool> {
           });
         },
         onError: (error, stack) {
-          // Si el nativo falla (p. ej. NetworkManager ausente), usa fallback
+          // 👇 Hot Restart a veces dispara PlatformException al abrir el canal
+          // Silenciamos y activamos fallback por polling
           _startPollingFallback();
         },
         cancelOnError: false,
@@ -76,45 +96,108 @@ class ConnectivityNotifier extends StateNotifier<bool> {
 
   void _startPollingFallback() {
     if (_pollingFallback != null) return; // ya corriendo
-    // Poll suave: cada 5s revalida reachability (+ rápido si quieres)
+    // Poll suave: cada 5s revalida reachability
     _pollingFallback = Timer.periodic(const Duration(seconds: 5), (_) {
       _refresh();
     });
   }
 
   Future<void> _refresh({List<ConnectivityResult>? typesHint}) async {
-    final types = typesHint ?? await _connectivity.checkConnectivity();
+    List<ConnectivityResult> types;
+    try {
+      types = typesHint ?? await _connectivity.checkConnectivity();
+    } catch (_) {
+      // En plataformas donde falle el check, asumimos "alguna red" y verificamos por HTTP.
+      types = const <ConnectivityResult>[];
+    }
 
+    // Si explícitamente no hay interfaz, marca offline y corta.
     if (types.contains(ConnectivityResult.none)) {
       if (state != false) state = false;
       return;
     }
 
-    // Reachability: tu backend > checker genérico
-    bool online = false;
-    if (_backendHealthUrl != null) {
-      online = await _pingBackend(_backendHealthUrl!);
-    } else {
-      online = await _checker.hasConnection.timeout(
-        const Duration(milliseconds: 1100),
-        onTimeout: () => true,
+    // Si estamos en Web, HttpClient no opera igual; usamos solo el checker + timeout.
+    // (Si más adelante agregas paquete http, aquí podrías hacer fetch/head en web.)
+    if (kIsWeb) {
+      final online = await _checker.hasConnection.timeout(
+        _checkerTimeout,
+        onTimeout: () => false,
       );
+      if (state != online) state = online;
+      return;
+    }
+
+    // 1) Preferimos HEAD HTTP real a hosts públicos/propios (menos falsos negativos)
+    bool online = await _httpProbeHeads();
+
+    // 2) Si falla, intentamos como respaldo el checker por sockets/DNS
+    if (!online) {
+      try {
+        online = await _checker.hasConnection.timeout(
+          _checkerTimeout,
+          onTimeout: () => false,
+        );
+      } catch (_) {
+        online = false;
+      }
+    }
+
+    // 3) (Opcional) si definiste backend propio, prueba primero tu /health
+    if (_backendHealthUrl != null) {
+      final okBackend = await _pingBackend(_backendHealthUrl!);
+      // Si tu backend responde, fuerza online; si no, conserva lo detectado.
+      if (okBackend) online = true;
     }
 
     if (state != online) state = online;
+    _firstCheckDone = true;
   }
 
-  // Ping muy rápido a tu backend (mejor señal en redes corporativas)
+  // HEAD rápido contra varias URLs; éxito si cualquiera responde con <500.
+  Future<bool> _httpProbeHeads() async {
+    for (final url in _httpProbeUrls) {
+      final ok = await _head(url);
+      if (ok) return true;
+    }
+    return false;
+  }
+
+  Future<bool> _head(String url) async {
+    final client = HttpClient()..connectionTimeout = _httpTimeout;
+    try {
+      final uri = Uri.parse(url);
+      // Muchos endpoints 204 aceptan GET y HEAD; algunos bloquean HEAD.
+      // Intentamos HEAD y si responde 405/501, caemos a GET light.
+      final headReq = await client.openUrl('HEAD', uri).timeout(_httpTimeout);
+      headReq.followRedirects = false;
+      final headRes = await headReq.close().timeout(_httpTimeout);
+      if (headRes.statusCode < 500) return true;
+
+      if (headRes.statusCode == 405 || headRes.statusCode == 501) {
+        final getReq = await client.getUrl(uri).timeout(_httpTimeout);
+        getReq.followRedirects = false;
+        final getRes = await getReq.close().timeout(_httpTimeout);
+        if (getRes.statusCode < 500) return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  // Ping rápido a tu backend (si lo defines)
   Future<bool> _pingBackend(String url) async {
     final client = HttpClient()
-      ..connectionTimeout = const Duration(milliseconds: 800);
+      ..connectionTimeout = const Duration(milliseconds: 1200);
     try {
       final req = await client
           .getUrl(Uri.parse(url))
-          .timeout(const Duration(milliseconds: 800));
+          .timeout(const Duration(milliseconds: 1200));
       req.followRedirects = false;
-      final res = await req.close().timeout(const Duration(milliseconds: 800));
-      // Cualquier <500 lo consideramos “hay salida” (200/204 ideal).
+      final res = await req.close().timeout(const Duration(milliseconds: 1200));
       return res.statusCode < 500;
     } catch (_) {
       return false;

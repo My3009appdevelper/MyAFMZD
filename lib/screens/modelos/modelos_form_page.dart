@@ -381,6 +381,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                   Text(
                     'Imágenes del modelo',
                     style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
                   ),
 
                   const SizedBox(height: 8),
@@ -388,6 +389,7 @@ class _ModelosFormPageState extends ConsumerState<ModelosFormPage> {
                     spacing: 8,
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
+                    alignment: WrapAlignment.center,
                     children: [
                       MyElevatedButton(
                         icon: Icons.photo_library_outlined,

@@ -89,6 +89,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
     required String nombre,
     String uuidGrupo = '',
     String direccion = '',
+    String estado = '',
     bool activo = true,
     double latitud = 0.0,
     double longitud = 0.0,
@@ -109,6 +110,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
         nombre: Value(nombre),
         uuidGrupo: Value(uuidGrupo),
         direccion: Value(direccion),
+        estado: Value(estado),
         activo: Value(activo),
         latitud: Value(latitud),
         longitud: Value(longitud),
@@ -144,6 +146,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
     required String nombre,
     String? uuidGrupo,
     String? direccion,
+    String? estado,
     bool? activo,
     double? latitud,
     double? longitud,
@@ -155,6 +158,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
         nombre: Value(nombre),
         uuidGrupo: uuidGrupo == null ? const Value.absent() : Value(uuidGrupo),
         direccion: direccion == null ? const Value.absent() : Value(direccion),
+        estado: estado == null ? const Value.absent() : Value(estado),
         activo: activo == null ? const Value.absent() : Value(activo),
         latitud: latitud == null ? const Value.absent() : Value(latitud),
         longitud: longitud == null ? const Value.absent() : Value(longitud),
@@ -248,6 +252,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
     'nombre',
     'uuidGrupo',
     'direccion',
+    'estado',
     'activo',
     'latitud',
     'longitud',
@@ -286,6 +291,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
         d.nombre,
         d.uuidGrupo,
         d.direccion,
+        d.estado,
         d.activo.toString(),
         d.latitud,
         d.longitud,
@@ -359,7 +365,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
     if (!validHeader) {
       throw const FormatException(
         'Encabezado CSV inválido. Esperado: '
-        'nombre,uuidGrupo,direccion,activo,latitud,longitud,concentradoraUid,updatedAt,deleted,isSynced',
+        'nombre,uuidGrupo,direccion,estado,activo,latitud,longitud,concentradoraUid,updatedAt,deleted,isSynced',
       );
     }
 
@@ -399,13 +405,14 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
         final nombre = row[0];
         final uuidGrupo = row[1];
         final direccion = row[2];
-        final activoStr = row[3];
-        final latStr = row[4];
-        final lngStr = row[5];
-        final concentradoraUidCsv = row[6];
-        final updatedStr = row[7];
-        final deletedStr = row[8];
-        final syncedStr = row[9];
+        final estado = row[3];
+        final activoStr = row[4];
+        final latStr = row[5];
+        final lngStr = row[6];
+        final concentradoraUidCsv = row[7];
+        final updatedStr = row[8];
+        final deletedStr = row[9];
+        final syncedStr = row[10];
 
         final activo = parseBoolFlexible(activoStr, defaultValue: true);
         final lat = double.tryParse(latStr) ?? 0.0;
@@ -443,6 +450,7 @@ class DistribuidoresNotifier extends StateNotifier<List<DistribuidorDb>> {
           nombre: Value(nombre),
           uuidGrupo: Value(uuidGrupo),
           direccion: Value(direccion),
+          estado: Value(estado),
           activo: Value(activo),
           latitud: Value(lat),
           longitud: Value(lng),

@@ -126,7 +126,7 @@ class AsignacionesLaboralesSync {
           nivel: Value(str(m['nivel'])),
           fechaInicio: Value(dt(m['fecha_inicio']) ?? DateTime.now().toUtc()),
           fechaFin: m['fecha_fin'] == null
-              ? const Value.absent()
+              ? const Value(null)
               : Value(dt(m['fecha_fin'])),
           createdByUsuarioUid: Value(str(m['created_by_usuario_uid'])),
           closedByUsuarioUid: Value(str(m['closed_by_usuario_uid'])),

@@ -127,6 +127,7 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
         uid: Value(uid),
         userName: userName != null ? Value(userName) : const Value.absent(),
         correo: correo != null ? Value(correo) : const Value.absent(),
+        lastConnectionAt: const Value.absent(),
         colaboradorUid: (colaboradorUid == null)
             ? const Value.absent()
             : Value(colaboradorUid),
@@ -159,5 +160,92 @@ class UsuariosNotifier extends StateNotifier<List<UsuarioDb>> {
           (u.userName.trim().toLowerCase() == userName.trim().toLowerCase() ||
               u.correo.trim().toLowerCase() == correo.trim().toLowerCase()),
     );
+  }
+
+  // usuarios_provider.dart (agrega dentro de UsuariosNotifier)
+
+  /// Soft-delete (bloquear acceso): local→state, y si hay Internet, remoto→sincronizado.
+  Future<void> softDeleteUsuario(String uid) async {
+    try {
+      // 1) Local: marcar deleted=true (pendiente de sync)
+      await _dao.marcarComoEliminadosDrift([uid]);
+
+      // 2) Pintar estado inmediato
+      state = await _dao.obtenerTodosDrift();
+      print(
+        '[👤 MENSAJES USUARIOS PROVIDER] Usuario $uid soft deleted localmente',
+      );
+    } catch (e) {
+      print('[👤 MENSAJES USUARIOS PROVIDER] ❌ softDeleteUsuario: $e');
+      rethrow;
+    }
+  }
+
+  /// Reactivar (quitar soft-delete): local→state, y si hay Internet, remoto→sincronizado.
+  Future<void> reactivarUsuario(String uid) async {
+    try {
+      // 1) Local: deleted=false (pendiente de sync)
+      await _dao.marcarComoNoEliminadosDrift([uid]);
+
+      // 2) Pintar estado inmediato
+      state = await _dao.obtenerTodosDrift();
+      print(
+        '[👤 MENSAJES USUARIOS PROVIDER] Usuario $uid reactivado localmente',
+      );
+    } catch (e) {
+      print('[👤 MENSAJES USUARIOS PROVIDER] ❌ reactivarUsuario: $e');
+      rethrow;
+    }
+  }
+
+  /// Obtener un usuario por UID desde Provider (la UI no toca DAO/Service).
+  Future<UsuarioDb?> obtenerLocalPorUid(String uid) async {
+    try {
+      // Si ya está en el estado, úsalo
+      final enMemoria = state.where((u) => u.uid == uid).toList();
+      if (enMemoria.isNotEmpty) return enMemoria.first;
+      // Si no, consulta local
+      return await _dao.obtenerPorUidDrift(uid);
+    } catch (e) {
+      print('[👤 MENSAJES USUARIOS PROVIDER] ❌ obtenerLocalPorUid: $e');
+      return null;
+    }
+  }
+
+  /// Saber si un uid está marcado eliminado (para guards en UI/InitialScreen).
+  Future<bool> estaEliminado(String uid) async {
+    final u = await obtenerLocalPorUid(uid);
+    return (u?.deleted ?? false);
+  }
+
+  /// Marca la última conexión del usuario localmente (offline-first) y empuja si hay internet.
+  Future<void> registrarUltimaConexion(
+    String uid, {
+    DateTime? cuandoUtc,
+  }) async {
+    final now = (cuandoUtc ?? DateTime.now().toUtc());
+
+    // 1) Local
+    await _dao.marcarUltimaConexionLocal(uid, now);
+
+    print(
+      '[👤 MENSAJES USUARIOS PROVIDER] Última conexión de $uid registrada localmente',
+    );
+
+    // 2) Refrescar estado
+    state = await _dao.obtenerTodosDrift();
+
+    // 3) Empujar si hay internet (no bloqueante en exceso)
+    _hayInternet = _ref.read(connectivityProvider);
+    if (_hayInternet) {
+      try {
+        await _sync.pushUsuariosOffline();
+        // Opcional: pull heads→diff para traer cambios desde otros dispositivos
+        await _sync.pullUsuariosOnline();
+        state = await _dao.obtenerTodosDrift();
+      } catch (_) {
+        /* logging si quieres */
+      }
+    }
   }
 }

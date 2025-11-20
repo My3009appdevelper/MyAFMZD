@@ -185,7 +185,7 @@ Set<Rule> _roleToRules(String rol) {
         const Rule(Resource.distribuidores, ActionType.view, Scope.all),
       };
 
-    case 'coordinador':
+    case 'gerente de grupo':
       return {
         // Perfil
         const Rule(Resource.perfil, ActionType.nav, Scope.all),
@@ -198,6 +198,10 @@ Set<Rule> _roleToRules(String rol) {
         // Distribuidores
         const Rule(Resource.distribuidores, ActionType.nav, Scope.all),
         const Rule(Resource.distribuidores, ActionType.view, Scope.all),
+
+        //  Reportes
+        const Rule(Resource.reportes, ActionType.nav, Scope.all),
+        const Rule(Resource.reportes, ActionType.view, Scope.all),
       };
 
     case 'administrativo':

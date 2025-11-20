@@ -305,50 +305,241 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
   // 📥/📤 Ficha técnica (PDF) local + sync diferido
   // ---------------------------------------------------------------------------
   Future<ModeloDb?> descargarFicha(ModeloDb modelo) async {
-    final file = await _servicio.descargarFichaOnline(modelo.fichaRutaRemota);
-    if (file == null) {
-      print(
-        '[🚗 MENSAJES MODELOS PROVIDER] ❌ No se pudo descargar ${modelo.fichaRutaRemota}',
+    try {
+      // 0) Si ya está local y existe, solo devuelve
+      if (modelo.fichaRutaLocal.isNotEmpty &&
+          File(modelo.fichaRutaLocal).existsSync()) {
+        return modelo;
+      }
+
+      // 1) Buscar si otro "hermano" (misma marca+modelo+anio) ya tiene la ficha local
+      final hermanos = state.where(
+        (m) =>
+            m.uid != modelo.uid &&
+            !m.deleted &&
+            m.marca.trim().toLowerCase() == modelo.marca.trim().toLowerCase() &&
+            m.modelo.trim().toLowerCase() ==
+                modelo.modelo.trim().toLowerCase() &&
+            m.anio == modelo.anio,
       );
-      return null;
-    }
 
-    // Actualización parcial; no tocamos isSynced
-    await _dao.actualizarParcialPorUid(
-      modelo.uid,
-      ModelosCompanion(fichaRutaLocal: Value(file.path)),
-    );
+      final hermanoConFicha = hermanos.firstWhere(
+        (m) =>
+            m.fichaRutaLocal.isNotEmpty && File(m.fichaRutaLocal).existsSync(),
+        orElse: () => modelo, // sentinel
+      );
 
-    final actualizados = await _dao.obtenerTodosDrift();
-    state = actualizados;
-
-    final actualizado = actualizados.firstWhere(
-      (m) => m.uid == modelo.uid,
-      orElse: () => modelo,
-    );
-    print('[🚗 MENSAJES MODELOS PROVIDER] ✅ Ficha descargada en: ${file.path}');
-    return actualizado;
-  }
-
-  Future<void> eliminarFichaLocal(ModeloDb modelo) async {
-    print(
-      '[🚗 MENSAJES MODELOS PROVIDER] Borrando ficha local: ${modelo.fichaRutaLocal}',
-    );
-    if (modelo.fichaRutaLocal.isNotEmpty) {
-      final file = File(modelo.fichaRutaLocal);
-      try {
-        if (await file.exists()) await file.delete();
-      } catch (e) {
-        print(
-          '[🚗 MENSAJES MODELOS PROVIDER] ⚠️ Error borrando ficha local: $e',
+      if (hermanoConFicha != modelo &&
+          hermanoConFicha.fichaRutaLocal.isNotEmpty) {
+        // Vincula al mismo archivo (sin duplicar)
+        await _dao.actualizarParcialPorUid(
+          modelo.uid,
+          ModelosCompanion(
+            fichaRutaLocal: Value(hermanoConFicha.fichaRutaLocal),
+          ),
+        );
+        // Actualiza memoria
+        final actualizados = await _dao.obtenerTodosDrift();
+        state = actualizados;
+        return actualizados.firstWhere(
+          (m) => m.uid == modelo.uid,
+          orElse: () => modelo,
         );
       }
+
+      // 2) Construir ruta canónica destino para este grupo
+      final destinoCanonico = await _rutaFichaCanonica(modelo);
+      final destinoFile = File(destinoCanonico);
+
+      // Si el canónico ya existe (quizá lo bajó otro hermano antes, o quedó de una sesión previa)
+      if (await destinoFile.exists()) {
+        await _dao.actualizarParcialPorUid(
+          modelo.uid,
+          ModelosCompanion(fichaRutaLocal: Value(destinoCanonico)),
+        );
+        // Propagar a hermanos sin ficha
+        await _propagarFichaAHermanos(modelo, destinoCanonico);
+        final actualizados = await _dao.obtenerTodosDrift();
+        state = actualizados;
+        return actualizados.firstWhere(
+          (m) => m.uid == modelo.uid,
+          orElse: () => modelo,
+        );
+      }
+
+      // 3) Si no existe local y hay ruta remota, descarga temporal y copia a canónico
+      if (modelo.fichaRutaRemota.trim().isEmpty) {
+        print(
+          '[🚗 MENSAJES MODELOS PROVIDER] ❌ Sin ruta remota para descargar la ficha.',
+        );
+        return null;
+      }
+
+      final tmp = await _servicio.descargarFichaOnline(
+        modelo.fichaRutaRemota,
+        temporal: true, // 👈 baja a /fichas_tmp
+      );
+      if (tmp == null || !await tmp.exists()) {
+        print('[🚗 MENSAJES MODELOS PROVIDER] ❌ Descarga temporal fallida.');
+        return null;
+      }
+
+      // Asegura carpeta de destino y mueve/copia
+      await destinoFile.parent.create(recursive: true);
+      await tmp.copy(destinoCanonico);
+      // Limpieza opcional
+      try {
+        await tmp.delete();
+      } catch (_) {}
+
+      // 4) Actualiza el modelo actual con la ruta canónica
+      await _dao.actualizarParcialPorUid(
+        modelo.uid,
+        ModelosCompanion(fichaRutaLocal: Value(destinoCanonico)),
+      );
+
+      // 5) Propaga la misma ruta a todos los hermanos sin ficha
+      await _propagarFichaAHermanos(modelo, destinoCanonico);
+
+      // 6) Refresca estado en memoria
+      final actualizados = await _dao.obtenerTodosDrift();
+      state = actualizados;
+
+      final actualizado = actualizados.firstWhere(
+        (m) => m.uid == modelo.uid,
+        orElse: () => modelo,
+      );
+      print(
+        '[🚗 MENSAJES MODELOS PROVIDER] ✅ Ficha lista en: $destinoCanonico',
+      );
+      return actualizado;
+    } catch (e) {
+      print('[🚗 MENSAJES MODELOS PROVIDER] ❌ Error en descargarFicha(): $e');
+      return null;
     }
-    await _dao.actualizarParcialPorUid(
-      modelo.uid,
-      const ModelosCompanion(fichaRutaLocal: Value('')),
-    );
-    state = await _dao.obtenerTodosDrift();
+  }
+
+  String _slug(String s) {
+    var t = s.trim().toLowerCase();
+    // sin acentos/diéresis/ñ/ç
+    t = t.replaceAll(RegExp(r'[áàäâã]'), 'a');
+    t = t.replaceAll(RegExp(r'[éèëê]'), 'e');
+    t = t.replaceAll(RegExp(r'[íìïî]'), 'i');
+    t = t.replaceAll(RegExp(r'[óòöôõ]'), 'o');
+    t = t.replaceAll(RegExp(r'[úùüû]'), 'u');
+    t = t.replaceAll(RegExp(r'[ñ]'), 'n');
+    t = t.replaceAll(RegExp(r'[ç]'), 'c');
+    // solo [a-z0-9_], espacios y separadores → _
+    t = t.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    t = t.replaceAll(RegExp(r'_+'), '_').replaceAll(RegExp(r'^_|_$'), '');
+    return t;
+  }
+
+  /// Ruta canónica única por grupo (marca+modelo+anio),
+  /// p. ej.:  .../fichas/ficha_2025_mazda_mx_5.pdf
+  Future<String> _rutaFichaCanonica(ModeloDb m) async {
+    final base = await getApplicationSupportDirectory();
+    final dir = Directory(p.join(base.path, 'fichas'));
+    final marca = _slug(m.marca.isEmpty ? 'mazda' : m.marca);
+    final modelo = _slug(m.modelo);
+    final nombre = 'ficha_${m.anio}_${marca}_${modelo}.pdf';
+    return p.join(dir.path, nombre);
+  }
+
+  /// Propaga la ruta local de la ficha a todos los "hermanos" del mismo grupo
+  /// que no tengan `fichaRutaLocal`.
+  Future<void> _propagarFichaAHermanos(ModeloDb m, String rutaLocal) async {
+    final hermanosSinFicha = state
+        .where(
+          (x) =>
+              x.uid != m.uid &&
+              !x.deleted &&
+              x.marca.trim().toLowerCase() == m.marca.trim().toLowerCase() &&
+              x.modelo.trim().toLowerCase() == m.modelo.trim().toLowerCase() &&
+              x.anio == m.anio &&
+              (x.fichaRutaLocal.isEmpty ||
+                  !File(x.fichaRutaLocal).existsSync()),
+        )
+        .toList();
+
+    if (hermanosSinFicha.isEmpty) return;
+
+    // Actualiza en lote
+    for (final h in hermanosSinFicha) {
+      await _dao.actualizarParcialPorUid(
+        h.uid,
+        ModelosCompanion(fichaRutaLocal: Value(rutaLocal)),
+      );
+    }
+  }
+
+  /// Elimina la ficha canónica del grupo (marca+modelo+anio) y desasocia
+  /// `fichaRutaLocal` de todos sus hermanos. Devuelve cuántos registros se limpiaron.
+  Future<int> eliminarFichaLocal(ModeloDb modelo) async {
+    try {
+      // 1) Ruta canónica target del grupo
+      final canonPath = await _rutaFichaCanonica(modelo);
+      final canonFile = File(canonPath);
+
+      // 2) Recolectar todos los miembros del grupo (incluye al propio modelo)
+      final miembros = state
+          .where(
+            (m) =>
+                !m.deleted &&
+                m.marca.trim().toLowerCase() ==
+                    modelo.marca.trim().toLowerCase() &&
+                m.modelo.trim().toLowerCase() ==
+                    modelo.modelo.trim().toLowerCase() &&
+                m.anio == modelo.anio,
+          )
+          .toList();
+
+      // 3) Desvincular todos los que apunten a la canónica o a cualquier otra
+      //    que decidas considerar "equivalente". Por robustez, limpiamos a todos
+      //    los del grupo que tengan una ruta local existente, independientemente
+      //    del nombre del archivo, para asegurar consistencia.
+      int limpiados = 0;
+      for (final m in miembros) {
+        if (m.fichaRutaLocal.isNotEmpty) {
+          await _dao.actualizarParcialPorUid(
+            m.uid,
+            const ModelosCompanion(fichaRutaLocal: Value('')),
+          );
+          limpiados++;
+        }
+      }
+
+      // 4) Decidir si borramos el archivo en disco:
+      //    - Preferencia: borrar solo la canónica del grupo si nadie más la usa.
+      //    - Checamos si aún hay algún modelo (en todo el catálogo) que apunte a ella.
+      if (await canonFile.exists()) {
+        try {
+          await canonFile.delete();
+          print(
+            '[🚗 MENSAJES MODELOS PROVIDER] 🧹 Borrada canónica: $canonPath',
+          );
+          // Limpieza opcional: si la carpeta quedó vacía, no pasa nada si la dejas
+        } catch (e) {
+          print(
+            '[🚗 MENSAJES MODELOS PROVIDER] ⚠️ No se pudo borrar la canónica: $e',
+          );
+        }
+      }
+
+      // 5) Refrescar memoria
+      state = await _dao.obtenerTodosDrift();
+
+      print(
+        '[🚗 MENSAJES MODELOS PROVIDER] 🧹 Eliminada ficha de grupo ${modelo.marca} '
+        '${modelo.modelo} ${modelo.anio}. Registros limpiados: $limpiados',
+      );
+      return limpiados;
+    } catch (e) {
+      print(
+        '[🚗 MENSAJES MODELOS PROVIDER] ❌ Error en eliminarFichaGrupoCanonica(): $e',
+      );
+      return 0;
+    }
   }
 
   /// Copia un PDF local a la app y marca para sync (no sube de inmediato).
@@ -746,5 +937,36 @@ class ModelosNotifier extends StateNotifier<List<ModeloDb>> {
       '[🚗 MENSAJES MODELOS PROVIDER] CSV import → insertados:$insertados | saltados:$saltados',
     );
     return (insertados, saltados);
+  }
+
+  /// Devuelve el tamaño total (en bytes) del directorio de fichas.
+  Future<int> getFichasCacheSizeBytes() async {
+    try {
+      final base = await getApplicationSupportDirectory();
+      final dir = Directory(p.join(base.path, 'fichas'));
+      if (!await dir.exists()) return 0;
+
+      int total = 0;
+      await for (final ent in dir.list(recursive: true, followLinks: false)) {
+        if (ent is File && ent.path.toLowerCase().endsWith('.pdf')) {
+          total += await ent.length();
+        }
+      }
+      return total;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Pretty print para bytes.
+  String prettyBytes(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    double v = bytes.toDouble();
+    int i = 0;
+    while (v >= 1024 && i < units.length - 1) {
+      v /= 1024;
+      i++;
+    }
+    return '${v.toStringAsFixed(v < 10 ? 1 : 0)} ${units[i]}';
   }
 }

@@ -51,6 +51,18 @@ class $UsuariosTable extends Usuarios
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _lastConnectionAtMeta = const VerificationMeta(
+    'lastConnectionAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastConnectionAt =
+      GeneratedColumn<DateTime>(
+        'last_connection_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -111,6 +123,7 @@ class $UsuariosTable extends Usuarios
     colaboradorUid,
     userName,
     correo,
+    lastConnectionAt,
     createdAt,
     updatedAt,
     deleted,
@@ -155,6 +168,15 @@ class $UsuariosTable extends Usuarios
       context.handle(
         _correoMeta,
         correo.isAcceptableOrUnknown(data['correo']!, _correoMeta),
+      );
+    }
+    if (data.containsKey('last_connection_at')) {
+      context.handle(
+        _lastConnectionAtMeta,
+        lastConnectionAt.isAcceptableOrUnknown(
+          data['last_connection_at']!,
+          _lastConnectionAtMeta,
+        ),
       );
     }
     if (data.containsKey('created_at')) {
@@ -206,6 +228,10 @@ class $UsuariosTable extends Usuarios
         DriftSqlType.string,
         data['${effectivePrefix}correo'],
       )!,
+      lastConnectionAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_connection_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -236,6 +262,7 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
   final String? colaboradorUid;
   final String userName;
   final String correo;
+  final DateTime? lastConnectionAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool deleted;
@@ -245,6 +272,7 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
     this.colaboradorUid,
     required this.userName,
     required this.correo,
+    this.lastConnectionAt,
     required this.createdAt,
     required this.updatedAt,
     required this.deleted,
@@ -259,6 +287,9 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
     }
     map['user_name'] = Variable<String>(userName);
     map['correo'] = Variable<String>(correo);
+    if (!nullToAbsent || lastConnectionAt != null) {
+      map['last_connection_at'] = Variable<DateTime>(lastConnectionAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['deleted'] = Variable<bool>(deleted);
@@ -274,6 +305,9 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
           : Value(colaboradorUid),
       userName: Value(userName),
       correo: Value(correo),
+      lastConnectionAt: lastConnectionAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastConnectionAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deleted: Value(deleted),
@@ -291,6 +325,9 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
       colaboradorUid: serializer.fromJson<String?>(json['colaboradorUid']),
       userName: serializer.fromJson<String>(json['userName']),
       correo: serializer.fromJson<String>(json['correo']),
+      lastConnectionAt: serializer.fromJson<DateTime?>(
+        json['lastConnectionAt'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deleted: serializer.fromJson<bool>(json['deleted']),
@@ -305,6 +342,7 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
       'colaboradorUid': serializer.toJson<String?>(colaboradorUid),
       'userName': serializer.toJson<String>(userName),
       'correo': serializer.toJson<String>(correo),
+      'lastConnectionAt': serializer.toJson<DateTime?>(lastConnectionAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deleted': serializer.toJson<bool>(deleted),
@@ -317,6 +355,7 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
     Value<String?> colaboradorUid = const Value.absent(),
     String? userName,
     String? correo,
+    Value<DateTime?> lastConnectionAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? deleted,
@@ -328,6 +367,9 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
         : this.colaboradorUid,
     userName: userName ?? this.userName,
     correo: correo ?? this.correo,
+    lastConnectionAt: lastConnectionAt.present
+        ? lastConnectionAt.value
+        : this.lastConnectionAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deleted: deleted ?? this.deleted,
@@ -341,6 +383,9 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
           : this.colaboradorUid,
       userName: data.userName.present ? data.userName.value : this.userName,
       correo: data.correo.present ? data.correo.value : this.correo,
+      lastConnectionAt: data.lastConnectionAt.present
+          ? data.lastConnectionAt.value
+          : this.lastConnectionAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
@@ -355,6 +400,7 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
           ..write('colaboradorUid: $colaboradorUid, ')
           ..write('userName: $userName, ')
           ..write('correo: $correo, ')
+          ..write('lastConnectionAt: $lastConnectionAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
@@ -369,6 +415,7 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
     colaboradorUid,
     userName,
     correo,
+    lastConnectionAt,
     createdAt,
     updatedAt,
     deleted,
@@ -382,6 +429,7 @@ class UsuarioDb extends DataClass implements Insertable<UsuarioDb> {
           other.colaboradorUid == this.colaboradorUid &&
           other.userName == this.userName &&
           other.correo == this.correo &&
+          other.lastConnectionAt == this.lastConnectionAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deleted == this.deleted &&
@@ -393,6 +441,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
   final Value<String?> colaboradorUid;
   final Value<String> userName;
   final Value<String> correo;
+  final Value<DateTime?> lastConnectionAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> deleted;
@@ -403,6 +452,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
     this.colaboradorUid = const Value.absent(),
     this.userName = const Value.absent(),
     this.correo = const Value.absent(),
+    this.lastConnectionAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
@@ -414,6 +464,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
     this.colaboradorUid = const Value.absent(),
     this.userName = const Value.absent(),
     this.correo = const Value.absent(),
+    this.lastConnectionAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deleted = const Value.absent(),
@@ -425,6 +476,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
     Expression<String>? colaboradorUid,
     Expression<String>? userName,
     Expression<String>? correo,
+    Expression<DateTime>? lastConnectionAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? deleted,
@@ -436,6 +488,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
       if (colaboradorUid != null) 'colaborador_uid': colaboradorUid,
       if (userName != null) 'user_name': userName,
       if (correo != null) 'correo': correo,
+      if (lastConnectionAt != null) 'last_connection_at': lastConnectionAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deleted != null) 'deleted': deleted,
@@ -449,6 +502,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
     Value<String?>? colaboradorUid,
     Value<String>? userName,
     Value<String>? correo,
+    Value<DateTime?>? lastConnectionAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<bool>? deleted,
@@ -460,6 +514,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
       colaboradorUid: colaboradorUid ?? this.colaboradorUid,
       userName: userName ?? this.userName,
       correo: correo ?? this.correo,
+      lastConnectionAt: lastConnectionAt ?? this.lastConnectionAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deleted: deleted ?? this.deleted,
@@ -482,6 +537,9 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
     }
     if (correo.present) {
       map['correo'] = Variable<String>(correo.value);
+    }
+    if (lastConnectionAt.present) {
+      map['last_connection_at'] = Variable<DateTime>(lastConnectionAt.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -508,6 +566,7 @@ class UsuariosCompanion extends UpdateCompanion<UsuarioDb> {
           ..write('colaboradorUid: $colaboradorUid, ')
           ..write('userName: $userName, ')
           ..write('correo: $correo, ')
+          ..write('lastConnectionAt: $lastConnectionAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deleted: $deleted, ')
@@ -561,6 +620,16 @@ class $DistribuidoresTable extends Distribuidores
   @override
   late final GeneratedColumn<String> direccion = GeneratedColumn<String>(
     'direccion',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _estadoMeta = const VerificationMeta('estado');
+  @override
+  late final GeneratedColumn<String> estado = GeneratedColumn<String>(
+    'estado',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -664,6 +733,7 @@ class $DistribuidoresTable extends Distribuidores
     nombre,
     uuidGrupo,
     direccion,
+    estado,
     activo,
     latitud,
     longitud,
@@ -708,6 +778,12 @@ class $DistribuidoresTable extends Distribuidores
       context.handle(
         _direccionMeta,
         direccion.isAcceptableOrUnknown(data['direccion']!, _direccionMeta),
+      );
+    }
+    if (data.containsKey('estado')) {
+      context.handle(
+        _estadoMeta,
+        estado.isAcceptableOrUnknown(data['estado']!, _estadoMeta),
       );
     }
     if (data.containsKey('activo')) {
@@ -780,6 +856,10 @@ class $DistribuidoresTable extends Distribuidores
         DriftSqlType.string,
         data['${effectivePrefix}direccion'],
       )!,
+      estado: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}estado'],
+      )!,
       activo: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}activo'],
@@ -822,6 +902,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
   final String nombre;
   final String uuidGrupo;
   final String direccion;
+  final String estado;
   final bool activo;
   final double latitud;
   final double longitud;
@@ -834,6 +915,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     required this.nombre,
     required this.uuidGrupo,
     required this.direccion,
+    required this.estado,
     required this.activo,
     required this.latitud,
     required this.longitud,
@@ -849,6 +931,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     map['nombre'] = Variable<String>(nombre);
     map['uuid_grupo'] = Variable<String>(uuidGrupo);
     map['direccion'] = Variable<String>(direccion);
+    map['estado'] = Variable<String>(estado);
     map['activo'] = Variable<bool>(activo);
     map['latitud'] = Variable<double>(latitud);
     map['longitud'] = Variable<double>(longitud);
@@ -865,6 +948,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
       nombre: Value(nombre),
       uuidGrupo: Value(uuidGrupo),
       direccion: Value(direccion),
+      estado: Value(estado),
       activo: Value(activo),
       latitud: Value(latitud),
       longitud: Value(longitud),
@@ -885,6 +969,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
       nombre: serializer.fromJson<String>(json['nombre']),
       uuidGrupo: serializer.fromJson<String>(json['uuidGrupo']),
       direccion: serializer.fromJson<String>(json['direccion']),
+      estado: serializer.fromJson<String>(json['estado']),
       activo: serializer.fromJson<bool>(json['activo']),
       latitud: serializer.fromJson<double>(json['latitud']),
       longitud: serializer.fromJson<double>(json['longitud']),
@@ -902,6 +987,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
       'nombre': serializer.toJson<String>(nombre),
       'uuidGrupo': serializer.toJson<String>(uuidGrupo),
       'direccion': serializer.toJson<String>(direccion),
+      'estado': serializer.toJson<String>(estado),
       'activo': serializer.toJson<bool>(activo),
       'latitud': serializer.toJson<double>(latitud),
       'longitud': serializer.toJson<double>(longitud),
@@ -917,6 +1003,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     String? nombre,
     String? uuidGrupo,
     String? direccion,
+    String? estado,
     bool? activo,
     double? latitud,
     double? longitud,
@@ -929,6 +1016,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     nombre: nombre ?? this.nombre,
     uuidGrupo: uuidGrupo ?? this.uuidGrupo,
     direccion: direccion ?? this.direccion,
+    estado: estado ?? this.estado,
     activo: activo ?? this.activo,
     latitud: latitud ?? this.latitud,
     longitud: longitud ?? this.longitud,
@@ -943,6 +1031,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
       nombre: data.nombre.present ? data.nombre.value : this.nombre,
       uuidGrupo: data.uuidGrupo.present ? data.uuidGrupo.value : this.uuidGrupo,
       direccion: data.direccion.present ? data.direccion.value : this.direccion,
+      estado: data.estado.present ? data.estado.value : this.estado,
       activo: data.activo.present ? data.activo.value : this.activo,
       latitud: data.latitud.present ? data.latitud.value : this.latitud,
       longitud: data.longitud.present ? data.longitud.value : this.longitud,
@@ -962,6 +1051,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
           ..write('nombre: $nombre, ')
           ..write('uuidGrupo: $uuidGrupo, ')
           ..write('direccion: $direccion, ')
+          ..write('estado: $estado, ')
           ..write('activo: $activo, ')
           ..write('latitud: $latitud, ')
           ..write('longitud: $longitud, ')
@@ -979,6 +1069,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
     nombre,
     uuidGrupo,
     direccion,
+    estado,
     activo,
     latitud,
     longitud,
@@ -995,6 +1086,7 @@ class DistribuidorDb extends DataClass implements Insertable<DistribuidorDb> {
           other.nombre == this.nombre &&
           other.uuidGrupo == this.uuidGrupo &&
           other.direccion == this.direccion &&
+          other.estado == this.estado &&
           other.activo == this.activo &&
           other.latitud == this.latitud &&
           other.longitud == this.longitud &&
@@ -1009,6 +1101,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
   final Value<String> nombre;
   final Value<String> uuidGrupo;
   final Value<String> direccion;
+  final Value<String> estado;
   final Value<bool> activo;
   final Value<double> latitud;
   final Value<double> longitud;
@@ -1022,6 +1115,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     this.nombre = const Value.absent(),
     this.uuidGrupo = const Value.absent(),
     this.direccion = const Value.absent(),
+    this.estado = const Value.absent(),
     this.activo = const Value.absent(),
     this.latitud = const Value.absent(),
     this.longitud = const Value.absent(),
@@ -1036,6 +1130,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     this.nombre = const Value.absent(),
     this.uuidGrupo = const Value.absent(),
     this.direccion = const Value.absent(),
+    this.estado = const Value.absent(),
     this.activo = const Value.absent(),
     this.latitud = const Value.absent(),
     this.longitud = const Value.absent(),
@@ -1050,6 +1145,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     Expression<String>? nombre,
     Expression<String>? uuidGrupo,
     Expression<String>? direccion,
+    Expression<String>? estado,
     Expression<bool>? activo,
     Expression<double>? latitud,
     Expression<double>? longitud,
@@ -1064,6 +1160,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
       if (nombre != null) 'nombre': nombre,
       if (uuidGrupo != null) 'uuid_grupo': uuidGrupo,
       if (direccion != null) 'direccion': direccion,
+      if (estado != null) 'estado': estado,
       if (activo != null) 'activo': activo,
       if (latitud != null) 'latitud': latitud,
       if (longitud != null) 'longitud': longitud,
@@ -1080,6 +1177,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     Value<String>? nombre,
     Value<String>? uuidGrupo,
     Value<String>? direccion,
+    Value<String>? estado,
     Value<bool>? activo,
     Value<double>? latitud,
     Value<double>? longitud,
@@ -1094,6 +1192,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
       nombre: nombre ?? this.nombre,
       uuidGrupo: uuidGrupo ?? this.uuidGrupo,
       direccion: direccion ?? this.direccion,
+      estado: estado ?? this.estado,
       activo: activo ?? this.activo,
       latitud: latitud ?? this.latitud,
       longitud: longitud ?? this.longitud,
@@ -1119,6 +1218,9 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
     }
     if (direccion.present) {
       map['direccion'] = Variable<String>(direccion.value);
+    }
+    if (estado.present) {
+      map['estado'] = Variable<String>(estado.value);
     }
     if (activo.present) {
       map['activo'] = Variable<bool>(activo.value);
@@ -1154,6 +1256,7 @@ class DistribuidoresCompanion extends UpdateCompanion<DistribuidorDb> {
           ..write('nombre: $nombre, ')
           ..write('uuidGrupo: $uuidGrupo, ')
           ..write('direccion: $direccion, ')
+          ..write('estado: $estado, ')
           ..write('activo: $activo, ')
           ..write('latitud: $latitud, ')
           ..write('longitud: $longitud, ')
@@ -9039,6 +9142,7 @@ typedef $$UsuariosTableCreateCompanionBuilder =
       Value<String?> colaboradorUid,
       Value<String> userName,
       Value<String> correo,
+      Value<DateTime?> lastConnectionAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
@@ -9051,6 +9155,7 @@ typedef $$UsuariosTableUpdateCompanionBuilder =
       Value<String?> colaboradorUid,
       Value<String> userName,
       Value<String> correo,
+      Value<DateTime?> lastConnectionAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<bool> deleted,
@@ -9084,6 +9189,11 @@ class $$UsuariosTableFilterComposer
 
   ColumnFilters<String> get correo => $composableBuilder(
     column: $table.correo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastConnectionAt => $composableBuilder(
+    column: $table.lastConnectionAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9137,6 +9247,11 @@ class $$UsuariosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get lastConnectionAt => $composableBuilder(
+    column: $table.lastConnectionAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9180,6 +9295,11 @@ class $$UsuariosTableAnnotationComposer
 
   GeneratedColumn<String> get correo =>
       $composableBuilder(column: $table.correo, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastConnectionAt => $composableBuilder(
+    column: $table.lastConnectionAt,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9226,6 +9346,7 @@ class $$UsuariosTableTableManager
                 Value<String?> colaboradorUid = const Value.absent(),
                 Value<String> userName = const Value.absent(),
                 Value<String> correo = const Value.absent(),
+                Value<DateTime?> lastConnectionAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
@@ -9236,6 +9357,7 @@ class $$UsuariosTableTableManager
                 colaboradorUid: colaboradorUid,
                 userName: userName,
                 correo: correo,
+                lastConnectionAt: lastConnectionAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deleted: deleted,
@@ -9248,6 +9370,7 @@ class $$UsuariosTableTableManager
                 Value<String?> colaboradorUid = const Value.absent(),
                 Value<String> userName = const Value.absent(),
                 Value<String> correo = const Value.absent(),
+                Value<DateTime?> lastConnectionAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
@@ -9258,6 +9381,7 @@ class $$UsuariosTableTableManager
                 colaboradorUid: colaboradorUid,
                 userName: userName,
                 correo: correo,
+                lastConnectionAt: lastConnectionAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deleted: deleted,
@@ -9292,6 +9416,7 @@ typedef $$DistribuidoresTableCreateCompanionBuilder =
       Value<String> nombre,
       Value<String> uuidGrupo,
       Value<String> direccion,
+      Value<String> estado,
       Value<bool> activo,
       Value<double> latitud,
       Value<double> longitud,
@@ -9307,6 +9432,7 @@ typedef $$DistribuidoresTableUpdateCompanionBuilder =
       Value<String> nombre,
       Value<String> uuidGrupo,
       Value<String> direccion,
+      Value<String> estado,
       Value<bool> activo,
       Value<double> latitud,
       Value<double> longitud,
@@ -9343,6 +9469,11 @@ class $$DistribuidoresTableFilterComposer
 
   ColumnFilters<String> get direccion => $composableBuilder(
     column: $table.direccion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get estado => $composableBuilder(
+    column: $table.estado,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9411,6 +9542,11 @@ class $$DistribuidoresTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get estado => $composableBuilder(
+    column: $table.estado,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get activo => $composableBuilder(
     column: $table.activo,
     builder: (column) => ColumnOrderings(column),
@@ -9467,6 +9603,9 @@ class $$DistribuidoresTableAnnotationComposer
 
   GeneratedColumn<String> get direccion =>
       $composableBuilder(column: $table.direccion, builder: (column) => column);
+
+  GeneratedColumn<String> get estado =>
+      $composableBuilder(column: $table.estado, builder: (column) => column);
 
   GeneratedColumn<bool> get activo =>
       $composableBuilder(column: $table.activo, builder: (column) => column);
@@ -9529,6 +9668,7 @@ class $$DistribuidoresTableTableManager
                 Value<String> nombre = const Value.absent(),
                 Value<String> uuidGrupo = const Value.absent(),
                 Value<String> direccion = const Value.absent(),
+                Value<String> estado = const Value.absent(),
                 Value<bool> activo = const Value.absent(),
                 Value<double> latitud = const Value.absent(),
                 Value<double> longitud = const Value.absent(),
@@ -9542,6 +9682,7 @@ class $$DistribuidoresTableTableManager
                 nombre: nombre,
                 uuidGrupo: uuidGrupo,
                 direccion: direccion,
+                estado: estado,
                 activo: activo,
                 latitud: latitud,
                 longitud: longitud,
@@ -9557,6 +9698,7 @@ class $$DistribuidoresTableTableManager
                 Value<String> nombre = const Value.absent(),
                 Value<String> uuidGrupo = const Value.absent(),
                 Value<String> direccion = const Value.absent(),
+                Value<String> estado = const Value.absent(),
                 Value<bool> activo = const Value.absent(),
                 Value<double> latitud = const Value.absent(),
                 Value<double> longitud = const Value.absent(),
@@ -9570,6 +9712,7 @@ class $$DistribuidoresTableTableManager
                 nombre: nombre,
                 uuidGrupo: uuidGrupo,
                 direccion: direccion,
+                estado: estado,
                 activo: activo,
                 latitud: latitud,
                 longitud: longitud,

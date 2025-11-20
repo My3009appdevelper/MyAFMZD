@@ -9,7 +9,7 @@ class MyElevatedButton extends StatelessWidget {
     super.key,
     required this.onPressed,
     required this.icon,
-    required this.label,
+    this.label = "Botón",
   });
 
   @override
@@ -26,7 +26,6 @@ class MyElevatedButton extends StatelessWidget {
         style: textStyle?.copyWith(color: colorScheme.onPrimary),
       ),
       style: ElevatedButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
         backgroundColor: colorScheme.primary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ).merge(theme.elevatedButtonTheme.style),

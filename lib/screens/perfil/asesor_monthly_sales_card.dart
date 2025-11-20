@@ -17,7 +17,7 @@ class AsesorMonthlySalesCard extends ConsumerStatefulWidget {
     this.chartHeight = 220,
   });
 
-  /// 'vendedor' | 'gerente' | 'admin'
+  /// 'vendedor' | 'gerente' | 'gerente de grupo' | 'admin'
   final String rolActivo;
   final int? initialYear;
   final double chartHeight;
@@ -71,9 +71,12 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
 
     // -------- Rol / flags --------
     final rol = widget.rolActivo.toLowerCase().trim();
-    final esGerente = rol == 'gerente';
+    final esGerenteGrupo = rol == 'gerente de grupo';
+    final esGerente = rol == 'gerente' || esGerenteGrupo;
     final esAdmin = rol == 'admin';
     final esVendedor = rol == 'vendedor';
+
+    final esRolConBases = esAdmin || esGerenteGrupo;
 
     // -------- Índices rápidos --------
     final asigByUid = {for (final a in asignaciones) a.uid: a};
@@ -84,15 +87,32 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
       distribuidores,
       asignacionActiva,
     );
-    final clusterUids = (esGerente && distOrigen != null)
-        ? _SalesSelectors.clusterFromBaseDistribuidora(
-            baseUid: distOrigen.concentradoraUid.isNotEmpty
-                ? distOrigen.concentradoraUid
-                : distOrigen.uid,
-            distribuidores: distribuidores,
-            isRootConcentradora: true,
-          )
-        : <String>{};
+
+    final clusterUids = () {
+      if (!esGerente) return <String>{};
+
+      // 🔹 Caso GERENTE DE GRUPO: usar TODAS sus distribuidoras asignadas
+      if (esGerenteGrupo && asignacionActiva != null) {
+        return _SalesSelectors.clusterGerenteGrupo(
+          gerenteColaboradorUid: asignacionActiva.colaboradorUid,
+          asignaciones: asignaciones,
+          distribuidores: distribuidores,
+        );
+      }
+
+      // 🔹 Caso GERENTE normal: igual que antes (cluster de su base/concentradora)
+      if (distOrigen != null) {
+        return _SalesSelectors.clusterFromBaseDistribuidora(
+          baseUid: distOrigen.concentradoraUid.isNotEmpty
+              ? distOrigen.concentradoraUid
+              : distOrigen.uid,
+          distribuidores: distribuidores,
+          isRootConcentradora: true,
+        );
+      }
+
+      return <String>{};
+    }();
 
     // -------- Opciones de vendedores (gerente/admin) --------
     final vendedoresOpciones = (esGerente || esAdmin)
@@ -104,6 +124,20 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
             limitarPorClusterUids: esGerente ? clusterUids : null,
           )
         : <MapEntry<String, String>>[];
+    debugPrint(
+      'ROL: $rol  esGerenteGrupo=$esGerenteGrupo  clusterUids=${clusterUids.length}  vendedoresOpciones=${vendedoresOpciones.length}',
+    );
+    //Listar las distribuidoras
+    debugPrint(
+      'Clusters: ${clusterUids.map((uid) {
+        try {
+          final d = distribuidores.firstWhere((d) => !d.deleted && d.uid == uid);
+          return d.nombre;
+        } catch (_) {
+          return uid;
+        }
+      }).join(', ')}',
+    );
 
     // -------- Serie del asesor --------
     final Set<String>? seriesScope = () {
@@ -113,8 +147,15 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
           distribuidores: distribuidores,
         );
       }
-      if (esGerente) return clusterUids;
-      if (esAdmin && _selectedColaboradorUid.isNotEmpty) {
+
+      // Gerente "normal" (no de grupo): todo su cluster
+      if (esGerente && !esGerenteGrupo) {
+        return clusterUids;
+      }
+
+      // Admin o Gerente de grupo con vendedor ya seleccionado:
+      // usan la misma lógica de "adminScopeElegido" (dropdown de bases).
+      if ((esAdmin || esGerenteGrupo) && _selectedColaboradorUid.isNotEmpty) {
         return _SalesSelectors.adminScopeElegido(
           colaboradorUid: _selectedColaboradorUid,
           anio: _selectedYear,
@@ -126,6 +167,12 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
           allBasesKey: _allBasesKey,
         );
       }
+
+      // Gerente de grupo sin vendedor seleccionado: usa su scope completo
+      if (esGerenteGrupo) {
+        return clusterUids;
+      }
+
       return null;
     }();
 
@@ -145,8 +192,8 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
 
     final totalAnual = serieAsesor.fold<int>(0, (acc, v) => acc + v);
 
-    // -------- Bases del asesor (solo admin con asesor) --------
-    final basesOpciones = (esAdmin && _selectedColaboradorUid.isNotEmpty)
+    // -------- Bases del asesor (admin y gerente de grupo con asesor) --------
+    final basesOpciones = (esRolConBases && _selectedColaboradorUid.isNotEmpty)
         ? _SalesSelectors.basesDelColaboradorEnAnio(
             colaboradorUid: _selectedColaboradorUid,
             anio: _selectedYear,
@@ -157,13 +204,43 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
             allBasesKey: _allBasesKey,
             selectedBaseDistribuidoraUid: _selectedBaseDistribuidoraUid,
             onNormalized: (normalized) {
-              // normaliza y setea si cambia
               if (_selectedBaseDistribuidoraUid != normalized) {
                 setState(() => _selectedBaseDistribuidoraUid = normalized);
               }
             },
           )
         : <MapEntry<String, String>>[];
+
+    // -------- Texto dinámico para admin: base seleccionada --------
+    String? baseSeleccionadaLabel;
+    if (esRolConBases &&
+        _selectedColaboradorUid.isNotEmpty &&
+        basesOpciones.isNotEmpty) {
+      MapEntry<String, String>? seleccion;
+      try {
+        if (_selectedBaseDistribuidoraUid != null) {
+          seleccion = basesOpciones.firstWhere(
+            (e) => e.key == _selectedBaseDistribuidoraUid,
+          );
+        }
+      } catch (_) {
+        seleccion = null;
+      }
+      seleccion ??= basesOpciones.first;
+
+      if (seleccion.key == _allBasesKey) {
+        final basesSinAll = basesOpciones
+            .where((e) => e.key != _allBasesKey)
+            .map((e) => e.value)
+            .toList();
+        final nombres = basesSinAll.join(', ');
+        baseSeleccionadaLabel = basesSinAll.isEmpty
+            ? 'Todas sus distribuidoras'
+            : 'Todas sus distribuidoras: $nombres';
+      } else {
+        baseSeleccionadaLabel = 'Distribuidora: ${seleccion.value}';
+      }
+    }
 
     // -------- Ranking (scope consistente con pies) --------
     final scopeParaRanking = seriesScope;
@@ -192,8 +269,19 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
           isRootConcentradora: true,
         );
       }
-      if (esGerente) return clusterUids;
-      if (esAdmin && _selectedColaboradorUid.isNotEmpty) return seriesScope;
+
+      // Gerente "normal": todo su cluster
+      if (esGerente && !esGerenteGrupo) return clusterUids;
+
+      // Admin o Gerente de grupo con vendedor seleccionado:
+      // usamos el mismo scope que en barras (seriesScope)
+      if ((esAdmin || esGerenteGrupo) && _selectedColaboradorUid.isNotEmpty) {
+        return seriesScope;
+      }
+
+      // Gerente de grupo sin vendedor seleccionado → su scope completo
+      if (esGerenteGrupo) return clusterUids;
+
       return null;
     }();
 
@@ -225,7 +313,7 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
     final concNombre = _SalesSelectors.concentradoraNombreParaPies(
       esVendedor: esVendedor,
       esGerente: esGerente,
-      esAdmin: esAdmin,
+      esAdmin: esAdmin || esGerenteGrupo,
       distOrigen: distOrigen,
       selectedColaboradorUid: _selectedColaboradorUid,
       asignaciones: asignaciones,
@@ -240,6 +328,27 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
     final concLabel = (concNombre == null || concNombre.isEmpty)
         ? 'DISTRIBUIDORA'
         : concNombre.toUpperCase();
+
+    final rawSubtitulo = _SalesSelectors.contextoDistribuidoraNombre(
+      esVendedor: esVendedor,
+      esGerente: esGerente,
+      esAdmin: esAdmin,
+      esGerenteGrupo: esGerenteGrupo,
+      distOrigen: distOrigen,
+      clusterUids: clusterUids,
+      selectedColaboradorUid: _selectedColaboradorUid,
+      asignaciones: asignaciones,
+      distribuidores: distribuidores,
+      ventas: ventas,
+      anio: _selectedYear,
+    );
+
+    final showBasesDropdown =
+        esRolConBases &&
+        _selectedColaboradorUid.isNotEmpty &&
+        basesOpciones.length > 1;
+
+    final subtituloHeader = showBasesDropdown ? null : rawSubtitulo;
 
     // =================== UI ===================
     return Card(
@@ -256,29 +365,15 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
                   : (_selectedColaboradorUid.isNotEmpty
                         ? 'VENTAS DE ${_SalesSelectors.nombreColaboradorNullSafe(_SalesSelectors.colaboradorPorUidSinDeleted(colaboradores, _selectedColaboradorUid)).toUpperCase()}'
                         : 'VENTAS POR MES (POR ASESOR)'),
-              subtitulo: _SalesSelectors.contextoDistribuidoraNombre(
-                esVendedor: esVendedor,
-                esGerente: esGerente,
-                esAdmin: esAdmin,
-                distOrigen: distOrigen,
-                clusterUids: clusterUids,
-                selectedColaboradorUid: _selectedColaboradorUid,
-                asignaciones: asignaciones,
-                distribuidores: distribuidores,
-                ventas: ventas,
-                anio: _selectedYear,
-              ),
-              esAdmin: esAdmin,
-              showBasesDropdown:
-                  esAdmin &&
-                  _selectedColaboradorUid.isNotEmpty &&
-                  basesOpciones.length > 1,
+              subtitulo: subtituloHeader,
+              showBasesDropdown: showBasesDropdown,
               basesOpciones: basesOpciones,
               selectedBaseUid: _selectedBaseDistribuidoraUid,
               onBaseChanged: (v) {
                 setState(() => _selectedBaseDistribuidoraUid = v);
                 _recomputeSelectedMonth();
               },
+              selectedBaseLabel: baseSeleccionadaLabel,
             ),
 
             if (esGerente || esAdmin) ...[
@@ -303,6 +398,7 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
                 _selectedYear,
                 DateTime.now(),
               ),
+              esGerenteGrupo: esGerenteGrupo,
             ),
 
             const SizedBox(height: 12),
@@ -349,7 +445,8 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
     final asigByUid = {for (final a in asignaciones) a.uid: a};
 
     final rol = widget.rolActivo.toLowerCase().trim();
-    final esGerente = rol == 'gerente';
+    final esGerenteGrupo = rol == 'gerente de grupo';
+    final esGerente = rol == 'gerente' || esGerenteGrupo;
     final esAdmin = rol == 'admin';
     final esVendedor = rol == 'vendedor';
 
@@ -364,15 +461,25 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
         baseUid: distOrigen.uid,
         distribuidores: distribuidores,
       );
-    } else if (esGerente && distOrigen != null) {
-      scopeClusterUids = _SalesSelectors.clusterFromBaseDistribuidora(
-        baseUid: distOrigen.concentradoraUid.isNotEmpty
-            ? distOrigen.concentradoraUid
-            : distOrigen.uid,
-        distribuidores: distribuidores,
-        isRootConcentradora: true,
-      );
-    } else if (esAdmin && _selectedColaboradorUid.isNotEmpty) {
+    } else if (esGerente) {
+      if (esGerenteGrupo && asignacionActiva != null) {
+        // 🔹 mismo scope que en build, pero para el cálculo de meses
+        scopeClusterUids = _SalesSelectors.clusterGerenteGrupo(
+          gerenteColaboradorUid: asignacionActiva.colaboradorUid,
+          asignaciones: asignaciones,
+          distribuidores: distribuidores,
+        );
+      } else if (distOrigen != null) {
+        scopeClusterUids = _SalesSelectors.clusterFromBaseDistribuidora(
+          baseUid: distOrigen.concentradoraUid.isNotEmpty
+              ? distOrigen.concentradoraUid
+              : distOrigen.uid,
+          distribuidores: distribuidores,
+          isRootConcentradora: true,
+        );
+      }
+    } else if ((esAdmin || esGerenteGrupo) &&
+        _selectedColaboradorUid.isNotEmpty) {
       scopeClusterUids = _SalesSelectors.adminScopeElegido(
         colaboradorUid: _selectedColaboradorUid,
         anio: _selectedYear,
@@ -413,21 +520,21 @@ class _HeaderControls extends StatelessWidget {
   const _HeaderControls({
     required this.titulo,
     required this.subtitulo,
-    required this.esAdmin,
     required this.showBasesDropdown,
     required this.basesOpciones,
     required this.selectedBaseUid,
     required this.onBaseChanged,
+    this.selectedBaseLabel,
   });
 
   final String titulo;
   final String? subtitulo;
 
-  final bool esAdmin;
   final bool showBasesDropdown;
   final List<MapEntry<String, String>> basesOpciones;
   final String? selectedBaseUid;
   final ValueChanged<String?> onBaseChanged;
+  final String? selectedBaseLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -439,7 +546,7 @@ class _HeaderControls extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (esAdmin && showBasesDropdown)
+          if (showBasesDropdown)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -476,6 +583,20 @@ class _HeaderControls extends StatelessWidget {
               subtitulo!.replaceFirst("Cluster ", '').trimLeft(),
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
+            ),
+
+          // 👇 NUEVO: etiqueta dinámica según selección de base
+          if (selectedBaseLabel != null && selectedBaseLabel!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                selectedBaseLabel!,
+                style: tt.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
         ],
       ),
@@ -524,12 +645,14 @@ class _KpisRow extends StatelessWidget {
     required this.totalAnual,
     required this.rankingTxt,
     required this.promedio,
+    required this.esGerenteGrupo,
   });
 
   final String yearLabel;
   final int totalAnual;
   final String rankingTxt;
   final double? promedio;
+  final bool esGerenteGrupo;
 
   @override
   Widget build(BuildContext context) {
@@ -563,7 +686,7 @@ class _KpisRow extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              maxLines: 1,
+              maxLines: 2,
             ),
           ],
         ),
@@ -576,11 +699,16 @@ class _KpisRow extends StatelessWidget {
         ? promedio!.toStringAsFixed(0)
         : promedio!.toStringAsFixed(1);
 
+    print(esGerenteGrupo);
+    final rankingLabel = esGerenteGrupo
+        ? 'Ranking mis vendedores'
+        : 'Ranking en distribuidora';
+
     return Row(
       children: [
         Expanded(child: _tile(yearLabel, totalAnual.toString())),
         const SizedBox(width: 12),
-        Expanded(child: _tile('Ranking en distribuidora', rankingTxt)),
+        Expanded(child: _tile(rankingLabel, rankingTxt)),
         const SizedBox(width: 12),
         Expanded(child: _tile('Promedio', avgTxt)),
       ],
@@ -779,6 +907,30 @@ class _SalesSelectors {
     }
     if (out.isEmpty) out.add(base.uid);
     return out;
+  }
+
+  // ------- Scope específico para GERENTE DE GRUPO -------
+  static Set<String> clusterGerenteGrupo({
+    required String gerenteColaboradorUid,
+    required List asignaciones,
+    required List distribuidores,
+  }) {
+    // 🔹 Queremos SOLO las distribuidoras activas que tiene asignadas
+    //    sin expandir a cluster / concentradora.
+    final bases = <String>{};
+    for (final a in asignaciones) {
+      if (a.deleted == true) continue;
+      if (a.fechaFin != null) continue;
+      if (a.rol != "gerente de grupo") continue;
+
+      if (a.colaboradorUid == gerenteColaboradorUid &&
+          (a.distribuidorUid ?? '').toString().isNotEmpty) {
+        bases.add(a.distribuidorUid);
+      }
+    }
+
+    // devolvemos directamente esas distribuidoras como scope
+    return bases;
   }
 
   // ------- Opciones de vendedores -------
@@ -1226,6 +1378,7 @@ class _SalesSelectors {
     required bool esVendedor,
     required bool esGerente,
     required bool esAdmin,
+    required bool esGerenteGrupo,
     required dynamic distOrigen,
     required Set<String> clusterUids,
     required String selectedColaboradorUid,
@@ -1268,7 +1421,7 @@ class _SalesSelectors {
       }
     }
 
-    if (esAdmin && selectedColaboradorUid.isNotEmpty) {
+    if ((esAdmin || esGerenteGrupo) && selectedColaboradorUid.isNotEmpty) {
       String? baseDistribuidoraUid;
       try {
         final asigColab = asignaciones.firstWhere(

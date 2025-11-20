@@ -457,7 +457,7 @@ class _KpisRow extends StatelessWidget {
                 color: cs.onSurface,
               ),
               textAlign: TextAlign.center,
-              maxLines: 2,
+              maxLines: 3,
             ),
           ],
         ),

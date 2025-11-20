@@ -581,7 +581,8 @@ class _DistribuidoresScreenState extends ConsumerState<DistribuidoresScreen>
     return lista.where((d) {
       final nombre = _safeStr(d.nombre);
       final grupoNombre = mapGrupoNombre[_safeStr(d.uuidGrupo)] ?? '';
-      final indexText = _normalize('$nombre $grupoNombre');
+      final estado = _safeStr(d.estado);
+      final indexText = _normalize('$nombre $grupoNombre $estado');
 
       // AND de tokens
       return tokens.every(indexText.contains);

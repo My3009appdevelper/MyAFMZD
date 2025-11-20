@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
+import 'package:myafmzd/database/app_database.dart';
+import 'package:myafmzd/screens/login/login_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:myafmzd/session/pemisos_acceso.dart';
@@ -27,6 +29,7 @@ class MyAppDrawer extends ConsumerStatefulWidget {
 class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
   // Controller propio para la lista de asignaciones
   final ScrollController _asigCtrl = ScrollController();
+  bool _signingOut = false;
 
   @override
   void dispose() {
@@ -63,6 +66,38 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
       final d = distribuidores.where((x) => x.uid == uid).toList();
       return d.isEmpty ? uid : d.first.nombre;
     }
+
+    // ---- AGRUPACIÓN ESPECIAL PARA "gerente de grupo" ----
+    final asigGerenteGrupo = asigActivas
+        .where((a) => a.rol == 'gerente de grupo')
+        .toList();
+
+    final asigNoGerenteGrupo = asigActivas
+        .where((a) => a.rol != 'gerente de grupo')
+        .toList();
+
+    AsignacionLaboralDb? representanteGerenteGrupo;
+    if (asigGerenteGrupo.isNotEmpty) {
+      // Si la asignación activa es un gerente de grupo, usamos esa
+      if (activa != null &&
+          activa.rol == 'gerente de grupo' &&
+          asigGerenteGrupo.any((g) => g.uid == activa.uid)) {
+        representanteGerenteGrupo = asigGerenteGrupo.firstWhere(
+          (g) => g.uid == activa.uid,
+        );
+      } else {
+        // Si no, usamos la "original": la de fechaInicio más antigua
+        representanteGerenteGrupo = asigGerenteGrupo.reduce(
+          (a, b) => a.fechaInicio.isBefore(b.fechaInicio) ? a : b,
+        );
+      }
+    }
+
+    // Lista final que se muestra en el Drawer
+    final asigDrawer = <AsignacionLaboralDb>[
+      ...asigNoGerenteGrupo,
+      if (representanteGerenteGrupo != null) representanteGerenteGrupo,
+    ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
     // Destinos
     final destinations = <_NavDest>[
@@ -168,7 +203,7 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
                   // ===== Asignación (inline) =====
                   const _SectionLabel('Asignación actual'),
 
-                  if (asigActivas.isEmpty)
+                  if (asigDrawer.isEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                       child: Text(
@@ -185,11 +220,43 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
                         controller: _asigCtrl,
                         primary: false,
                         shrinkWrap: true,
-                        itemCount: asigActivas.length,
+                        itemCount: asigDrawer.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 6),
                         itemBuilder: (context, i) {
-                          final a = asigActivas[i];
-                          final seleccionado = a.uid == activa?.uid;
+                          final a = asigDrawer[i];
+                          final esGerenteGrupo = a.rol == 'gerente de grupo';
+
+                          // seleccionado:
+                          // - normal: por uid
+                          // - gerente de grupo: si la activa es cualquier gerente de grupo
+                          final bool seleccionado = esGerenteGrupo
+                              ? (activa != null &&
+                                    activa.rol == 'gerente de grupo' &&
+                                    activa.colaboradorUid == a.colaboradorUid)
+                              : a.uid == activa?.uid;
+
+                          // Subtítulo:
+                          // - normal: nombre de distribuidora
+                          // - gerente: distribuidora base + " + N más" si aplica
+                          String subtitulo;
+                          if (!esGerenteGrupo) {
+                            subtitulo = a.distribuidorUid.isEmpty
+                                ? '—'
+                                : _nombreDistrib(a.distribuidorUid);
+                          } else {
+                            final total = asigGerenteGrupo.length;
+                            if (total <= 1) {
+                              subtitulo = a.distribuidorUid.isEmpty
+                                  ? '—'
+                                  : _nombreDistrib(a.distribuidorUid);
+                            } else {
+                              final baseNombre = a.distribuidorUid.isEmpty
+                                  ? 'Múltiples distribuidoras'
+                                  : _nombreDistrib(a.distribuidorUid);
+                              final resto = total - 1;
+                              subtitulo = '$baseNombre ($resto)';
+                            }
+                          }
 
                           // 🔹 Fondo SIEMPRE surface; sin highlight agresivo
                           final bg = cs.surface;
@@ -199,6 +266,7 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
                           return InkWell(
                             borderRadius: BorderRadius.circular(10),
                             onTap: () async {
+                              // Para gerente de grupo, activamos la representante
                               await ref
                                   .read(assignmentSessionProvider.notifier)
                                   .setActiveAssignment(a.uid);
@@ -252,11 +320,7 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Text(
-                                                a.distribuidorUid.isEmpty
-                                                    ? '—'
-                                                    : _nombreDistrib(
-                                                        a.distribuidorUid,
-                                                      ),
+                                                subtitulo,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: tt.bodyMedium?.copyWith(
@@ -319,6 +383,8 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
                     style: tt.bodyMedium?.copyWith(color: cs.onSurface),
                   ),
                   onTap: () async {
+                    if (_signingOut) return; // evita doble ejecución
+
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (_) => AlertDialog(
@@ -338,43 +404,60 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
                         ],
                       ),
                     );
+                    if (confirm != true) return;
+                    if (!context.mounted) return;
 
-                    if (confirm == true) {
-                      if (!context.mounted) return;
-                      context.loaderOverlay.show(progress: 'Cerrando sesión…');
+                    _signingOut = true;
+
+                    try {
+                      // 1) Cierra el Drawer primero para evitar jalón visual
+                      await Future.delayed(
+                        const Duration(milliseconds: 100),
+                      ); // mini respiro
+
+                      // 2) Overlay con minSpin para UX suave
+                      const minSpin = Duration(milliseconds: 900);
                       final inicio = DateTime.now();
+                      context.loaderOverlay.show(progress: 'Cerrando sesión…');
+                      await Supabase.instance.client.auth.signOut();
 
-                      try {
-                        await Supabase.instance.client.auth.signOut();
-                        await ref
-                            .read(assignmentSessionProvider.notifier)
-                            .clear();
-                        ref.read(perfilProvider.notifier).limpiarUsuario();
+                      // Limpiezas ligeras (sin redes)
+                      await ref
+                          .read(assignmentSessionProvider.notifier)
+                          .clear();
+                      ref.read(perfilProvider.notifier).limpiarUsuario();
 
-                        const minSpin = Duration(milliseconds: 1200);
-                        final elapsed = DateTime.now().difference(inicio);
-                        if (elapsed < minSpin) {
-                          await Future.delayed(minSpin - elapsed);
-                        }
-
-                        if (!context.mounted) return;
-                        if (context.loaderOverlay.visible) {
-                          context.loaderOverlay.hide();
-                        }
-                        Navigator.of(
-                          context,
-                        ).pushNamedAndRemoveUntil('/', (_) => false);
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        if (context.loaderOverlay.visible) {
-                          context.loaderOverlay.hide();
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('❌ No se pudo cerrar sesión: $e'),
-                          ),
-                        );
+                      // 3) Garantiza duración mínima del overlay
+                      final elapsed = DateTime.now().difference(inicio);
+                      if (elapsed < minSpin) {
+                        await Future.delayed(minSpin - elapsed);
                       }
+
+                      if (!context.mounted) return;
+                      if (context.loaderOverlay.visible)
+                        context.loaderOverlay.hide();
+
+                      // 4) Navegación con transición fade (suave)
+                      Navigator.of(context).pushAndRemoveUntil(
+                        PageRouteBuilder(
+                          pageBuilder: (_, __, ___) => const LoginScreen(),
+                          transitionDuration: const Duration(milliseconds: 220),
+                          transitionsBuilder: (_, anim, __, child) =>
+                              FadeTransition(opacity: anim, child: child),
+                        ),
+                        (route) => false,
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      if (context.loaderOverlay.visible)
+                        context.loaderOverlay.hide();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('❌ No se pudo cerrar sesión: $e'),
+                        ),
+                      );
+                    } finally {
+                      _signingOut = false;
                     }
                   },
                 ),

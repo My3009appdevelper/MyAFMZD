@@ -43,6 +43,7 @@ class ModeloDetallePage extends ConsumerWidget {
 
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+
     Future<void> _abrirFicha() async {
       final notifier = ref.read(modelosProvider.notifier);
       ModeloDb? actualizado;
@@ -113,6 +114,11 @@ class ModeloDetallePage extends ConsumerWidget {
       fontWeight: FontWeight.w500,
     );
 
+    // ✅ Mostrar el botón de borrar solo si YA existe localmente
+    final tieneFichaLocal =
+        modelo.fichaRutaLocal.isNotEmpty &&
+        File(modelo.fichaRutaLocal).existsSync();
+
     return Scaffold(
       appBar: AppBar(title: Text(modelo.modelo), centerTitle: true),
       body: ListView(
@@ -136,13 +142,63 @@ class ModeloDetallePage extends ConsumerWidget {
               child: const Center(child: Icon(Icons.directions_car, size: 80)),
             ),
 
+          const SizedBox(height: 4),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              MyElevatedButton(
+                icon: Icons.picture_as_pdf,
+                label: 'Ver ficha técnica',
+                onPressed: _abrirFicha,
+              ),
+
+              const SizedBox(width: 4),
+
+              // ❌ Botón de borrar: SOLO si existe local
+              if (tieneFichaLocal)
+                Tooltip(
+                  message: 'Quitar de descargados',
+                  child: IconButton.filledTonal(
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.delete_outline, size: 12),
+                    onPressed: () async {
+                      final notifier = ref.read(modelosProvider.notifier);
+
+                      if (context.mounted) {
+                        context.loaderOverlay.show(
+                          progress: 'Eliminando ficha…',
+                        );
+                      }
+                      try {
+                        final count = await notifier.eliminarFichaLocal(modelo);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Ficha eliminada. Registros limpiados: $count',
+                              ),
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (context.mounted && context.loaderOverlay.visible) {
+                          context.loaderOverlay.hide();
+                        }
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+
           const SizedBox(height: 16),
 
           // Datos importantes
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Título principal
                 Text(
@@ -179,42 +235,27 @@ class ModeloDetallePage extends ConsumerWidget {
 
           const SizedBox(height: 24),
 
-          // Botones de acción (Wrap para respuesta en móvil/escritorio)
+          // Botones de acción
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Wrap(
               alignment: WrapAlignment.center,
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 2,
+              runSpacing: 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                // MyElevatedButton (ancho adaptable)
-                SizedBox(
-                  width: 280, // se adapta en Wrap; en móvil cae a nueva línea
-                  child: MyElevatedButton(
-                    icon: Icons.request_quote,
-                    label: 'Cotizar',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CotizadorScreen(modelo: modelo),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Outlined (PDF) – mismo alto
-                SizedBox(
-                  width: 280,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text("Ver ficha técnica"),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                    onPressed: _abrirFicha,
-                  ),
+                // ✅ Botón "Cotizar" (tamaño al contenido, sin anchos fijos)
+                MyElevatedButton(
+                  icon: Icons.request_quote,
+                  label: 'Cotizar',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CotizadorScreen(modelo: modelo),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

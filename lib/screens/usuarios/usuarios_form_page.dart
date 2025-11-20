@@ -28,6 +28,11 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
   bool _correoFueEditado = false;
   String? _colaboradorUidSel;
 
+  // Estado local para reflejar el soft-delete en caliente en la UI
+  late bool _deletedLocal;
+
+  String _ultimoAutoCorreo = '';
+
   @override
   void initState() {
     super.initState();
@@ -39,27 +44,23 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
     _passwordCtrl = TextEditingController();
 
     _colaboradorUidSel = u?.colaboradorUid;
+    _deletedLocal = u?.deleted ?? false;
 
     // Autollenado simple: si userName luce como correo y el usuario no tocó "correo"
     _userNameCtrl.addListener(() {
       if (_correoFueEditado) return;
       final un = _userNameCtrl.text.trim();
-
-      // Solo autollenar si está vacío o si coincide con el autollenado previo
       if (_correoCtrl.text.isEmpty || _correoCtrl.text == _ultimoAutoCorreo) {
         _correoCtrl.text = un;
         _ultimoAutoCorreo = un;
       }
     });
     _correoCtrl.addListener(() {
-      // Si el usuario cambia "correo" manualmente, no volvemos a autollenar
       final c = _correoCtrl.text.trim();
       _correoFueEditado = true;
       _ultimoAutoCorreo = c;
     });
   }
-
-  String _ultimoAutoCorreo = '';
 
   @override
   void dispose() {
@@ -153,11 +154,34 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
 
                   const SizedBox(height: 24),
 
-                  // =================== Guardar ===================
-                  MyElevatedButton(
-                    onPressed: _guardar,
-                    icon: Icons.save,
-                    label: 'Guardar',
+                  // =================== Acciones =======================
+                  Row(
+                    children: [
+                      Expanded(
+                        child: MyElevatedButton(
+                          icon: Icons.save,
+                          label: 'Guardar',
+                          onPressed: _guardar,
+                        ),
+                      ),
+                      if (_esEdicion) const SizedBox(width: 12),
+                      if (_esEdicion && !_deletedLocal)
+                        Expanded(
+                          child: MyElevatedButton(
+                            icon: Icons.lock_outline,
+                            label: 'Cerrar acceso',
+                            onPressed: _bloquearAhora,
+                          ),
+                        ),
+                      if (_esEdicion && _deletedLocal)
+                        Expanded(
+                          child: MyElevatedButton(
+                            icon: Icons.lock_open,
+                            label: 'Reactivar acceso',
+                            onPressed: _reactivarAhora,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -196,8 +220,9 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
       correo: correo,
     );
     if (hayDuplicado) {
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       setState(() => _enviando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -219,6 +244,12 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
           colaboradorUid: _colaboradorUidSel,
         );
 
+        // 🔄 Sincroniza como en Colaboradores
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Sincronizando cambios…');
+        }
+        await usuariosNotifier.cargarOfflineFirst();
+
         if (mounted && context.loaderOverlay.visible) {
           context.loaderOverlay.progress('Finalizando…');
         }
@@ -229,8 +260,9 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
           await Future.delayed(minSpin - elapsed);
         }
 
-        if (mounted && context.loaderOverlay.visible)
+        if (mounted && context.loaderOverlay.visible) {
           context.loaderOverlay.hide();
+        }
         if (mounted) Navigator.pop(context, true);
       } else {
         if (mounted && context.loaderOverlay.visible) {
@@ -243,6 +275,12 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
           colaboradorUid: _colaboradorUidSel,
         );
 
+        // 🔄 Sincroniza como en Colaboradores
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Sincronizando cambios…');
+        }
+        await usuariosNotifier.cargarOfflineFirst();
+
         if (mounted && context.loaderOverlay.visible) {
           context.loaderOverlay.progress('Finalizando…');
         }
@@ -253,18 +291,112 @@ class _UsuariosFormPageState extends ConsumerState<UsuariosFormPage> {
           await Future.delayed(minSpin - elapsed);
         }
 
-        if (mounted && context.loaderOverlay.visible)
+        if (mounted && context.loaderOverlay.visible) {
           context.loaderOverlay.hide();
+        }
         if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted && context.loaderOverlay.visible)
+      if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.hide();
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('❌ Error al guardar: $e')));
     } finally {
       if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  Future<void> _bloquearAhora() async {
+    if (!_esEdicion || widget.usuarioEditar == null) return;
+    final uid = widget.usuarioEditar!.uid;
+
+    // Overlay suave
+    const minSpin = Duration(milliseconds: 900);
+    final inicio = DateTime.now();
+    if (mounted) context.loaderOverlay.show(progress: 'Cerrando acceso…');
+
+    try {
+      await ref.read(usuariosProvider.notifier).softDeleteUsuario(uid);
+
+      // 🔄 Sincroniza inmediatamente (pull→push) antes de cerrar
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Sincronizando cambios…');
+      }
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
+
+      // UX: duración mínima
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _deletedLocal = true);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('✅ Acceso cerrado')));
+        Navigator.pop(context, true); // cierra como en Colaboradores
+      }
+    } catch (e) {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('❌ Error al cerrar acceso: $e')));
+      }
+    }
+  }
+
+  Future<void> _reactivarAhora() async {
+    if (!_esEdicion || widget.usuarioEditar == null) return;
+    final uid = widget.usuarioEditar!.uid;
+
+    // Overlay suave
+    const minSpin = Duration(milliseconds: 900);
+    final inicio = DateTime.now();
+    if (mounted) context.loaderOverlay.show(progress: 'Reactivando acceso…');
+
+    try {
+      await ref.read(usuariosProvider.notifier).reactivarUsuario(uid);
+
+      // 🔄 Sincroniza inmediatamente (pull→push) antes de cerrar
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.progress('Sincronizando cambios…');
+      }
+      await ref.read(usuariosProvider.notifier).cargarOfflineFirst();
+
+      // UX: duración mínima
+      final elapsed = DateTime.now().difference(inicio);
+      if (elapsed < minSpin) {
+        await Future.delayed(minSpin - elapsed);
+      }
+
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        setState(() => _deletedLocal = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('✅ Acceso reactivado')));
+        Navigator.pop(context, true); // cierra como en Colaboradores
+      }
+    } catch (e) {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error al reactivar acceso: $e')),
+        );
+      }
     }
   }
 }

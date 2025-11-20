@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
+import 'package:myafmzd/database/estatus/estatus_provider.dart';
 import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
 import 'package:myafmzd/database/modelos/modelo_imagenes_provider.dart';
 import 'package:myafmzd/database/modelos/modelos_provider.dart';
@@ -18,6 +20,7 @@ import 'package:myafmzd/screens/perfil/perfil_screen.dart';
 import 'package:myafmzd/screens/reportes/reportes_screen.dart';
 import 'package:myafmzd/session/pemisos_acceso.dart';
 import 'package:myafmzd/widgets/my_app_drawer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -33,52 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     Future.microtask(() async {
-      // 1) Captura notifiers una sola vez (esto NO usa ref después de awaits)
-      final perfilN = ref.read(perfilProvider.notifier);
-      final modelosN = ref.read(modelosProvider.notifier);
-      final modeloImgsN = ref.read(modeloImagenesProvider.notifier);
-      final distribuidoresN = ref.read(distribuidoresProvider.notifier);
-      final gruposDistN = ref.read(gruposDistribuidoresProvider.notifier);
-      final reportesN = ref.read(reporteProvider.notifier);
-      final colaboradoresN = ref.read(colaboradoresProvider.notifier);
-      final asignacionesN = ref.read(asignacionesLaboralesProvider.notifier);
-      final usuariosN = ref.read(usuariosProvider.notifier);
-      final productosN = ref.read(productosProvider.notifier);
-      final ventasN = ref.read(ventasProvider.notifier);
-
-      // 2) Llama a los métodos usando los notifiers guardados
-      await perfilN.cargarUsuario();
-      if (!mounted) return;
-
-      await modelosN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await modeloImgsN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await distribuidoresN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await gruposDistN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await reportesN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await colaboradoresN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await asignacionesN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await usuariosN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await productosN.cargarOfflineFirst();
-      if (!mounted) return;
-
-      await ventasN.cargarOfflineFirst();
-      if (!mounted) return;
+      await _recargarTodo();
     });
   }
 
@@ -151,17 +109,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
+
           actions: [
             Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Tooltip(
-                message: hayConexion
-                    ? 'Conectado a Internet'
-                    : 'Sin conexión a Internet',
-                child: Icon(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                onPressed: _reintentarConexionConOverlay,
+                icon: Icon(
                   hayConexion ? Icons.wifi : Icons.wifi_off,
                   color: colorScheme.onPrimary,
                 ),
+                tooltip: hayConexion ? 'Conectado' : 'Sin conexión',
               ),
             ),
           ],
@@ -189,15 +147,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           actions: [
             Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Tooltip(
-                message: hayConexion
-                    ? 'Conectado a Internet'
-                    : 'Sin conexión a Internet',
-                child: Icon(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                onPressed: _reintentarConexionConOverlay,
+                icon: Icon(
                   hayConexion ? Icons.wifi : Icons.wifi_off,
                   color: colorScheme.onPrimary,
                 ),
+                tooltip: hayConexion ? 'Conectado' : 'Sin conexión',
               ),
             ),
           ],
@@ -224,15 +181,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Tooltip(
-              message: hayConexion
-                  ? 'Conectado a Internet'
-                  : 'Sin conexión a Internet',
-              child: Icon(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              onPressed: _reintentarConexionConOverlay,
+              icon: Icon(
                 hayConexion ? Icons.wifi : Icons.wifi_off,
                 color: colorScheme.onPrimary,
               ),
+              tooltip: hayConexion ? 'Conectado' : 'Sin conexión',
             ),
           ),
         ],
@@ -255,5 +211,89 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         items: itemsVisibles,
       ),
     );
+  }
+
+  Future<void> _recargarTodo() async {
+    // Captura notifiers cada vez (evitas estados stale)
+    final perfilN = ref.read(perfilProvider.notifier);
+    final modelosN = ref.read(modelosProvider.notifier);
+    final modeloImgsN = ref.read(modeloImagenesProvider.notifier);
+    final distribuidoresN = ref.read(distribuidoresProvider.notifier);
+    final gruposDistN = ref.read(gruposDistribuidoresProvider.notifier);
+    final reportesN = ref.read(reporteProvider.notifier);
+    final colaboradoresN = ref.read(colaboradoresProvider.notifier);
+    final asignacionesN = ref.read(asignacionesLaboralesProvider.notifier);
+    final usuariosN = ref.read(usuariosProvider.notifier);
+    final productosN = ref.read(productosProvider.notifier);
+    final ventasN = ref.read(ventasProvider.notifier);
+    final estatusN = ref.read(estatusProvider.notifier);
+
+    await perfilN.cargarUsuario();
+    if (!mounted) return;
+    await modelosN.cargarOfflineFirst();
+    if (!mounted) return;
+    await modeloImgsN.cargarOfflineFirst();
+    if (!mounted) return;
+    await distribuidoresN.cargarOfflineFirst();
+    if (!mounted) return;
+    await gruposDistN.cargarOfflineFirst();
+    if (!mounted) return;
+    await reportesN.cargarOfflineFirst();
+    if (!mounted) return;
+    await colaboradoresN.cargarOfflineFirst();
+    if (!mounted) return;
+    await asignacionesN.cargarOfflineFirst();
+    if (!mounted) return;
+    await usuariosN.cargarOfflineFirst();
+    if (!mounted) return;
+    await productosN.cargarOfflineFirst();
+    if (!mounted) return;
+    await ventasN.cargarOfflineFirst();
+    if (!mounted) return;
+    await estatusN.cargarOfflineFirst();
+    if (!mounted) return;
+  }
+
+  Future<void> _reintentarConexionConOverlay() async {
+    if (!mounted) return;
+
+    // Mensaje inicial
+    context.loaderOverlay.show(
+      progress: 'Revisando conexión y sincronizando datos',
+    );
+
+    try {
+      // 1) Revalidar red
+      await ref.read(connectivityProvider.notifier).refreshNow();
+      final online = ref.read(connectivityProvider);
+
+      if (online) {
+        try {
+          await Supabase.instance.client.auth.refreshSession();
+        } catch (_) {
+          // Ignoramos errores de refresh; seguimos con recarga local/online-first
+        }
+
+        await _recargarTodo();
+
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Listo.');
+        }
+        // Pequeña pausa visual opcional
+        await Future.delayed(const Duration(milliseconds: 300));
+      } else {
+        if (context.loaderOverlay.visible) {
+          context.loaderOverlay.progress(
+            'Sin conexión. Trabajando con datos locales…',
+          );
+        }
+        // Pausa corta para que el usuario alcance a leer
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+    } finally {
+      if (mounted && context.loaderOverlay.visible) {
+        context.loaderOverlay.hide();
+      }
+    }
   }
 }

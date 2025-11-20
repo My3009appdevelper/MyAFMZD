@@ -144,6 +144,7 @@ class UsuarioService {
         'colaborador_uid': colaboradorUid, // puede ser null
         'user_name': userName,
         'correo': correo,
+        'last_connection_at': nowIso,
         'updated_at': nowIso,
         'deleted': false,
       };
@@ -200,6 +201,23 @@ class UsuarioService {
       );
     } catch (e) {
       print('[👤 MENSAJES USUARIOS SERVICE] ❌ Error eliminando usuario: $e');
+      rethrow;
+    }
+  }
+
+  /// ✅ Reactivar usuario online (deleted=false)
+  Future<void> restaurarUsuarioOnline(String uid) async {
+    try {
+      await supabase
+          .from('usuarios')
+          .update({
+            'deleted': false,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('uid', uid);
+      print('[👤 MENSAJES USUARIOS SERVICE] Usuario $uid reactivado online');
+    } catch (e) {
+      print('[👤 MENSAJES USUARIOS SERVICE] ❌ Error reactivando usuario: $e');
       rethrow;
     }
   }

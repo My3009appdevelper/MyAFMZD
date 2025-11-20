@@ -236,6 +236,11 @@ class Cotizador {
         iva = r.montoIvaAdministracion;
       }
 
+      // Agregar inscripción en el primer mes
+      if (mes == 1) {
+        adm += r.montoInscripcion;
+      }
+
       final mensualidad = aportacion + adm + iva + r.montoSeguroVida;
 
       filas.add(

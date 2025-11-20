@@ -779,8 +779,8 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
           h2Center('Tabla de pagos'),
           pdfw.SizedBox(height: 6),
           h3Center(
-            'Este ejercicio es una simulación de pagos y no constituye una oferta formal. '
-            'No incluye seguro automotriz.',
+            "Simulación con fines puramente informativos. No constituye oferta formal. "
+            "Cifras sujetas a modificación sin previo aviso. No incluye seguro automotriz, localizador ni promociones.",
           ),
           pdfw.SizedBox(height: 8),
 
@@ -791,7 +791,7 @@ class _CotizadorScreenState extends ConsumerState<CotizadorScreen> {
               'No',
               'Estatus',
               'Aportación',
-              'Gtos. Admin',
+              'Gtos. Admin e Insc',
               'IVA Gtos Admin',
               'Seg. Vida',
               'Mensualidad',
