@@ -5,14 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 
 import 'package:myafmzd/connectivity/connectivity_provider.dart';
+import 'package:myafmzd/database/app_database.dart';
 import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/database/colaboradores/colaboradores_provider.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/perfil/perfil_provider.dart';
 import 'package:myafmzd/database/usuarios/usuarios_provider.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
+import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
 
 import 'package:myafmzd/screens/perfil/asesor_monthly_sales_card.dart';
+import 'package:myafmzd/screens/perfil/comparison_sales_card.dart';
 import 'package:myafmzd/screens/perfil/distribuidora_monthly_sales_card.dart';
 
 import 'package:myafmzd/session/sesion_asignacion_provider.dart';
@@ -50,6 +53,8 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     final colaboradores = ref.watch(colaboradoresProvider);
     final distribuidores = ref.watch(distribuidoresProvider);
     final ventas = ref.watch(ventasProvider);
+    final asignaciones = ref.watch(asignacionesLaboralesProvider);
+    final gruposNotifier = ref.watch(gruposDistribuidoresProvider.notifier);
 
     // Mantén el perfil sincronizado con conectividad
     ref.listen<bool>(connectivityProvider, (previous, next) async {
@@ -85,7 +90,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     final tieneFotoLocal =
         fotoLocalPath.isNotEmpty && File(fotoLocalPath).existsSync();
 
-    // Dist origen/concentradora
+    // Dist origen/concentradora de la asignación ACTIVA
     final distOrigen = () {
       if (asignacionActiva == null) return null;
       try {
@@ -118,6 +123,59 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
     // Rol activo
     final rolActivo = (asignacionActiva?.rol ?? '').toLowerCase().trim();
+
+    // ===== Distribuidoras para GERENTE DE GRUPO (agrupadas por grupo) =====
+    int totalDistribuidorasGrupo = 0;
+    int totalGruposGrupo = 0;
+    List<MapEntry<String, List<DistribuidorDb>>> gruposDistribuidorasGerente =
+        [];
+
+    if (rolActivo == 'gerente de grupo' &&
+        usuario.colaboradorUid != null &&
+        usuario.colaboradorUid!.isNotEmpty) {
+      final colaboradorUid = usuario.colaboradorUid!;
+
+      // Asignaciones activas de este colaborador como gerente de grupo
+      final asignacionesGerente = asignaciones.where(
+        (a) =>
+            !a.deleted &&
+            a.fechaFin == null &&
+            a.rol == 'gerente de grupo' &&
+            a.colaboradorUid == colaboradorUid &&
+            a.distribuidorUid.isNotEmpty,
+      );
+
+      // Distribuidoras únicas
+      final distribsGerente = <String, DistribuidorDb>{};
+      for (final asig in asignacionesGerente) {
+        try {
+          final dist = distribuidores.firstWhere(
+            (d) => !d.deleted && d.uid == asig.distribuidorUid,
+          );
+          distribsGerente[dist.uid] = dist;
+        } catch (_) {
+          // si no se encuentra, lo ignoramos
+        }
+      }
+
+      // Agrupar por uuidGrupo
+      final Map<String, List<DistribuidorDb>> gruposMap = {};
+      for (final dist in distribsGerente.values) {
+        final grupoUid = dist.uuidGrupo.trim();
+        gruposMap.putIfAbsent(grupoUid, () => []).add(dist);
+      }
+
+      // Ordenar grupos por nombre de grupo
+      gruposDistribuidorasGerente = gruposMap.entries.toList()
+        ..sort((a, b) {
+          final nombreA = gruposNotifier.nombrePorUid(a.key);
+          final nombreB = gruposNotifier.nombrePorUid(b.key);
+          return nombreA.compareTo(nombreB);
+        });
+
+      totalDistribuidorasGrupo = distribsGerente.length;
+      totalGruposGrupo = gruposMap.length;
+    }
 
     // Años disponibles (derivados de ventas)
     final availableYears = () {
@@ -214,16 +272,47 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                                   ? _capitalize(asignacionActiva!.rol)
                                   : '—',
                             ),
-                            _buildUserInfoRow(
-                              context,
-                              Icons.store_mall_directory_outlined,
-                              'Distribuidora: $nombreDistOrigen',
-                            ),
-                            _buildUserInfoRow(
-                              context,
-                              Icons.hub_outlined,
-                              'Concentradora: $nombreDistConcentradora',
-                            ),
+
+                            // 👇 Comportamiento según rol
+                            if (rolActivo == 'gerente de grupo') ...[
+                              _buildUserInfoRow(
+                                context,
+                                Icons.storefront_outlined,
+                                totalDistribuidorasGrupo > 0
+                                    ? 'Distribuidoras: $totalDistribuidorasGrupo en $totalGruposGrupo grupos'
+                                    : 'Distribuidoras: —',
+                              ),
+                              if (gruposDistribuidorasGerente.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    for (final entry
+                                        in gruposDistribuidorasGerente) ...[
+                                      _GrupoDistribuidorasSection(
+                                        nombreGrupo: gruposNotifier
+                                            .nombrePorUid(entry.key),
+                                        distribuidoras: entry.value,
+                                        sinPrefijoMazda: _sinPrefijoMazda,
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ] else ...[
+                              _buildUserInfoRow(
+                                context,
+                                Icons.store_mall_directory_outlined,
+                                'Distribuidora: $nombreDistOrigen',
+                              ),
+                              _buildUserInfoRow(
+                                context,
+                                Icons.hub_outlined,
+                                'Concentradora: $nombreDistConcentradora',
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -263,6 +352,12 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                     initialYear: _selectedYear, // 👈 viene del selector
                     chartHeight: 220,
                   ),
+
+                  ComparisonSalesCard(
+                    rolActivo: rolActivo,
+                    initialYear: _selectedYear, // 👈 viene del selector
+                    chartHeight: 300,
+                  ),
                 ],
               ),
             ),
@@ -284,7 +379,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
             child: Text(
               text,
               style: textTheme.bodyLarge?.copyWith(color: colors.onSurface),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -376,5 +470,67 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
         setState(() => _cargandoInicial = false);
       }
     }
+  }
+}
+
+// ===== Widget auxiliar para mostrar distribuidoras por grupo =====
+
+class _GrupoDistribuidorasSection extends StatelessWidget {
+  final String nombreGrupo;
+  final List<DistribuidorDb> distribuidoras;
+  final String Function(String) sinPrefijoMazda;
+
+  const _GrupoDistribuidorasSection({
+    required this.nombreGrupo,
+    required this.distribuidoras,
+    required this.sinPrefijoMazda,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final distOrdenadas = [...distribuidoras]
+      ..sort((a, b) => a.nombre.compareTo(b.nombre));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          nombreGrupo,
+          style: textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final d in distOrdenadas)
+              Chip(
+                backgroundColor: d.activo
+                    ? null
+                    : colors.errorContainer.withOpacity(0.9),
+                side: d.activo
+                    ? null
+                    : BorderSide(color: colors.error, width: 0.8),
+                label: Text(
+                  sinPrefijoMazda(d.nombre),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: d.activo
+                        ? colors.onSurface
+                        : colors.onErrorContainer,
+                  ),
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+          ],
+        ),
+      ],
+    );
   }
 }

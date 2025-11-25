@@ -253,8 +253,7 @@ class _MyAppDrawerState extends ConsumerState<MyAppDrawer> {
                               final baseNombre = a.distribuidorUid.isEmpty
                                   ? 'Múltiples distribuidoras'
                                   : _nombreDistrib(a.distribuidorUid);
-                              final resto = total - 1;
-                              subtitulo = '$baseNombre ($resto)';
+                              subtitulo = '$baseNombre ($total)';
                             }
                           }
 

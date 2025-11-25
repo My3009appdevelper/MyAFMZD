@@ -75,6 +75,30 @@ class _AsignacionLaboralFormPageState
 
     _puestoCtrl = TextEditingController(text: a?.puesto ?? '');
     _notasCtrl = TextEditingController(text: a?.notas ?? '');
+
+    // ======= Inicializar distribuidoras seleccionadas para GERENTE DE GRUPO =======
+    // Si estamos editando y el rol es "gerente de grupo", precargamos todas las
+    // distribuidoras activas de ese colaborador en el multi-select.
+    if (_esEdicion &&
+        _rolSel == 'gerente de grupo' &&
+        _colaboradorUidSel != null &&
+        _colaboradorUidSel!.isNotEmpty) {
+      final asignaciones = ref.read(asignacionesLaboralesProvider);
+      final actualesGerente = asignaciones.where(
+        (asig) =>
+            !asig.deleted &&
+            asig.fechaFin == null &&
+            asig.rol == 'gerente de grupo' &&
+            asig.colaboradorUid == _colaboradorUidSel &&
+            asig.distribuidorUid.isNotEmpty,
+      );
+
+      _distribuidoresGrupoSelUids = actualesGerente
+          .map((asig) => asig.distribuidorUid)
+          .where((uid) => uid.isNotEmpty)
+          .toSet()
+          .toList();
+    }
   }
 
   @override
@@ -104,13 +128,17 @@ class _AsignacionLaboralFormPageState
     // --------- Distribuidoras disponibles para GERENTE DE GRUPO ----------
     // Tomamos asignaciones ACTIVAS (fechaFin == null), no eliminadas,
     // rol "gerente de grupo" y con distribuidorUid no vacío.
+    // Si estamos editando, NO bloqueamos las distribuidoras que ya tiene
+    // este mismo colaborador (para que pueda ver/editar su portafolio completo).
     final distribsOcupadasGerenteGrupo = asignaciones
         .where(
           (a) =>
               !a.deleted &&
               a.fechaFin == null &&
               a.rol == 'gerente de grupo' &&
-              a.distribuidorUid.isNotEmpty,
+              a.distribuidorUid.isNotEmpty &&
+              // no bloquear las suyas propias al editar
+              (!_esEdicion || a.colaboradorUid != _colaboradorUidSel),
         )
         .map((a) => a.distribuidorUid)
         .toSet();
@@ -178,9 +206,8 @@ class _AsignacionLaboralFormPageState
                   const SizedBox(height: 12),
 
                   // =================== Distribuidor ===================
-                  // Si es NUEVA asignación y rol == "gerente de grupo":
-                  // usamos multi-select con distribuidoras libres.
-                  // En cualquier otro caso se mantiene el picker simple.
+                  // Para rol "gerente de grupo" usamos multi-select;
+                  // para cualquier otro rol se mantiene el picker simple.
                   if (_rolSel == 'gerente de grupo') ...[
                     MyMultiPickerSearchField<DistribuidorDb>(
                       items: distribsDisponiblesGerenteGrupo,
@@ -499,7 +526,8 @@ class _AsignacionLaboralFormPageState
               createdByUsuarioUid: '',
               notas: _notasCtrl.text.trim(),
             );
-            print('Asignación creada para distribuidorUid=$distUid');
+            // debug opcional
+            // print('Asignación creada para distribuidorUid=$distUid');
           }
         } else {
           // Flujo original para cualquier otro rol
@@ -547,6 +575,7 @@ class _AsignacionLaboralFormPageState
       final original = widget.asignacionEditar!;
       final originalFin = original.fechaFin;
 
+      // Cierre / reapertura de la asignación "ancla"
       if (originalFin == null && _fechaFin != null) {
         if (mounted && context.loaderOverlay.visible) {
           context.loaderOverlay.progress('Cerrando asignación…');
@@ -564,9 +593,72 @@ class _AsignacionLaboralFormPageState
         await asignNotifier.reabrirAsignacion(uid: original.uid);
       }
 
+      // ==== Actualizar grupo de distribuidoras para GERENTE DE GRUPO ====
+      if (_rolSel == 'gerente de grupo') {
+        if (mounted && context.loaderOverlay.visible) {
+          context.loaderOverlay.progress('Actualizando distribuidoras…');
+        }
+
+        final todasAsignaciones = ref.read(asignacionesLaboralesProvider);
+
+        // Asignaciones activas actuales de este gerente de grupo
+        final actualesGerente = todasAsignaciones.where(
+          (a) =>
+              !a.deleted &&
+              a.fechaFin == null &&
+              a.rol == 'gerente de grupo' &&
+              a.colaboradorUid == _colaboradorUidSel &&
+              a.distribuidorUid.isNotEmpty,
+        );
+
+        final actualUids = actualesGerente
+            .map((a) => a.distribuidorUid)
+            .where((uid) => uid.isNotEmpty)
+            .toSet();
+
+        final nuevosUids = _distribuidoresGrupoSelUids
+            .where((uid) => uid.isNotEmpty)
+            .toSet();
+
+        final aCrear = nuevosUids.difference(actualUids);
+        final aCerrar = actualUids.difference(nuevosUids);
+
+        // Crear nuevas asignaciones para distribuidoras agregadas
+        for (final distUid in aCrear) {
+          await asignNotifier.crearAsignacion(
+            colaboradorUid: _colaboradorUidSel!,
+            fechaInicio: _fechaInicio.toUtc(),
+            fechaFin: _fechaFin?.toUtc(),
+            distribuidorUid: distUid,
+            managerColaboradorUid: _managerUidSel,
+            rol: _rolSel,
+            puesto: _puestoCtrl.text.trim(),
+            nivel: _nivelSel,
+            createdByUsuarioUid: '',
+            notas: _notasCtrl.text.trim(),
+          );
+        }
+
+        // Cerrar asignaciones para distribuidoras que se quitaron del grupo
+        final asignacionesACerrar = actualesGerente.where(
+          (a) => aCerrar.contains(a.distribuidorUid),
+        );
+
+        for (final a in asignacionesACerrar) {
+          await asignNotifier.cerrarAsignacion(
+            uid: a.uid,
+            closedByUsuarioUid: '',
+            fechaFin: DateTime.now(),
+            notasAppend: null,
+          );
+        }
+      }
+
       if (mounted && context.loaderOverlay.visible) {
         context.loaderOverlay.progress('Aplicando cambios…');
       }
+
+      // Mantener la edición de la asignación original como estaba
       await asignNotifier.editarAsignacion(
         uid: original.uid,
         distribuidorUid: _distribuidorUidSel == original.distribuidorUid

@@ -360,11 +360,43 @@ class _AsesorMonthlySalesCardState extends ConsumerState<AsesorMonthlySalesCard>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _HeaderControls(
-              titulo: esVendedor
-                  ? 'MIS VENTAS EN EL AÑO'
-                  : (_selectedColaboradorUid.isNotEmpty
-                        ? 'VENTAS DE ${_SalesSelectors.nombreColaboradorNullSafe(_SalesSelectors.colaboradorPorUidSinDeleted(colaboradores, _selectedColaboradorUid)).toUpperCase()}'
-                        : 'VENTAS POR MES (POR ASESOR)'),
+              titulo: () {
+                if (esVendedor) {
+                  // Mismo comportamiento de siempre para vendedor
+                  return 'MIS VENTAS EN EL AÑO';
+                }
+
+                // Si hay asesor seleccionado, mostramos su nombre
+                if (_selectedColaboradorUid.isNotEmpty) {
+                  final col = _SalesSelectors.colaboradorPorUidSinDeleted(
+                    colaboradores,
+                    _selectedColaboradorUid,
+                  );
+                  final nombre = _SalesSelectors.nombreColaboradorNullSafe(
+                    col,
+                  ).toUpperCase();
+                  return 'VENTAS DE $nombre';
+                }
+
+                // Sin asesor seleccionado:
+                if (esGerenteGrupo) {
+                  // Análogo a "VENTAS TOTALES POR MES (MIS DISTRIBUIDORAS)"
+                  return 'VENTAS TOTALES POR MES (MI EQUIPO)';
+                }
+
+                if (esGerente) {
+                  // Gerente normal, sin filtro de asesor concreto
+                  return 'VENTAS POR MES (POR ASESOR)';
+                }
+
+                if (esAdmin) {
+                  // Admin viendo el total de asesores
+                  return 'VENTAS TOTALES POR MES (ASESORES)';
+                }
+
+                // Fallback genérico
+                return 'VENTAS POR MES (POR ASESOR)';
+              }(),
               subtitulo: subtituloHeader,
               showBasesDropdown: showBasesDropdown,
               basesOpciones: basesOpciones,

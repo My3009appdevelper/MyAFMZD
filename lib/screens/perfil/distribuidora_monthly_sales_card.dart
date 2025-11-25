@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myafmzd/database/distribuidores/distribuidores_provider.dart';
 import 'package:myafmzd/database/grupo_distribuidores/grupos_distribuidores_provider.dart';
 import 'package:myafmzd/database/ventas/ventas_provider.dart';
+import 'package:myafmzd/database/asignaciones_laborales/asignaciones_laborales_provider.dart';
 import 'package:myafmzd/session/sesion_asignacion_selectors.dart';
 import 'package:myafmzd/widgets/charts/my_timeline_bar_chart.dart';
 import 'package:myafmzd/widgets/charts/my_pie_chart.dart';
@@ -13,7 +14,7 @@ enum _RankingScope { grupo, total }
 class DistribuidoraMonthlySalesCard extends ConsumerStatefulWidget {
   const DistribuidoraMonthlySalesCard({
     super.key,
-    required this.rolActivo, // 'vendedor' | 'gerente' | 'admin'
+    required this.rolActivo, // 'vendedor' | 'gerente' | 'gerente de grupo' | 'admin'
     this.initialYear,
     this.chartHeight = 220,
   });
@@ -37,7 +38,10 @@ class _DistribuidoraMonthlySalesCardState
   late int _selectedYear;
   late int _selectedMonth;
 
-  /// Picker de concentradora (root). Para vendedor se fija en su concentradora de contexto.
+  /// Picker de concentradora (root).
+  /// - Vendedor / gerente: se fija en su concentradora de contexto.
+  /// - Gerente de grupo: lista sólo las concentradoras de sus distribuidoras asignadas.
+  /// - Admin: puede elegir cualquiera (o dejar null para ver TOTAL).
   String? _selectedConcentradoraUid;
 
   _RankingScope _scope = _RankingScope.grupo;
@@ -65,7 +69,8 @@ class _DistribuidoraMonthlySalesCardState
     final asignacionActiva = ref.read(activeAssignmentProvider);
 
     final rol = widget.rolActivo.toLowerCase().trim();
-    final esGerente = rol == 'gerente';
+    final esGerenteGrupo = rol == 'gerente de grupo';
+    final esGerente = rol == 'gerente' || esGerenteGrupo;
     final esVendedor = rol == 'vendedor';
 
     // Dist / root de contexto (para vendedor/gerente)
@@ -80,8 +85,17 @@ class _DistribuidoraMonthlySalesCardState
 
     // Root objetivo (la que define el scope del card)
     final rootObjetivo = () {
-      if (esVendedor || esGerente) return rootDeContexto;
-      return _selectedConcentradoraUid; // admin elige con el picker
+      if (esVendedor) return rootDeContexto;
+
+      if (esGerenteGrupo) {
+        // Si no hay selección, dejamos null (TOTAL de sus distribuidoras asignadas).
+        return _selectedConcentradoraUid;
+      }
+
+      if (esGerente) return rootDeContexto;
+
+      // Admin: lo que diga el picker (puede ser null => TOTAL)
+      return _selectedConcentradoraUid;
     }();
 
     final nuevoMes = _DistSelectors.recomputeSelectedMonth(
@@ -104,10 +118,12 @@ class _DistribuidoraMonthlySalesCardState
     final distribuidores = ref.watch(distribuidoresProvider);
     final asignacionActiva = ref.watch(activeAssignmentProvider);
     final grupos = ref.watch(gruposDistribuidoresProvider);
+    final asignaciones = ref.watch(asignacionesLaboralesProvider);
 
     final rol = widget.rolActivo.toLowerCase().trim();
     final esAdmin = rol == 'admin';
-    final esGerente = rol == 'gerente';
+    final esGerenteGrupo = rol == 'gerente de grupo';
+    final esGerente = rol == 'gerente' || esGerenteGrupo;
     final esVendedor = rol == 'vendedor';
 
     // Contexto (para vendedor/gerente)
@@ -120,27 +136,54 @@ class _DistribuidoraMonthlySalesCardState
       distribuidores,
     );
 
-    // Opciones del picker: TODAS las concentradoras (roots), no bases
-    final opcionesConcentradoras = _DistSelectors.opcionesConcentradoras(
-      distribuidores,
-    );
+    // Opciones del picker:
+    //  - Admin: TODAS las concentradoras
+    //  - Gerente de grupo: solo sus distribuidoras asignadas (normalizadas a root)
+    //  - Otros roles: realmente no mostramos picker, pero mantenemos la lista por simetría
+    final opcionesConcentradoras = () {
+      if (esAdmin) {
+        return _DistSelectors.opcionesConcentradoras(distribuidores);
+      }
 
-    // Selección por defecto según rol
-    if (_selectedConcentradoraUid == null) {
-      if (esVendedor || esGerente) {
-        _selectedConcentradoraUid = _DistSelectors.rootUidFromBase(
-          distOrigen,
-          distribuidores,
+      if (esGerenteGrupo && asignacionActiva != null) {
+        return _DistSelectors.opcionesConcentradorasGerenteGrupo(
+          distribuidores: distribuidores,
+          asignaciones: asignaciones,
+          gerenteColaboradorUid: asignacionActiva.colaboradorUid,
         );
-      } else {
-        // Admin: sin selección => barras muestran TOTAL por mes, pies ocultos
+      }
+
+      // Vendedor / gerente normal: no usan picker (scope viene del contexto)
+      return _DistSelectors.opcionesConcentradoras(distribuidores);
+    }();
+
+    // Selección por defecto según rol (una sola vez)
+    if (_selectedConcentradoraUid == null) {
+      if (esVendedor || (esGerente && !esGerenteGrupo)) {
+        // Vendedor / gerente "normal": scope por contexto
+        final defaultRoot = rootDeContexto;
+        _selectedConcentradoraUid = defaultRoot;
+      } else if (esGerenteGrupo) {
+        // Gerente de grupo: dejamos NULL para mostrar TOTAL de sus distribuidoras asignadas
+        _selectedConcentradoraUid = null;
+      } else if (esAdmin) {
+        // Admin: null => TOTAL global
         _selectedConcentradoraUid = null;
       }
     }
 
     // Root objetivo (cluster a graficar)
     final rootObjetivo = () {
-      if (esVendedor || esGerente) return rootDeContexto;
+      if (esVendedor) return rootDeContexto;
+
+      if (esGerenteGrupo) {
+        // null => TOTAL de mis distribuidoras
+        return _selectedConcentradoraUid;
+      }
+
+      if (esGerente) return rootDeContexto;
+
+      // Admin
       return _selectedConcentradoraUid;
     }();
 
@@ -154,12 +197,29 @@ class _DistribuidoraMonthlySalesCardState
     final serie = () {
       final sinSeleccionAdmin =
           esAdmin && (rootObjetivo == null || rootObjetivo.isEmpty);
+      final sinSeleccionGerenteGrupo =
+          esGerenteGrupo && (rootObjetivo == null || rootObjetivo.isEmpty);
+
       if (sinSeleccionAdmin) {
+        // Admin: TOTAL global por mes
         return _DistSelectors.serieTotalPorMes(
           ventas: ventas,
           anio: _selectedYear,
-        ); // TOTAL por mes
+        );
       }
+
+      if (sinSeleccionGerenteGrupo && asignacionActiva != null) {
+        // Gerente de grupo: TOTAL por mes de TODAS sus distribuidoras asignadas
+        return _DistSelectors.serieTotalPorMesGerenteGrupo(
+          ventas: ventas,
+          distribuidores: distribuidores,
+          asignaciones: asignaciones,
+          anio: _selectedYear,
+          gerenteColaboradorUid: asignacionActiva.colaboradorUid,
+        );
+      }
+
+      // Caso normal: una concentradora / cluster concreto
       return _DistSelectors.seriePorRootCluster(
         ventas: ventas,
         distribuidores: distribuidores,
@@ -200,14 +260,13 @@ class _DistribuidoraMonthlySalesCardState
     final rankingTxt = (rankingActual.rank == null || rankingActual.total == 0)
         ? '—'
         : '#${rankingActual.rank} de ${rankingActual.total}';
-    ;
 
     // Subtítulo tipo “Cluster X”
     final subtitulo = _DistSelectors.subtituloCluster(
       esAdmin: esAdmin,
       rootUid: rootObjetivo,
       distribuidores: distribuidores,
-      totalKeySeleccionado: false, // ya no usamos TOTAL
+      totalKeySeleccionado: false, // ya no usamos TOTAL como key especial
     );
 
     // ===== PIES =====
@@ -237,7 +296,10 @@ class _DistribuidoraMonthlySalesCardState
               distribuidores,
               rootObjetivo,
             );
-            return 'APORTACIÓN DE ${distName?.toUpperCase()} EN GRUPO ${grupoNombre.toUpperCase()}';
+            final grupoLabel = (grupoNombre.isEmpty)
+                ? 'GRUPO'
+                : 'GRUPO ${grupoNombre.toUpperCase()}';
+            return 'APORTACIÓN DE ${distName?.toUpperCase() ?? 'DISTRIBUIDORA'} EN $grupoLabel';
           })()
         : 'APORTACIÓN EN TOTAL (ACTIVAS)';
 
@@ -249,10 +311,16 @@ class _DistribuidoraMonthlySalesCardState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ===== Header (solo año + títulos) =====
+            // ===== Header (solo títulos) =====
             _HeaderControls(
               titulo: () {
-                if (esVendedor || esGerente) {
+                if (esGerenteGrupo &&
+                    (rootObjetivo == null || rootObjetivo.isEmpty)) {
+                  // TOTAL de las distribuidoras asignadas al gerente de grupo
+                  return 'VENTAS TOTALES POR MES (MIS DISTRIBUIDORAS)';
+                }
+
+                if (esVendedor || esGerente || esGerenteGrupo) {
                   final name = _DistSelectors.nombreRootPorUid(
                     distribuidores,
                     rootObjetivo,
@@ -261,6 +329,7 @@ class _DistribuidoraMonthlySalesCardState
                       ? 'VENTAS POR MES (DISTRIBUIDORA)'
                       : 'VENTAS DE ${name.toUpperCase()}';
                 }
+
                 // Admin:
                 final sel = _selectedConcentradoraUid ?? '';
                 if (sel.isEmpty) return 'VENTAS TOTALES POR MES';
@@ -272,11 +341,13 @@ class _DistribuidoraMonthlySalesCardState
                     ? 'VENTAS POR MES (DISTRIBUIDORA)'
                     : 'VENTAS DE ${name.toUpperCase()}';
               }(),
+
               subtitulo: subtitulo,
             ),
 
-            // ===== Picker de CONCENTRADORA (como en Asesor) =====
-            if (esAdmin) ...[
+            // ===== Picker de CONCENTRADORA =====
+            // Admin: todas; Gerente de grupo: sólo sus distribuidoras asignadas
+            if (esAdmin || esGerenteGrupo) ...[
               const SizedBox(height: 12),
               _ConcentradoraPicker(
                 opciones: opcionesConcentradoras,
@@ -400,9 +471,9 @@ class _ConcentradoraPicker extends StatelessWidget {
             itemAsString: (e) => e.value,
             compareFn: (a, b) => a.key == b.key,
             initialValue: selected,
-            labelText: 'Concentradora',
-            hintText: 'Seleccione una concentradora',
-            bottomSheetTitle: 'Concentradoras',
+            labelText: 'Distribuidora',
+            hintText: 'Seleccione una distribuidora',
+            bottomSheetTitle: 'Distribuidoras',
             onChanged: onChanged,
           ),
         ),
@@ -787,6 +858,54 @@ class _DistSelectors {
     final items = <MapEntry<String, String>>[];
     for (final rid in rootIds) {
       final root = porUid[rid];
+      if (root == null) continue;
+      items.add(MapEntry(root.uid, _sinPrefijoMazda(root.nombre)));
+    }
+
+    items.sort((a, b) => _fold(a.value).compareTo(_fold(b.value)));
+    return items;
+  }
+
+  /// Concentradoras disponibles para un GERENTE DE GRUPO:
+  /// toma sus asignaciones activas como "gerente de grupo" y normaliza a root.
+  static List<MapEntry<String, String>> opcionesConcentradorasGerenteGrupo({
+    required List distribuidores,
+    required List asignaciones,
+    required String? gerenteColaboradorUid,
+  }) {
+    final colUid = (gerenteColaboradorUid ?? '').trim();
+    if (colUid.isEmpty) return const [];
+
+    final porUid = {
+      for (final d in distribuidores)
+        if (!d.deleted) d.uid: d,
+    };
+
+    final rootIds = <String>{};
+
+    for (final a in asignaciones) {
+      if (a.deleted == true) continue;
+      if (a.fechaFin != null) continue;
+      if (a.rol != 'gerente de grupo') continue;
+      if (a.colaboradorUid != colUid) continue;
+
+      final distUid = (a.distribuidorUid ?? '').toString().trim();
+      if (distUid.isEmpty) continue;
+
+      final d = porUid[distUid];
+      if (d == null) continue;
+
+      final rootUid = (d.concentradoraUid?.isNotEmpty == true)
+          ? d.concentradoraUid
+          : d.uid;
+      rootIds.add(rootUid);
+    }
+
+    if (rootIds.isEmpty) return const [];
+
+    final items = <MapEntry<String, String>>[];
+    for (final rootUid in rootIds) {
+      final root = porUid[rootUid];
       if (root == null) continue;
       items.add(MapEntry(root.uid, _sinPrefijoMazda(root.nombre)));
     }
@@ -1288,6 +1407,85 @@ class _DistSelectors {
         serie[m - 1] += 1;
       }
     }
+    return serie;
+  }
+
+  /// Serie TOTAL del año para un GERENTE DE GRUPO:
+  /// suma todas las ventas de las concentradoras (roots) asociadas
+  /// a sus asignaciones activas como "gerente de grupo".
+  static List<int> serieTotalPorMesGerenteGrupo({
+    required List ventas, // List<VentaDb>
+    required List distribuidores, // List<DistribuidorDb>
+    required List asignaciones, // List<AsignacionLaboralDb>
+    required int anio,
+    required String? gerenteColaboradorUid,
+  }) {
+    final colUid = (gerenteColaboradorUid ?? '').trim();
+    if (colUid.isEmpty) {
+      return List<int>.filled(12, 0);
+    }
+
+    // 1) Determinar las ROOTS asignadas al gerente de grupo
+    final porUid = {
+      for (final d in distribuidores)
+        if (!d.deleted) d.uid: d,
+    };
+
+    final rootsAsignadas = <String>{};
+
+    for (final a in asignaciones) {
+      if (a.deleted == true) continue;
+      if (a.fechaFin != null) continue;
+      if (a.rol != 'gerente de grupo') continue;
+      if (a.colaboradorUid != colUid) continue;
+
+      final distUid = (a.distribuidorUid ?? '').toString().trim();
+      if (distUid.isEmpty) continue;
+
+      final d = porUid[distUid];
+      if (d == null) continue;
+
+      final rootUid = (d.concentradoraUid?.isNotEmpty == true)
+          ? d.concentradoraUid
+          : d.uid;
+      rootsAsignadas.add(rootUid);
+    }
+
+    if (rootsAsignadas.isEmpty) {
+      return List<int>.filled(12, 0);
+    }
+
+    // 2) Construir la serie mensual sólo con esas ROOTS
+    final serie = List<int>.filled(12, 0);
+
+    for (final v in ventas) {
+      if (v.deleted == true) continue;
+      final y = v.anioVenta ?? (v.fechaVenta ?? v.updatedAt).toUtc().year;
+      if (y != anio) continue;
+
+      final du = (v.distribuidoraUid ?? '').toString().trim();
+      final doU = (v.distribuidoraOrigenUid ?? '').toString().trim();
+
+      bool perteneceAGerente = false;
+
+      for (final uid in [du, doU]) {
+        if (uid.isEmpty) continue;
+        final root = _rootFromUid(uid, distribuidores);
+        if (root == null) continue;
+        if (!rootsAsignadas.contains(root)) continue;
+
+        perteneceAGerente = true;
+        break;
+      }
+
+      if (!perteneceAGerente) continue;
+
+      final m = v.mesVenta ?? (v.fechaVenta ?? v.updatedAt).toUtc().month;
+      if (m >= 1 && m <= 12) {
+        serie[m - 1] += 1;
+      }
+    }
+
     return serie;
   }
 }
